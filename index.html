@@ -5,15 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AFM Simulator</title>
 <style>
-:root{
+
+/* ── LIGHT / DARK THEME ── */
+:root,[data-theme="dark"]{
   --bg:#06080c;--panel:#0b1017;--border:#17293a;
-  --accent:#00e5b0;--accent2:#2ea8ff;--text:#6a8fa0;--text-hi:#b0d0e0;
+  --accent:#00e5b0;--accent2:#2ea8ff;--accent3:#ff6b35;
+  --text:#6a8fa0;--text-hi:#b0d0e0;
+  --canvas-bg:#040608;--grid1:#182434;--grid2:#0c1820;
+  --axis:#304a58;--border2:#1a2e3e;--shadow:rgba(0,229,176,0.08);
 }
+[data-theme="light"]{
+  --bg:#eef2f7;--panel:#ffffff;--border:#c5d5e5;
+  --accent:#009e7a;--accent2:#1a7acc;--accent3:#d94f1e;
+  --text:#4a6070;--text-hi:#1a2838;
+  --canvas-bg:#f8fafc;--grid1:#d0dce8;--grid2:#e4edf5;
+  --axis:#7090a8;--border2:#c0d0e0;--shadow:rgba(0,158,122,0.10);
+}
+/* toggle button */
+.theme-toggle{
+  position:fixed;top:10px;right:12px;z-index:999;
+  background:var(--panel);border:1px solid var(--border);
+  color:var(--accent);font-family:'Courier New',monospace;
+  font-size:9px;letter-spacing:1px;padding:5px 10px;
+  cursor:pointer;transition:all 0.15s;
+}
+.theme-toggle:hover{background:var(--accent);color:var(--bg);}
+
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
-.logo{font-size:11px;letter-spacing:6px;color:#1a3a4a;text-transform:uppercase;margin-bottom:10px;}
+.logo{font-size:11px;letter-spacing:6px;color:var(--text);text-transform:uppercase;margin-bottom:10px;}
 h1{font-size:22px;letter-spacing:6px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;text-align:center;}
-.sub{font-size:9px;letter-spacing:3px;color:#2a5a6a;margin-bottom:60px;text-align:center;}
+.sub{font-size:9px;letter-spacing:3px;color:var(--text);margin-bottom:60px;text-align:center;}
 .cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
 .card{background:var(--panel);border:1px solid var(--border);padding:32px 28px;width:280px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s;cursor:pointer;text-decoration:none;color:inherit;}
 .card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,229,176,0.04),transparent 70%);pointer-events:none;}
@@ -24,16 +46,16 @@ h1{font-size:22px;letter-spacing:6px;color:var(--accent);text-transform:uppercas
 .badge-2d{color:var(--accent);border-color:rgba(0,229,176,0.3);}
 .badge-3d{color:var(--accent2);border-color:rgba(46,168,255,0.3);}
 .card-title{font-size:16px;letter-spacing:3px;color:var(--text-hi);text-transform:uppercase;}
-.card-desc{font-size:9px;line-height:1.8;color:#3a6a80;}
+.card-desc{font-size:9px;line-height:1.8;color:var(--text);}
 .card-features{display:flex;flex-direction:column;gap:4px;}
-.feat{font-size:8px;color:#2a5a6a;display:flex;gap:6px;align-items:center;}
+.feat{font-size:8px;color:var(--text);display:flex;gap:6px;align-items:center;}
 .feat::before{content:'·';color:var(--accent);}
 .card:nth-child(2) .feat::before{color:var(--accent2);}
 .card-cta{font-size:8px;letter-spacing:2px;text-transform:uppercase;margin-top:6px;}
 .card:hover .card-cta{color:var(--accent);}
 .card:nth-child(2):hover .card-cta{color:var(--accent2);}
-.footer{margin-top:60px;font-size:8px;letter-spacing:2px;color:#1a3040;text-align:center;}
-.footer a{color:#1a4a5a;text-decoration:none;}
+.footer{margin-top:60px;font-size:8px;letter-spacing:2px;color:var(--text);text-align:center;}
+.footer a{color:var(--accent2);text-decoration:none;}
 </style>
 </head>
 <body>
@@ -47,11 +69,12 @@ h1{font-size:22px;letter-spacing:6px;color:var(--accent);text-transform:uppercas
     <div class="card-title">2D Simulator</div>
     <div class="card-desc">Cross-sectional scan with real-time artifact analysis, error mapping, and force–distance curve visualization.</div>
     <div class="card-features">
-      <div class="feat">6 tip geometries with size sliders</div>
-      <div class="feat">7 sample surfaces with parameters</div>
-      <div class="feat">Live artifact error colormap</div>
-      <div class="feat">Lennard-Jones F–d curve</div>
-      <div class="feat">Hover inspection at any x position</div>
+      <div class="feat">8 tip geometries + asymmetric & double</div>
+      <div class="feat">10 surfaces incl. DNA, chirp, lattice</div>
+      <div class="feat">6 invert/transform toggles</div>
+      <div class="feat">Erosion mode + reverse scan</div>
+      <div class="feat">Loop / bounce / single scan modes</div>
+      <div class="feat">🎲 Randomize all button</div>
     </div>
     <div class="card-cta">Launch 2D Simulator →</div>
   </a>
@@ -74,5 +97,26 @@ h1{font-size:22px;letter-spacing:6px;color:var(--accent);text-transform:uppercas
 <div class="footer">
   Built for EE 5490X Advanced Microscopy · <a href="https://alloydas.github.io">alloydas.github.io</a>
 </div>
+
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◑ LIGHT</button>
+<script>
+(function(){
+  const saved=localStorage.getItem('afm-theme')||'dark';
+  document.documentElement.setAttribute('data-theme',saved);
+  document.addEventListener('DOMContentLoaded',()=>{
+    const btn=document.getElementById('themeToggle');
+    if(btn)btn.textContent=saved==='dark'?'◑ LIGHT':'◑ DARK';
+  });
+})();
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'dark';
+  const next=cur==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('afm-theme',next);
+  const btn=document.getElementById('themeToggle');
+  if(btn)btn.textContent=next==='dark'?'◑ LIGHT':'◑ DARK';
+}
+</script>
+
 </body>
 </html>

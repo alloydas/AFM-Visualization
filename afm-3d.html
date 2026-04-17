@@ -5,11 +5,32 @@
 <title>AFM 3D Simulator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-:root{
-  --bg:#06080c;--panel:#0a0f15;--border:#162230;
-  --accent:#00e5b0;--accent2:#2ea8ff;--accent3:#ff6b35;--accent4:#c97aff;
+
+/* ── LIGHT / DARK THEME ── */
+:root,[data-theme="dark"]{
+  --bg:#06080c;--panel:#0b1017;--border:#17293a;
+  --accent:#00e5b0;--accent2:#2ea8ff;--accent3:#ff6b35;
   --text:#6a8fa0;--text-hi:#b0d0e0;
+  --canvas-bg:#040608;--grid1:#182434;--grid2:#0c1820;
+  --axis:#304a58;--border2:#1a2e3e;--shadow:rgba(0,229,176,0.08);
 }
+[data-theme="light"]{
+  --bg:#eef2f7;--panel:#ffffff;--border:#c5d5e5;
+  --accent:#009e7a;--accent2:#1a7acc;--accent3:#d94f1e;
+  --text:#4a6070;--text-hi:#1a2838;
+  --canvas-bg:#f8fafc;--grid1:#d0dce8;--grid2:#e4edf5;
+  --axis:#7090a8;--border2:#c0d0e0;--shadow:rgba(0,158,122,0.10);
+}
+/* toggle button */
+.theme-toggle{
+  position:fixed;top:10px;right:12px;z-index:999;
+  background:var(--panel);border:1px solid var(--border);
+  color:var(--accent);font-family:'Courier New',monospace;
+  font-size:9px;letter-spacing:1px;padding:5px 10px;
+  cursor:pointer;transition:all 0.15s;
+}
+.theme-toggle:hover{background:var(--accent);color:var(--bg);}
+
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:11px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 .header{text-align:center;padding:8px 0 6px;flex-shrink:0;}
@@ -32,7 +53,7 @@ body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;
 .slider-header span:first-child{color:#2a5060;text-transform:uppercase;}
 .slider-val{color:var(--accent);}
 input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
-#tipPreview{display:block;background:#030507;border:1px solid var(--border);margin-top:5px;width:100%;}
+#tipPreview{display:block;background:var(--canvas-bg);border:1px solid var(--border);margin-top:5px;width:100%;}
 .play-row{display:flex;gap:4px;align-items:center;margin-bottom:6px;}
 .play-btn{background:rgba(0,229,176,0.08);border:1px solid var(--accent);color:var(--accent);padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;letter-spacing:1px;flex:1;}
 .play-btn:hover{background:rgba(0,229,176,0.18);}
@@ -40,14 +61,14 @@ input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
 .icon-btn:hover{border-color:var(--accent2);color:var(--accent2);}
 .speed-row{display:flex;align-items:center;gap:5px;font-size:8px;margin-bottom:4px;}
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
-.stat-box{background:#040810;border:1px solid var(--border);padding:4px 5px;}
+.stat-box{background:var(--canvas-bg);border:1px solid var(--border);padding:4px 5px;}
 .stat-label{font-size:6px;letter-spacing:1px;color:#2a5060;text-transform:uppercase;margin-bottom:1px;}
 .stat-val{font-size:11px;font-weight:bold;color:var(--accent);}
 .stat-val.err{color:var(--accent3);}
 .stat-val.warn{color:#f0c040;}
 .note-box{background:rgba(46,168,255,0.04);border:1px solid rgba(46,168,255,0.12);padding:7px 8px;font-size:8px;line-height:1.7;color:#3a6a80;}
 .note-box strong{color:var(--accent2);}
-#canvasContainer{flex:1;position:relative;overflow:hidden;background:#06080c;}
+#canvasContainer{flex:1;position:relative;overflow:hidden;background:var(--bg);}
 #canvasContainer canvas{display:block;width:100%;height:100%;}
 .view-btns{display:flex;gap:4px;flex-shrink:0;}
 .info-bar{font-size:8px;letter-spacing:1px;color:var(--text);padding:3px 7px;background:var(--panel);border:1px solid var(--border);flex-shrink:0;}
@@ -625,6 +646,10 @@ function loop(){
     needsMeshUpdate=false;
   }
 
+  // Sync Three.js scene bg with theme
+  const isDark=document.documentElement.getAttribute('data-theme')!=='light';
+  scene.background.set(isDark?0x06080c:0xeef2f7);
+  scene.fog.color.set(isDark?0x06080c:0xeef2f7);
   renderer.render(scene,camera);
 }
 
@@ -720,5 +745,26 @@ function init(){
 // Wait for full layout before measuring container dimensions
 window.addEventListener('load', init);
 </script>
+
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◑ LIGHT</button>
+<script>
+(function(){
+  const saved=localStorage.getItem('afm-theme')||'dark';
+  document.documentElement.setAttribute('data-theme',saved);
+  document.addEventListener('DOMContentLoaded',()=>{
+    const btn=document.getElementById('themeToggle');
+    if(btn)btn.textContent=saved==='dark'?'◑ LIGHT':'◑ DARK';
+  });
+})();
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'dark';
+  const next=cur==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('afm-theme',next);
+  const btn=document.getElementById('themeToggle');
+  if(btn)btn.textContent=next==='dark'?'◑ LIGHT':'◑ DARK';
+}
+</script>
+
 </body>
 </html>

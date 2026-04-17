@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AFM 3D Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --bg:#06080c;--panel:#0a0f15;--border:#162230;
+  --accent:#00e5b0;--accent2:#2ea8ff;--accent3:#ff6b35;--accent4:#c97aff;
+  --text:#6a8fa0;--text-hi:#b0d0e0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:11px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.header{text-align:center;padding:8px 0 6px;flex-shrink:0;}
+.header h1{font-size:12px;letter-spacing:5px;color:var(--accent);text-transform:uppercase;}
+.header p{font-size:8px;letter-spacing:2px;color:#2a4a5a;margin-top:2px;}
+.layout{display:flex;flex:1;overflow:hidden;gap:10px;padding:0 10px 10px;}
+.sidebar{width:195px;flex-shrink:0;display:flex;flex-direction:column;gap:7px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#162230 transparent;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:#162230;}
+.main-col{flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
+.panel{background:var(--panel);border:1px solid var(--border);padding:8px;}
+.panel-label{font-size:7px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.btn-group{display:flex;flex-direction:column;gap:2px;}
+.btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 7px;font-family:inherit;font-size:9px;cursor:pointer;text-align:left;transition:all 0.1s;width:100%;}
+.btn:hover{border-color:#2a4050;color:var(--text-hi);}
+.btn.active{background:rgba(0,229,176,0.07);border-color:var(--accent);color:var(--accent);}
+.slider-section{margin-top:6px;display:flex;flex-direction:column;gap:5px;}
+.slider-row{display:flex;flex-direction:column;gap:1px;}
+.slider-header{display:flex;justify-content:space-between;font-size:7px;letter-spacing:1px;}
+.slider-header span:first-child{color:#2a5060;text-transform:uppercase;}
+.slider-val{color:var(--accent);}
+input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
+#tipPreview{display:block;background:#030507;border:1px solid var(--border);margin-top:5px;width:100%;}
+.play-row{display:flex;gap:4px;align-items:center;margin-bottom:6px;}
+.play-btn{background:rgba(0,229,176,0.08);border:1px solid var(--accent);color:var(--accent);padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;letter-spacing:1px;flex:1;}
+.play-btn:hover{background:rgba(0,229,176,0.18);}
+.icon-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;}
+.icon-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+.speed-row{display:flex;align-items:center;gap:5px;font-size:8px;margin-bottom:4px;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.stat-box{background:#040810;border:1px solid var(--border);padding:4px 5px;}
+.stat-label{font-size:6px;letter-spacing:1px;color:#2a5060;text-transform:uppercase;margin-bottom:1px;}
+.stat-val{font-size:11px;font-weight:bold;color:var(--accent);}
+.stat-val.err{color:var(--accent3);}
+.stat-val.warn{color:#f0c040;}
+.note-box{background:rgba(46,168,255,0.04);border:1px solid rgba(46,168,255,0.12);padding:7px 8px;font-size:8px;line-height:1.7;color:#3a6a80;}
+.note-box strong{color:var(--accent2);}
+#canvasContainer{flex:1;position:relative;overflow:hidden;background:#06080c;}
+#canvasContainer canvas{display:block;width:100%;height:100%;}
+.view-btns{display:flex;gap:4px;flex-shrink:0;}
+.info-bar{font-size:8px;letter-spacing:1px;color:var(--text);padding:3px 7px;background:var(--panel);border:1px solid var(--border);flex-shrink:0;}
+.overlay-label{position:absolute;font-size:7px;letter-spacing:2px;color:rgba(0,229,176,0.5);text-transform:uppercase;pointer-events:none;}
+</style>
+</head>
+<body>
+<div style="padding:6px 10px;"><a href="index.html" style="font-size:8px;letter-spacing:2px;color:#2ea8ff;text-decoration:none;border:1px solid rgba(46,168,255,0.3);padding:3px 8px;">← Back to Home</a></div>
+<div class="header">
+  <h1>AFM 3D Contact Mode Simulator</h1>
+  <p>Drag to rotate · Scroll to zoom · Right-drag to pan</p>
+</div>
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<div class="sidebar">
+  <div class="panel">
+    <div class="panel-label">Tip Geometry</div>
+    <div class="btn-group" id="tipBtns">
+      <button class="btn active" data-tip="sharp_cone">▼ Sharp Cone</button>
+      <button class="btn"        data-tip="blunt_cone">▼ Blunt Cone</button>
+      <button class="btn"        data-tip="sphere">● Spherical</button>
+      <button class="btn"        data-tip="hyperboloid">⌓ Hyperboloid</button>
+      <button class="btn"        data-tip="flat">▬ Flat Punch</button>
+      <button class="btn"        data-tip="inv_sphere">⌣ Concave Sphere</button>
+    </div>
+    <div class="slider-section" id="tipSliders"></div>
+    <canvas id="tipPreview" width="179" height="78"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Sample Surface</div>
+    <div class="btn-group" id="surfBtns">
+      <button class="btn active" data-surf="sine">~ Sinusoidal</button>
+      <button class="btn"        data-surf="hills">⌒ Rolling Hills</button>
+      <button class="btn"        data-surf="hemisphere">● Nanoparticle</button>
+      <button class="btn"        data-surf="pit">◑ Nano-pit</button>
+      <button class="btn"        data-surf="trench">⊓ Trenches</button>
+      <button class="btn"        data-surf="rough">≈ Rough Surface</button>
+      <button class="btn"        data-surf="pyramid">△ Pyramid</button>
+    </div>
+    <div class="slider-section" id="surfSliders"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Scan + View</div>
+    <div class="play-row">
+      <button class="play-btn" id="playBtn">▶ PLAY</button>
+      <button class="icon-btn" id="resetBtn">↺</button>
+    </div>
+    <div class="speed-row">
+      <span>SPEED</span>
+      <input type="range" id="speedSlider" min="1" max="12" value="3">
+      <span id="speedVal">3</span>
+    </div>
+    <div class="slider-row" style="margin-bottom:5px">
+      <div class="slider-header"><span>V. Exaggeration</span><span class="slider-val" id="vscaleVal">3×</span></div>
+      <input type="range" id="vscaleSlider" min="1" max="8" step="0.5" value="3">
+    </div>
+    <div class="view-btns">
+      <button class="icon-btn" id="viewIso" style="flex:1;font-size:8px">ISO</button>
+      <button class="icon-btn" id="viewTop" style="flex:1;font-size:8px">TOP</button>
+      <button class="icon-btn" id="viewFront" style="flex:1;font-size:8px">FRONT</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Live Statistics</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-label">Max Artifact</div><div class="stat-val err" id="statArt">—</div></div>
+      <div class="stat-box"><div class="stat-label">RMS Error</div><div class="stat-val warn" id="statRms">—</div></div>
+      <div class="stat-box"><div class="stat-label">Rows Scanned</div><div class="stat-val" id="statRows">0 / 0</div></div>
+      <div class="stat-box"><div class="stat-label">Tip Param</div><div class="stat-val" id="statTip">—</div></div>
+    </div>
+  </div>
+
+  <div class="note-box">
+    <strong>3D MODE</strong><br>
+    True surface (teal) always visible. Measured surface (orange) builds up row by row as the tip scans.<br><br>
+    Artifact = measured − true.<br>
+    Adjust V.Exaggeration to see subtle features.
+  </div>
+</div>
+
+<!-- ═══ MAIN 3D VIEW ═══ -->
+<div class="main-col">
+  <div id="canvasContainer">
+    <div class="overlay-label" style="top:8px;left:10px">SCAN PROFILE — 3D</div>
+    <div class="overlay-label" style="top:8px;right:10px;text-align:right" id="scanLabel"></div>
+  </div>
+  <div class="info-bar" id="infoBar">Ready — press PLAY to begin raster scan</div>
+</div>
+
+</div><!-- end layout -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  GRID + PHYSICS CONSTANTS
+// ═══════════════════════════════════════════════════════
+const GW=80, GH=80;          // grid dimensions (samples)
+const X_NM=200, Y_NM=200;    // physical size (nm)
+const dNm=X_NM/GW;           // nm per sample
+const TIP_R=Math.ceil(28/dNm); // max tip kernel radius in samples
+
+const surfGrid  = new Float32Array(GW*GH);
+const measGrid  = new Float32Array(GW*GH);
+const dispGrid  = new Float32Array(GW*GH); // progressive reveal
+
+let vScale = 3;
+let scanPx = 0;   // 0 … GW*GH
+let playing = false, rafId = null;
+let currentTip='sharp_cone', currentSurf='sine';
+let meshNeedsUpdate = false;
+
+// ── PARAM DEFINITIONS ──────────────────────────────────
+const TIP_DEFS={
+  sharp_cone:[{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:15,unit:'°'}],
+  blunt_cone:[{id:'angle',label:'Half-angle α',min:3,max:80,step:1,val:35,unit:'°'}],
+  sphere:    [{id:'R',label:'Radius R',min:3,max:50,step:1,val:20,unit:'nm'}],
+  hyperboloid:[{id:'a',label:'Sharpness a',min:2,max:30,step:1,val:7,unit:'nm'}],
+  flat:      [{id:'R',label:'Radius R',min:3,max:50,step:1,val:18,unit:'nm'}],
+  inv_sphere:[{id:'R',label:'Bowl Radius',min:3,max:50,step:1,val:20,unit:'nm'}],
+};
+const SURF_DEFS={
+  sine:     [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:15,max:120,step:5,val:55,unit:'nm'}],
+  hills:    [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:14,unit:'nm'},{id:'scale',label:'Scale',min:20,max:120,step:5,val:60,unit:'nm'}],
+  hemisphere:[{id:'R',label:'Radius R',min:5,max:60,step:1,val:30,unit:'nm'}],
+  pit:      [{id:'R',label:'Radius R',min:5,max:60,step:1,val:28,unit:'nm'}],
+  trench:   [{id:'period',label:'Period',min:20,max:120,step:5,val:60,unit:'nm'},{id:'depth',label:'Depth',min:5,max:70,step:1,val:30,unit:'nm'}],
+  rough:    [{id:'scale',label:'Amplitude',min:1,max:40,step:1,val:10,unit:'×0.3'}],
+  pyramid:  [{id:'h',label:'Height',min:5,max:70,step:1,val:40,unit:'nm'},{id:'w',label:'Base width',min:10,max:160,step:5,val:80,unit:'nm'}],
+};
+const tipP={}, surfP={};
+for(const[k,d]of Object.entries(TIP_DEFS))  tipP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
+for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
+
+// ── SLIDER UI ─────────────────────────────────────────
+function makeSliders(container,defs,store,onChange){
+  container.innerHTML='';
+  (defs||[]).forEach(d=>{
+    const row=document.createElement('div');row.className='slider-row';
+    row.innerHTML=`<div class="slider-header"><span>${d.label}</span><span class="slider-val" id="sv_${d.id}">${store[d.id]}${d.unit}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
+    container.appendChild(row);
+    row.querySelector('input').addEventListener('input',function(){
+      store[d.id]=parseFloat(this.value);
+      document.getElementById('sv_'+d.id).textContent=store[d.id]+d.unit;
+      onChange();
+    });
+  });
+}
+function refreshTipSliders(){
+  makeSliders(document.getElementById('tipSliders'),TIP_DEFS[currentTip],tipP[currentTip],
+    ()=>{computeAll();drawTipPreview();});
+}
+function refreshSurfSliders(){
+  makeSliders(document.getElementById('surfSliders'),SURF_DEFS[currentSurf],surfP[currentSurf],
+    ()=>{computeAll();reset3D();});
+}
+
+// ── SURFACE PROFILES (2D) ─────────────────────────────
+function buildSurface(){
+  const base=14, p=surfP[currentSurf]||{};
+  for(let r=0;r<GH;r++){
+    for(let c=0;c<GW;c++){
+      const x=c*dNm, y=r*dNm;
+      const cx=X_NM/2, cy=Y_NM/2;
+      const dx=x-cx, dy=y-cy;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const idx=r*GW+c;
+      switch(currentSurf){
+        case 'sine':{const A=p.amp||18,T=p.period||55;surfGrid[idx]=base+A*Math.sin(2*Math.PI*x/T)*Math.sin(2*Math.PI*y/T)*0.6+A*0.4*Math.sin(2*Math.PI*x/T);break;}
+        case 'hills':{const A=p.amp||14,S=p.scale||60;surfGrid[idx]=base+A*(Math.sin(2*Math.PI*x/S+0.5)*Math.cos(2*Math.PI*y/(S*0.8))+0.5*Math.sin(2*Math.PI*(x+y)/(S*1.3)+1.2));break;}
+        case 'hemisphere':{const R=p.R||30;surfGrid[idx]=dist<R?base+Math.sqrt(R*R-dist*dist):base;break;}
+        case 'pit':{const R=p.R||28,tH=base+R;surfGrid[idx]=dist<R?tH-Math.sqrt(R*R-dist*dist):tH;break;}
+        case 'trench':{const T=p.period||60,dep=p.depth||30;surfGrid[idx]=(x%T)/T<0.45?base:base+dep;break;}
+        case 'rough':{const s=(p.scale||10)*0.3;surfGrid[idx]=base+s*4+s*3*Math.sin(2*Math.PI*x/48+.9)+s*2*Math.cos(2*Math.PI*y/36+1.3)+s*1.5*Math.sin(2*Math.PI*(x+y)/22+2.1)+s*Math.sin(2*Math.PI*x/11+1.4);break;}
+        case 'pyramid':{const H=p.h||40,W=(p.w||80)/2;const t=Math.max(0,1-Math.max(Math.abs(dx),Math.abs(dy))/W);surfGrid[idx]=base+H*t;break;}
+      }
+    }
+  }
+}
+
+// ── TIP PROFILE (2D kernel) ────────────────────────────
+const tipKernel=new Float32Array((2*TIP_R+1)*(2*TIP_R+1));
+function buildTipKernel(){
+  const p=tipP[currentTip]||{}, KW=2*TIP_R+1;
+  for(let dr=-TIP_R;dr<=TIP_R;dr++){
+    for(let dc=-TIP_R;dc<=TIP_R;dc++){
+      const r_nm=Math.sqrt((dc*dNm)**2+(dr*dNm)**2);
+      const idx=(dr+TIP_R)*KW+(dc+TIP_R);
+      switch(currentTip){
+        case 'sharp_cone':case 'blunt_cone':tipKernel[idx]=r_nm/Math.tan((p.angle||15)*Math.PI/180);break;
+        case 'sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?R-Math.sqrt(R*R-r_nm*r_nm):1e9;break;}
+        case 'hyperboloid':{const a=p.a||7;tipKernel[idx]=Math.sqrt(r_nm*r_nm+a*a)-a;break;}
+        case 'flat':{const R=p.R||18;tipKernel[idx]=r_nm<=R?0:1e9;break;}
+        case 'inv_sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?Math.sqrt(R*R-r_nm*r_nm)-R:1e9;break;}
+      }
+    }
+  }
+}
+
+// ── 2D MINKOWSKI SUM ──────────────────────────────────
+function computeMeas(){
+  const KW=2*TIP_R+1;
+  for(let r=0;r<GH;r++){
+    for(let c=0;c<GW;c++){
+      let best=-Infinity;
+      for(let dr=-TIP_R;dr<=TIP_R;dr++){
+        const nr=r+dr; if(nr<0||nr>=GH)continue;
+        for(let dc=-TIP_R;dc<=TIP_R;dc++){
+          const nc=c+dc; if(nc<0||nc>=GW)continue;
+          const d=tipKernel[(dr+TIP_R)*KW+(dc+TIP_R)]; if(d>1e6)continue;
+          const v=surfGrid[nr*GW+nc]+d; if(v>best)best=v;
+        }
+      }
+      measGrid[r*GW+c]=best;
+    }
+  }
+}
+
+function computeAll(){
+  buildSurface(); buildTipKernel(); computeMeas();
+  dispGrid.set(surfGrid);
+  if(trueMesh && measMesh) updateMeshes(true);
+  updateStats(); drawTipPreview();
+}
+
+// ── THREE.JS SETUP ────────────────────────────────────
+let scene, camera, renderer, controls;
+let trueMesh, measMesh, tipObj, scanLineMesh, tipLight;
+
+function initThree(){
+  const cont=document.getElementById('canvasContainer');
+  // Use actual offset dimensions; flex layout is resolved by window.load
+  const W=cont.offsetWidth||window.innerWidth-220;
+  const H=cont.offsetHeight||window.innerHeight-80;
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x06080c);
+  scene.fog=new THREE.FogExp2(0x06080c,0.0007);
+
+  camera=new THREE.PerspectiveCamera(45,W/H,1,5000);
+
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(W,H);
+  cont.appendChild(renderer.domElement);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff,0.45));
+  const sun=new THREE.DirectionalLight(0xffffff,1.0);
+  sun.position.set(150,250,100); scene.add(sun);
+  const fill=new THREE.DirectionalLight(0x6699cc,0.35);
+  fill.position.set(-150,80,-100); scene.add(fill);
+  const back=new THREE.DirectionalLight(0x223344,0.2);
+  back.position.set(0,-100,0); scene.add(back);
+
+  // Tip point light
+  tipLight=new THREE.PointLight(0x00e5b0,1.2,80);
+  scene.add(tipLight);
+
+  // Floor grid
+  const gridH=new THREE.GridHelper(300,24,0x162230,0x0d1820);
+  gridH.position.y=-1; scene.add(gridH);
+
+  // Axis markers
+  addAxes();
+
+  // Geometry for surfaces
+  trueMesh=createSurfMesh(0.4,false);
+  measMesh=createSurfMesh(0.95,false);
+  scene.add(trueMesh); scene.add(measMesh);
+
+  // Scan path line
+  scanLineMesh=createScanLine();
+  scene.add(scanLineMesh);
+
+  // Orbit
+  controls=new SimpleOrbit(camera,renderer.domElement);
+  controls.setView('iso');
+
+  // Resize handler
+  window.addEventListener('resize',()=>{
+    const W2=cont.offsetWidth, H2=cont.offsetHeight;
+    renderer.setSize(W2,H2);
+    camera.aspect=W2/H2; camera.updateProjectionMatrix();
+  });
+}
+
+// ── SURFACE MESH FACTORY ──────────────────────────────
+function createSurfMesh(opacity,wire){
+  const geo=new THREE.BufferGeometry();
+  const n=GW*GH;
+  const pos=new Float32Array(n*3);
+  const col=new Float32Array(n*3);
+  const idx=[];
+  for(let j=0;j<GH-1;j++) for(let i=0;i<GW-1;i++){
+    const a=j*GW+i,b=j*GW+i+1,c=(j+1)*GW+i,d=(j+1)*GW+i+1;
+    idx.push(a,b,d,a,d,c);
+  }
+  geo.setIndex(idx);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const mat=new THREE.MeshPhongMaterial({
+    vertexColors:true,side:THREE.DoubleSide,
+    transparent:opacity<1,opacity,shininess:60,specular:new THREE.Color(0x224455)
+  });
+  return new THREE.Mesh(geo,mat);
+}
+
+// ── COLORMAPS ──────────────────────────────────────────
+function trueColormap(h,mn,mx){
+  const t=Math.max(0,Math.min(1,(h-mn)/(mx-mn)));
+  // dark navy → teal → bright cyan
+  return[0.02+t*0.25, 0.25+t*0.6, 0.5+t*0.35];
+}
+function measColormap(h,mn,mx){
+  const t=Math.max(0,Math.min(1,(h-mn)/(mx-mn)));
+  // dark maroon → orange → yellow
+  let r,g,b;
+  if(t<0.4){r=0.35+t*1.2;g=t*0.8;b=0;}
+  else if(t<0.75){r=1;g=0.32+(t-0.4)*1.6;b=0;}
+  else{r=1;g=0.88+(t-0.75)*0.4;b=(t-0.75)*1.2;}
+  return[r,g,b];
+}
+
+function updateMeshes(full){
+  if(!trueMesh||!measMesh)return;
+  let mn=Infinity,mx=-Infinity;
+  for(let i=0;i<GW*GH;i++){mn=Math.min(mn,surfGrid[i]);mx=Math.max(mx,surfGrid[i]);}
+  for(let i=0;i<GW*GH;i++){mn=Math.min(mn,measGrid[i]);mx=Math.max(mx,measGrid[i]);}
+  const vs=vScale;
+
+  // True surface mesh
+  const tp=trueMesh.geometry.attributes.position.array;
+  const tc=trueMesh.geometry.attributes.color.array;
+  for(let r=0;r<GH;r++) for(let c=0;c<GW;c++){
+    const idx=r*GW+c;
+    const h=surfGrid[idx];
+    tp[idx*3]  =(c/(GW-1)-0.5)*X_NM;
+    tp[idx*3+1]=h*vs;
+    tp[idx*3+2]=(r/(GH-1)-0.5)*Y_NM;
+    const[cr,cg,cb]=trueColormap(h,mn,mx);
+    tc[idx*3]=cr; tc[idx*3+1]=cg; tc[idx*3+2]=cb;
+  }
+  trueMesh.geometry.attributes.position.needsUpdate=true;
+  trueMesh.geometry.attributes.color.needsUpdate=true;
+  trueMesh.geometry.computeVertexNormals();
+
+  // Measured / display mesh
+  const mp=measMesh.geometry.attributes.position.array;
+  const mc=measMesh.geometry.attributes.color.array;
+  for(let r=0;r<GH;r++) for(let c=0;c<GW;c++){
+    const idx=r*GW+c;
+    const h=dispGrid[idx];
+    mp[idx*3]  =(c/(GW-1)-0.5)*X_NM;
+    mp[idx*3+1]=h*vs+0.5; // tiny offset so it renders on top of true
+    mp[idx*3+2]=(r/(GH-1)-0.5)*Y_NM;
+    const[cr,cg,cb]=measColormap(h,mn,mx);
+    mc[idx*3]=cr; mc[idx*3+1]=cg; mc[idx*3+2]=cb;
+  }
+  measMesh.geometry.attributes.position.needsUpdate=true;
+  measMesh.geometry.attributes.color.needsUpdate=true;
+  measMesh.geometry.computeVertexNormals();
+}
+
+// ── SCAN LINE ─────────────────────────────────────────
+function createScanLine(){
+  const pts=[];
+  for(let c=0;c<GW;c++) pts.push(new THREE.Vector3(0,0,0));
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const mat=new THREE.LineBasicMaterial({color:0x00e5b0,linewidth:2});
+  return new THREE.Line(geo,mat);
+}
+function updateScanLine(row){
+  if(!scanLineMesh||row<0||row>=GH)return;
+  const pos=scanLineMesh.geometry.attributes.position.array;
+  for(let c=0;c<GW;c++){
+    const idx=row*GW+c;
+    pos[c*3]  =(c/(GW-1)-0.5)*X_NM;
+    pos[c*3+1]=dispGrid[idx]*vScale+2;
+    pos[c*3+2]=(row/(GH-1)-0.5)*Y_NM;
+  }
+  scanLineMesh.geometry.attributes.position.needsUpdate=true;
+}
+
+// ── TIP 3D OBJECT ─────────────────────────────────────
+function buildTipObj(){
+  if(tipObj) scene.remove(tipObj);
+  tipObj=new THREE.Group();
+  const p=tipP[currentTip]||{};
+  const mat=new THREE.MeshPhongMaterial({
+    color:0xc8dce8,specular:0x778899,shininess:90,
+    transparent:true,opacity:0.88
+  });
+  const shaftH=45;
+
+  switch(currentTip){
+    case 'sharp_cone':case 'blunt_cone':{
+      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+      const baseR=shaftH*Math.tan(alpha);
+      const cGeo=new THREE.ConeGeometry(Math.min(baseR,80),shaftH,32);
+      cGeo.translate(0,shaftH/2,0);
+      tipObj.add(new THREE.Mesh(cGeo,mat));
+      break;}
+    case 'sphere':{
+      const Rv=Math.min(p.R||20,35)*0.9;
+      const sGeo=new THREE.SphereGeometry(Rv,32,16,0,Math.PI*2,Math.PI/2,Math.PI/2);
+      sGeo.translate(0,Rv,0);
+      const cylGeo=new THREE.CylinderGeometry(Rv,Rv,shaftH,32);
+      cylGeo.translate(0,shaftH/2+Rv,0);
+      tipObj.add(new THREE.Mesh(sGeo,mat));
+      tipObj.add(new THREE.Mesh(cylGeo,mat));
+      break;}
+    case 'hyperboloid':{
+      const a=p.a||7;
+      const pts2=[];
+      for(let h=0;h<=shaftH;h+=1.5){const rv=Math.sqrt((h+a)**2-a*a)*0.55;pts2.push(new THREE.Vector2(rv,h));}
+      const lGeo=new THREE.LatheGeometry(pts2,32);
+      tipObj.add(new THREE.Mesh(lGeo,mat));
+      break;}
+    case 'flat':{
+      const Rv=Math.min(p.R||18,40)*0.9;
+      const cGeo=new THREE.CylinderGeometry(Rv,Rv,shaftH,32);
+      cGeo.translate(0,shaftH/2,0);
+      const dGeo=new THREE.CircleGeometry(Rv,32);
+      tipObj.add(new THREE.Mesh(cGeo,mat));
+      tipObj.add(new THREE.Mesh(dGeo,mat));
+      break;}
+    case 'inv_sphere':{
+      const Rv=Math.min(p.R||20,35)*0.9;
+      const cGeo=new THREE.CylinderGeometry(Rv*1.2,Rv*1.2,shaftH,32);
+      cGeo.translate(0,shaftH/2,0);
+      // Bowl: inner concave top of a sphere
+      const bGeo=new THREE.SphereGeometry(Rv,32,16,0,Math.PI*2,0,Math.PI/2);
+      bGeo.translate(0,Rv*0.5,0);
+      tipObj.add(new THREE.Mesh(cGeo,mat));
+      tipObj.add(new THREE.Mesh(bGeo,new THREE.MeshPhongMaterial({color:0xc8dce8,side:THREE.BackSide,transparent:true,opacity:0.7})));
+      break;}
+  }
+
+  // Glowing apex sphere
+  const apexGeo=new THREE.SphereGeometry(2.5,16,16);
+  const apexMat=new THREE.MeshBasicMaterial({color:0x00e5b0});
+  tipObj.add(new THREE.Mesh(apexGeo,apexMat));
+
+  scene.add(tipObj);
+}
+
+function placeTip(row,col){
+  if(!tipObj||row<0||row>=GH||col<0||col>=GW)return;
+  const h=dispGrid[row*GW+col]*vScale;
+  const x=(col/(GW-1)-0.5)*X_NM;
+  const z=(row/(GH-1)-0.5)*Y_NM;
+  tipObj.position.set(x,h,z);
+  tipLight.position.set(x,h+15,z);
+}
+
+// ── AXES ──────────────────────────────────────────────
+function addAxes(){
+  const addArrow=(dir,color,label,len)=>{
+    const arrow=new THREE.ArrowHelper(dir.normalize(),new THREE.Vector3(-95,-2,-95),len,color,8,5);
+    scene.add(arrow);
+  };
+  addArrow(new THREE.Vector3(1,0,0),0xff4444,'X',60);
+  addArrow(new THREE.Vector3(0,1,0),0x44ff44,'Y',60);
+  addArrow(new THREE.Vector3(0,0,1),0x4444ff,'Z',60);
+}
+
+// ── ORBIT CONTROLS ────────────────────────────────────
+class SimpleOrbit{
+  constructor(cam,dom){
+    this.cam=cam;this.dom=dom;
+    this.theta=-40;this.phi=28;this.r=420;
+    this.target=new THREE.Vector3(0,30,0);
+    this.dragging=false;this.rDrag=false;
+    this.lx=0;this.ly=0;
+    dom.addEventListener('mousedown',e=>{this.dragging=true;this.rDrag=e.button===2;this.lx=e.clientX;this.ly=e.clientY;});
+    dom.addEventListener('mouseup',()=>this.dragging=false);
+    dom.addEventListener('mouseleave',()=>this.dragging=false);
+    dom.addEventListener('mousemove',e=>{
+      if(!this.dragging)return;
+      const dx=e.clientX-this.lx,dy=e.clientY-this.ly;
+      this.lx=e.clientX;this.ly=e.clientY;
+      if(this.rDrag){
+        const s=this.r*0.0015;
+        const right=new THREE.Vector3();
+        right.crossVectors(new THREE.Vector3(Math.sin(this.theta*Math.PI/180),0,Math.cos(this.theta*Math.PI/180)),new THREE.Vector3(0,1,0));
+        this.target.addScaledVector(right,-dx*s);this.target.y+=dy*s;
+      }else{this.theta-=dx*0.4;this.phi=Math.max(2,Math.min(88,this.phi-dy*0.35));}
+      this.update();
+    });
+    dom.addEventListener('wheel',e=>{this.r=Math.max(80,Math.min(900,this.r+e.deltaY*0.3));this.update();},{passive:true});
+    dom.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  update(){
+    const t=this.theta*Math.PI/180,p=this.phi*Math.PI/180;
+    this.cam.position.set(
+      this.target.x+this.r*Math.sin(t)*Math.cos(p),
+      this.target.y+this.r*Math.sin(p),
+      this.target.z+this.r*Math.cos(t)*Math.cos(p)
+    );
+    this.cam.lookAt(this.target);
+  }
+  setView(v){
+    if(v==='iso'){this.theta=-40;this.phi=28;this.r=420;this.target.set(0,25,0);}
+    if(v==='top'){this.theta=-40;this.phi=89;this.r=300;this.target.set(0,0,0);}
+    if(v==='front'){this.theta=0;this.phi=10;this.r=380;this.target.set(0,30,0);}
+    this.update();
+  }
+}
+
+// ── STATS ─────────────────────────────────────────────
+function updateStats(){
+  const scannedRows=Math.min(Math.floor(scanPx/GW),GH);
+  if(scannedRows<1){
+    ['statArt','statRms'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('statRows').textContent='0 / '+GH;
+    document.getElementById('statTip').textContent=getTipParam();
+    return;
+  }
+  let mx=0,rms=0;
+  for(let i=0;i<scannedRows*GW;i++){const e=measGrid[i]-surfGrid[i];if(e>mx)mx=e;rms+=e*e;}
+  rms=Math.sqrt(rms/(scannedRows*GW));
+  document.getElementById('statArt').textContent=mx.toFixed(2)+' nm';
+  document.getElementById('statRms').textContent=rms.toFixed(2)+' nm';
+  document.getElementById('statRows').textContent=scannedRows+' / '+GH;
+  document.getElementById('statTip').textContent=getTipParam();
+}
+function getTipParam(){
+  const p=tipP[currentTip]||{};
+  if(currentTip==='sharp_cone'||currentTip==='blunt_cone')return`α=${p.angle||'?'}°`;
+  if(currentTip==='hyperboloid')return`a=${p.a||'?'}nm`;
+  return`R=${p.R||'?'}nm`;
+}
+
+// ── ANIMATION LOOP ────────────────────────────────────
+let needsMeshUpdate=false;
+
+function loop(){
+  rafId=requestAnimationFrame(loop);
+
+  if(playing){
+    // advance by `speed` pixels (not rows) so scan takes a visible ~5-30 seconds
+    const speed=parseInt(document.getElementById('speedSlider').value);
+    const prevRow=Math.floor(scanPx/GW);
+    scanPx=Math.min(scanPx+speed,GW*GH);
+    const newRow=Math.floor(scanPx/GW);
+
+    // Reveal newly scanned rows
+    for(let r=prevRow;r<newRow&&r<GH;r++){
+      for(let c=0;c<GW;c++) dispGrid[r*GW+c]=measGrid[r*GW+c];
+    }
+    if(newRow>prevRow){needsMeshUpdate=true;}
+
+    // Update tip position (at leading edge of scan)
+    const curRow=Math.min(newRow,GH-1);
+    placeTip(curRow,Math.floor(GW/2));
+    updateScanLine(curRow);
+
+    if(scanPx>=GW*GH){
+      playing=false;
+      document.getElementById('playBtn').textContent='▶ PLAY';
+      document.getElementById('scanLabel').textContent='SCAN COMPLETE';
+    }else{
+      const pct=Math.round(scanPx/(GW*GH)*100);
+      document.getElementById('scanLabel').textContent=`${pct}% — row ${newRow}/${GH}`;
+    }
+
+    updateStats();
+  }
+
+  if(needsMeshUpdate){
+    updateMeshes(false);
+    needsMeshUpdate=false;
+  }
+
+  renderer.render(scene,camera);
+}
+
+// ── TIP PREVIEW (2D canvas) ───────────────────────────
+const tpv=document.getElementById('tipPreview');
+const tCtx=tpv.getContext('2d');
+function drawTipPreview(){
+  tCtx.clearRect(0,0,179,78);
+  const cx=89,top=4,wS=1.8,hS=1.4,p=tipP[currentTip]||{};
+  const pg=tCtx.createLinearGradient(cx,top,cx,78);
+  pg.addColorStop(0,'rgba(0,229,176,0)');pg.addColorStop(1,'rgba(0,229,176,0.18)');
+  tCtx.strokeStyle='#00e5b0';tCtx.fillStyle=pg;tCtx.lineWidth=1.4;
+  tCtx.beginPath();
+  switch(currentTip){
+    case 'sharp_cone':case 'blunt_cone':{const a=(p.angle||(currentTip==='sharp_cone'?15:35)),h=70,hw=h*Math.tan(a*Math.PI/180)*(wS/hS);tCtx.moveTo(cx,top);tCtx.lineTo(cx-hw,top+h);tCtx.lineTo(cx+hw,top+h);tCtx.closePath();break;}
+    case 'sphere':{const Rp=Math.min((p.R||20)*hS,34);tCtx.arc(cx,top+Rp,Rp,Math.PI,0);tCtx.lineTo(cx+Rp,78);tCtx.lineTo(cx-Rp,78);tCtx.closePath();break;}
+    case 'hyperboloid':{const a=p.a||7,pts=[];for(let h=0;h<=48;h++){const rv=Math.sqrt((h+a)**2-a*a);pts.push([cx+rv*wS*0.5,top+h*hS]);}tCtx.moveTo(cx,top);pts.forEach(([x,y])=>tCtx.lineTo(x,y));for(let i=pts.length-1;i>=0;i--)tCtx.lineTo(cx-(pts[i][0]-cx),pts[i][1]);tCtx.closePath();break;}
+    case 'flat':{const Rp=Math.min((p.R||18)*wS,80);tCtx.rect(cx-Rp,top,Rp*2,70);break;}
+    case 'inv_sphere':{const Rp=Math.min((p.R||20)*hS,34),hW=Math.min((p.R||20)*wS+4,80),bY=top+72;tCtx.moveTo(cx-hW,top);tCtx.lineTo(cx-hW,bY-Rp);tCtx.arc(cx,bY-Rp,Rp,Math.PI,0,true);tCtx.lineTo(cx+hW,top);tCtx.closePath();break;}
+  }
+  tCtx.fill();tCtx.stroke();
+  tCtx.beginPath();tCtx.arc(cx,top,3.5,0,Math.PI*2);tCtx.fillStyle='rgba(0,229,176,0.3)';tCtx.fill();
+  tCtx.beginPath();tCtx.arc(cx,top,2,0,Math.PI*2);tCtx.fillStyle='#00e5b0';tCtx.fill();
+  const pStr=currentTip==='sharp_cone'||currentTip==='blunt_cone'?`α=${p.angle||'?'}°`:currentTip==='hyperboloid'?`a=${p.a||'?'}nm`:`R=${p.R||'?'}nm`;
+  const names={sharp_cone:'SHARP CONE',blunt_cone:'BLUNT CONE',sphere:'SPHERE',hyperboloid:'HYPERBOLOID',flat:'FLAT PUNCH',inv_sphere:'CONCAVE SPHERE'};
+  tCtx.fillStyle='#2a5060';tCtx.font='7px Courier New';tCtx.textAlign='center';
+  tCtx.fillText(`${names[currentTip]}  ${pStr}`,cx,76);
+}
+
+// ── RESET ─────────────────────────────────────────────
+function reset3D(){
+  scanPx=0; playing=false;
+  // Do NOT cancel rafId — the render loop must keep running for orbit controls
+  document.getElementById('playBtn').textContent='▶ PLAY';
+  document.getElementById('scanLabel').textContent='';
+  document.getElementById('infoBar').textContent='Ready — press PLAY to begin raster scan';
+  dispGrid.set(surfGrid);
+  buildTipObj();
+  placeTip(0,0);
+  updateScanLine(0);
+  updateMeshes(true);
+  updateStats();
+}
+
+// ── CONTROLS ──────────────────────────────────────────
+document.getElementById('playBtn').addEventListener('click',()=>{
+  if(scanPx>=GW*GH)scanPx=0;
+  playing=!playing;
+  document.getElementById('playBtn').textContent=playing?'⏸ PAUSE':'▶ PLAY';
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{reset3D();});
+document.getElementById('speedSlider').addEventListener('input',function(){document.getElementById('speedVal').textContent=this.value;});
+document.getElementById('vscaleSlider').addEventListener('input',function(){
+  vScale=parseFloat(this.value);
+  document.getElementById('vscaleVal').textContent=vScale+'×';
+  updateMeshes(true);
+});
+document.getElementById('viewIso').addEventListener('click',()=>controls.setView('iso'));
+document.getElementById('viewTop').addEventListener('click',()=>controls.setView('top'));
+document.getElementById('viewFront').addEventListener('click',()=>controls.setView('front'));
+
+document.getElementById('tipBtns').addEventListener('click',e=>{
+  const t=e.target.closest('[data-tip]');if(!t)return;
+  currentTip=t.dataset.tip;
+  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.remove('active'));t.classList.add('active');
+  refreshTipSliders();computeAll();buildTipObj();reset3D();
+});
+document.getElementById('surfBtns').addEventListener('click',e=>{
+  const t=e.target.closest('[data-surf]');if(!t)return;
+  currentSurf=t.dataset.surf;
+  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.remove('active'));t.classList.add('active');
+  refreshSurfSliders();computeAll();reset3D();
+});
+
+// ── INIT ──────────────────────────────────────────────
+function init(){
+  refreshTipSliders(); refreshSurfSliders();
+  // 1. Boot Three.js so meshes exist
+  initThree();
+  // 2. Compute physics data and push into meshes
+  buildSurface(); buildTipKernel(); computeMeas();
+  dispGrid.set(surfGrid);
+  updateMeshes(true);
+  updateStats(); drawTipPreview();
+  // 3. Place tip and scan line
+  buildTipObj();
+  placeTip(0, 0);
+  updateScanLine(0);
+  // 4. Start render loop
+  loop();
+}
+
+// Wait for full layout before measuring container dimensions
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

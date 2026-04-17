@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AFM Simulator</title>
+<style>
+:root{
+  --bg:#06080c;--panel:#0b1017;--border:#17293a;
+  --accent:#00e5b0;--accent2:#2ea8ff;--text:#6a8fa0;--text-hi:#b0d0e0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+.logo{font-size:11px;letter-spacing:6px;color:#1a3a4a;text-transform:uppercase;margin-bottom:10px;}
+h1{font-size:22px;letter-spacing:6px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;text-align:center;}
+.sub{font-size:9px;letter-spacing:3px;color:#2a5a6a;margin-bottom:60px;text-align:center;}
+.cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
+.card{background:var(--panel);border:1px solid var(--border);padding:32px 28px;width:280px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s;cursor:pointer;text-decoration:none;color:inherit;}
+.card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,229,176,0.04),transparent 70%);pointer-events:none;}
+.card:hover{border-color:var(--accent);box-shadow:0 0 40px rgba(0,229,176,0.08);}
+.card:nth-child(2)::before{background:radial-gradient(circle at 50% 0%,rgba(46,168,255,0.05),transparent 70%);}
+.card:nth-child(2):hover{border-color:var(--accent2);box-shadow:0 0 40px rgba(46,168,255,0.08);}
+.badge{font-size:7px;letter-spacing:3px;text-transform:uppercase;padding:3px 8px;border:1px solid;display:inline-block;width:fit-content;}
+.badge-2d{color:var(--accent);border-color:rgba(0,229,176,0.3);}
+.badge-3d{color:var(--accent2);border-color:rgba(46,168,255,0.3);}
+.card-title{font-size:16px;letter-spacing:3px;color:var(--text-hi);text-transform:uppercase;}
+.card-desc{font-size:9px;line-height:1.8;color:#3a6a80;}
+.card-features{display:flex;flex-direction:column;gap:4px;}
+.feat{font-size:8px;color:#2a5a6a;display:flex;gap:6px;align-items:center;}
+.feat::before{content:'·';color:var(--accent);}
+.card:nth-child(2) .feat::before{color:var(--accent2);}
+.card-cta{font-size:8px;letter-spacing:2px;text-transform:uppercase;margin-top:6px;}
+.card:hover .card-cta{color:var(--accent);}
+.card:nth-child(2):hover .card-cta{color:var(--accent2);}
+.footer{margin-top:60px;font-size:8px;letter-spacing:2px;color:#1a3040;text-align:center;}
+.footer a{color:#1a4a5a;text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="logo">Iowa State University · Mech-AI Lab</div>
+<h1>AFM Simulator</h1>
+<p class="sub">Atomic Force Microscopy · Tip–Sample Convolution · Minkowski Sum</p>
+
+<div class="cards">
+  <a class="card" href="afm-2d.html">
+    <span class="badge badge-2d">2D Mode</span>
+    <div class="card-title">2D Simulator</div>
+    <div class="card-desc">Cross-sectional scan with real-time artifact analysis, error mapping, and force–distance curve visualization.</div>
+    <div class="card-features">
+      <div class="feat">6 tip geometries with size sliders</div>
+      <div class="feat">7 sample surfaces with parameters</div>
+      <div class="feat">Live artifact error colormap</div>
+      <div class="feat">Lennard-Jones F–d curve</div>
+      <div class="feat">Hover inspection at any x position</div>
+    </div>
+    <div class="card-cta">Launch 2D Simulator →</div>
+  </a>
+
+  <a class="card" href="afm-3d.html">
+    <span class="badge badge-3d">3D Mode</span>
+    <div class="card-title">3D Simulator</div>
+    <div class="card-desc">Full raster scan over a 2D surface grid. Watch the measured surface build row-by-row with 3D tip geometry.</div>
+    <div class="card-features">
+      <div class="feat">Full 2D Minkowski convolution</div>
+      <div class="feat">3D tip geometry (cone, sphere, …)</div>
+      <div class="feat">Orbit · zoom · pan controls</div>
+      <div class="feat">Vertical exaggeration slider</div>
+      <div class="feat">ISO / TOP / FRONT view presets</div>
+    </div>
+    <div class="card-cta">Launch 3D Simulator →</div>
+  </a>
+</div>
+
+<div class="footer">
+  Built for EE 5490X Advanced Microscopy · <a href="https://alloydas.github.io">alloydas.github.io</a>
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "name": "afm-simulator",
+  "builds": [
+    { "src": "*.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/afm-2d", "dest": "/afm-2d.html" },
+    { "src": "/afm-3d", "dest": "/afm-3d.html" }
+  ]
+}

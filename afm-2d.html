@@ -63,8 +63,7 @@ canvas.main-cv{display:block;width:100%;background:#040608;}
   <div class="panel">
     <div class="plabel">Tip Geometry</div>
     <div id="tipBtns">
-      <button class="btn on" data-tip="sharp_cone">▼ Sharp Cone</button>
-      <button class="btn" data-tip="blunt_cone">▼ Blunt Cone</button>
+      <button class="btn on" data-tip="cone">▼ Cone</button>
       <button class="btn" data-tip="sphere">● Spherical</button>
       <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
       <button class="btn" data-tip="flat">▬ Flat Punch</button>
@@ -187,7 +186,7 @@ const tipProf  = new Float32Array(2*TIP_R+1);
 // ═══════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════
-let currentTip  = 'sharp_cone';
+let currentTip  = 'cone';
 let currentSurf = 'sine';
 let scanIdx = 0, playing = false, raf = null;
 let bounceDir = 1, scanMode = 'loop';
@@ -198,8 +197,7 @@ const INV = {invZ:false,mirrorX:false,invTip:false,revScan:false,erosion:false,i
 //  TIP PARAMETER DEFINITIONS
 // ═══════════════════════════════════════════════════
 const TIP_DEFS = {
-  sharp_cone:  [{id:'angle', label:'Half-angle α', min:3,  max:70, step:1,  val:15, unit:'°'}],
-  blunt_cone:  [{id:'angle', label:'Half-angle α', min:3,  max:80, step:1,  val:35, unit:'°'}],
+  cone:        [{id:'angle', label:'Half-angle α', min:3,  max:80, step:1,  val:15, unit:'°'}],
   sphere:      [{id:'R',     label:'Radius R',     min:3,  max:50, step:1,  val:20, unit:'nm'}],
   hyperboloid: [{id:'a',     label:'Sharpness a',  min:2,  max:30, step:1,  val:7,  unit:'nm'}],
   flat:        [{id:'R',     label:'Radius R',     min:3,  max:50, step:1,  val:18, unit:'nm'}],
@@ -208,8 +206,8 @@ const TIP_DEFS = {
                 {id:'tilt',  label:'Tilt φ',       min:-40,max:40, step:1,  val:15, unit:'°'}],
   double_tip:  [{id:'angle', label:'Half-angle α', min:3,  max:60, step:1,  val:15, unit:'°'},
                 {id:'gap',   label:'Tip gap',      min:5,  max:80, step:1,  val:30, unit:'nm'}],
-  sphere_cone: [{id:'R',     label:'Apex Radius',  min:2,  max:40, step:1,  val:10, unit:'nm'},
-                {id:'angle', label:'Cone angle α', min:3,  max:60, step:1,  val:20, unit:'°'}],
+  sphere_cone: [{id:'R',     label:'Arc Radius R', min:5,  max:60, step:1,  val:30, unit:'nm'},
+                {id:'angle', label:'Tangent halfW', min:3,  max:55, step:1,  val:15, unit:'nm'}],
 };
 const SURF_DEFS = {
   sine:      [{id:'amp',   label:'Amplitude', min:2,  max:45, step:1, val:18, unit:'nm'},
@@ -279,8 +277,8 @@ function tipT(dc_nm){
   const r = Math.abs(dc_nm);   // radial distance for symmetric tips
   const p = tipP[currentTip]||{};
   switch(currentTip){
-    case 'sharp_cone': case 'blunt_cone':{
-      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+    case 'cone':{
+      const alpha=(p.angle||15)*Math.PI/180;
       return r/Math.tan(alpha);}
     case 'sphere':{
       const R=p.R||20;
@@ -314,10 +312,13 @@ function tipT(dc_nm){
       const r2=Math.abs(dc_nm+g);   // distance to left apex
       return Math.min(r1,r2)/Math.tan(alpha);}
     case 'sphere_cone':{
-      const R=p.R||10, a=(p.angle||20)*Math.PI/180;
-      const sinA=Math.sin(a), cosA=Math.cos(a);
-      const r_t=R*sinA, z_t=R*(1-cosA);
-      return r<=r_t ? R-Math.sqrt(Math.max(0,R*R-r*r)) : z_t+(r-r_t)/Math.tan(a);}
+      // U-shape: arc for r≤halfW, straight side for r>halfW
+      // T(r) = R - sqrt(R²-r²)                  [arc, C0+C1 at halfW]
+      // T(r) = yTang + (r-halfW)*halfW/sv        [straight side]
+      const R=p.R||30, halfW=p.angle||15;
+      const sv=Math.sqrt(Math.max(1e-6,R*R-halfW*halfW));
+      const yTang=R-sv;
+      return r<=halfW ? R-Math.sqrt(Math.max(0,R*R-r*r)) : yTang+(r-halfW)*halfW/sv;}
     default: return r;
   }
 }
@@ -635,29 +636,84 @@ function drawTipShape(g2d, si){
     g2d.restore();
 
   } else if(currentTip === 'sphere_cone'){
-    const R = p.R||10, a = (p.angle||20)*Math.PI/180;
-    const sinA=Math.sin(a), cosA=Math.cos(a);
-    const r_t=R*sinA, z_t=R*(1-cosA);
-    const capPts = [];
-    for(let k=0; k<=60; k++){
-      const r=(k/60)*r_t, T=R-Math.sqrt(Math.max(0,R*R-r*r));
-      capPts.push([r, T]);
-    }
-    const coneNm = Math.max(0, bodyNm - z_t);
-    const topR   = r_t + coneNm*Math.tan(a);
-    // Draw apex at contactY (true surface), cap and cone rise upward
+    // ── U-SHAPE (SolidWorks geometry, exact) ──────────────────────────────
+    // Apex at (0,0) in nm, y upward.
+    // Arc: centre (0, R), radius R  → passes through apex ✓
+    // Tangent points: (±halfW,  R - sqrt(R²-halfW²))
+    // Top corners:    (±2·halfW, yTang + halfW²/sqrt(R²-halfW²))
+    //
+    // NOTE: wS ≠ hS so we CANNOT use canvas.arc() — it would draw an ellipse.
+    // Instead sample in nm space and convert to pixels individually.
+    // ─────────────────────────────────────────────────────────────────────
+    const R      = p.R     || 30;
+    const halfW  = p.angle || 15;
+    const topW   = halfW * 2;
+
+    const sv      = Math.sqrt(Math.max(1e-6, R*R - halfW*halfW));
+    const yTang   = R - sv;
+    const yTop    = yTang + (halfW * halfW) / sv;
+
+    // Scale factor: map yTop nm → bodyNm so shape fills tip body
+    const scaleNm = bodyNm / yTop;
+    // Scaled nm values
+    const R_s     = R     * scaleNm;
+    const halfW_s = halfW * scaleNm;
+    const topW_s  = topW  * scaleNm;
+    const sv_s    = sv    * scaleNm;
+    const yTang_s = yTang * scaleNm;
+
+    // nm → canvas pixel helpers (apex at contactY)
+    const nmX = (x) => ax + x * wS;
+    const nmY = (y) => contactY - y * hS;
+
+    // Sample arc in nm space: centre (0, R_s), radius R_s
+    // From apex angle (-π/2) going right to tangent angle
+    // theta_apex = -π/2, theta_right = atan2(-sv_s, halfW_s) [Q4, negative]
+    const tApex = -Math.PI / 2;
+    const tR    = Math.atan2(-sv_s, halfW_s);   // ≈ -60° (Q4)
+    const tL    = Math.atan2(-sv_s, -halfW_s);  // ≈ -120° (Q3)
+    const N = 80;
+
     sh(()=>{
-      g2d.moveTo(ax, contactY);                         // apex at TRUE surface
-      capPts.forEach(([r,T]) => g2d.lineTo(ax+r*wS, contactY-T*hS));
-      g2d.lineTo(ax+topR*wS, tipTopY);
-      g2d.lineTo(ax-topR*wS, tipTopY);
-      for(let k=capPts.length-1; k>=0; k--)
-        g2d.lineTo(ax-capPts[k][0]*wS, contactY-capPts[k][1]*hS);
+      // Right arc: apex → right tangent (counterclockwise: -90° → -60°, increasing)
+      g2d.moveTo(nmX(0), nmY(0));
+      for(let k=0; k<=N; k++){
+        const t = tApex + (tR - tApex) * k/N;
+        g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+      }
+      // Right slanted side to top-right corner
+      g2d.lineTo(nmX(topW_s), nmY(yTop * scaleNm));
+      // Flat top
+      g2d.lineTo(nmX(-topW_s), nmY(yTop * scaleNm));
+      // Left slanted side to left tangent
+      g2d.lineTo(nmX(-halfW_s), nmY(yTang_s));
+      // Left arc: left tangent → apex (counterclockwise: -120° → -90°... wait)
+      // Left side goes from tL(-120°) back to tApex(-90°), increasing angle ✓
+      for(let k=0; k<=N; k++){
+        const t = tL + (tApex - tL) * k/N;
+        g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+      }
     });
 
+    // Arc centre marker
+    const cxY = nmY(R_s);
+    if(cxY > tipTopY && cxY < contactY){
+      g2d.save();
+      g2d.beginPath(); g2d.arc(ax, cxY, 6, 0, Math.PI*2);
+      g2d.strokeStyle='rgba(201,122,255,0.35)'; g2d.lineWidth=4; g2d.stroke();
+      g2d.strokeStyle='rgba(201,122,255,0.7)'; g2d.lineWidth=1; g2d.setLineDash([2,2]);
+      g2d.beginPath(); g2d.moveTo(ax-10,cxY); g2d.lineTo(ax+10,cxY); g2d.stroke();
+      g2d.beginPath(); g2d.moveTo(ax,cxY-10); g2d.lineTo(ax,cxY+10); g2d.stroke();
+      g2d.setLineDash([]);
+      g2d.beginPath(); g2d.arc(ax, cxY, 2.5, 0, Math.PI*2);
+      g2d.fillStyle='#c97aff'; g2d.shadowColor='#c97aff'; g2d.shadowBlur=8;
+      g2d.fill(); g2d.shadowBlur=0;
+      g2d.restore();
+    }
+
   } else {
-    // sharp_cone, blunt_cone, asymmetric — apex at TRUE surface
-    const a    = (p.angle||(currentTip==='blunt_cone'?35:15)) * Math.PI/180;
+    // cone, asymmetric — apex at TRUE surface
+    const a    = (p.angle||15) * Math.PI/180;
     const tilt = (p.tilt||0) * Math.PI/180;
     const lw   = Math.max(3, bodyNm*(Math.tan(a)+Math.tan(tilt))*wS);
     const rw   = Math.max(3, bodyNm*(Math.tan(a)-Math.tan(tilt))*wS);
@@ -820,20 +876,35 @@ function drawPreview(){
     });
     pvCtx.save();pvCtx.strokeStyle='rgba(100,200,240,0.95)';pvCtx.lineWidth=2.5;
     pvCtx.beginPath();pvCtx.arc(cx,apexY-Rp,Rp,0,Math.PI,true);pvCtx.stroke();pvCtx.restore();
-  } else if(currentTip==='sphere_cone'){
-    const R=p.R||10, a=(p.angle||20)*Math.PI/180;
-    const r_t=R*Math.sin(a), z_t=R*(1-Math.cos(a));
-    const capPts=[];
-    for(let k=0;k<=40;k++){const r=(k/40)*r_t,T=R-Math.sqrt(Math.max(0,R*R-r*r));capPts.push([r,T]);}
-    const topR=r_t+(NM-z_t)*Math.tan(a);
+   } else if(currentTip==='sphere_cone'){
+    const R=p.R||30, halfW=p.angle||15, topW=halfW*2;
+    const sv=Math.sqrt(Math.max(1e-6,R*R-halfW*halfW));
+    const yTang=R-sv, yTop=yTang+(halfW*halfW)/sv;
+    const scNm=NM/yTop;
+    const R_s=R*scNm, hw_s=halfW*scNm, top_s=topW*scNm, yt_s=yTang*scNm;
+    const pX=(x)=>cx+x*wS, pY=(y)=>apexY-y*hS;
+    const tA=-Math.PI/2, tR=Math.atan2(-(R_s-(R_s-Math.sqrt(Math.max(0,R_s*R_s-hw_s*hw_s)))),hw_s);
+    // Simpler: angles in nm space
+    const sv_s=sv*scNm;
+    const tRn=Math.atan2(-sv_s,hw_s), tLn=Math.atan2(-sv_s,-hw_s);
+    const N=60;
     sh(()=>{
-      pvCtx.moveTo(cx,apexY);
-      capPts.forEach(([r,T])=>pvCtx.lineTo(cx+r*wS,apexY-T*hS));
-      pvCtx.lineTo(cx+topR*wS,apexY-bodyH);pvCtx.lineTo(cx-topR*wS,apexY-bodyH);
-      for(let k=capPts.length-1;k>=0;k--) pvCtx.lineTo(cx-capPts[k][0]*wS,apexY-capPts[k][1]*hS);
+      pvCtx.moveTo(pX(0),pY(0));
+      for(let k=0;k<=N;k++){const t=(-Math.PI/2)+(tRn-(-Math.PI/2))*k/N; pvCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
+      pvCtx.lineTo(pX(top_s),pY(yTop*scNm));
+      pvCtx.lineTo(pX(-top_s),pY(yTop*scNm));
+      pvCtx.lineTo(pX(-hw_s),pY(yt_s));
+      for(let k=0;k<=N;k++){const t=tLn+((-Math.PI/2)-tLn)*k/N; pvCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
     });
+    const pcY=pY(R_s);
+    if(pcY>apexY-bodyH && pcY<apexY){
+      pvCtx.save();pvCtx.beginPath();pvCtx.arc(cx,pcY,3,0,Math.PI*2);
+      pvCtx.strokeStyle='rgba(201,122,255,0.6)';pvCtx.lineWidth=2;pvCtx.stroke();
+      pvCtx.beginPath();pvCtx.arc(cx,pcY,1.5,0,Math.PI*2);
+      pvCtx.fillStyle='#c97aff';pvCtx.fill();pvCtx.restore();
+    }
   } else {
-    const a=(p.angle||(currentTip==='blunt_cone'?35:15))*Math.PI/180;
+    const a=(p.angle||15)*Math.PI/180;
     const tilt=(p.tilt||0)*Math.PI/180;
     const lw=Math.max(2,NM*(Math.tan(a)+Math.tan(tilt))*wS);
     const rw=Math.max(2,NM*(Math.tan(a)-Math.tan(tilt))*wS);
@@ -851,7 +922,7 @@ function drawPreview(){
 
   // Label
   if(INV.invTip){pvCtx.fillStyle='#c97aff';pvCtx.font='7px Courier New';pvCtx.textAlign='left';pvCtx.fillText('INV',3,10);}
-  const names={sharp_cone:'SHARP',blunt_cone:'BLUNT',sphere:'SPHERE',hyperboloid:'HYPER',
+  const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER',
     flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM',double_tip:'DOUBLE',sphere_cone:'CONE+SPH'};
   pvCtx.fillStyle='rgba(48,74,88,0.9)';pvCtx.font='7px Courier New';pvCtx.textAlign='right';
   pvCtx.fillText(names[currentTip]||currentTip,W-3,10);

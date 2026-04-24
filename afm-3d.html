@@ -93,8 +93,7 @@ input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
   <div class="panel">
     <div class="panel-label">Tip Geometry</div>
     <div class="btn-group" id="tipBtns">
-      <button class="btn active" data-tip="sharp_cone">▼ Sharp Cone</button>
-      <button class="btn" data-tip="blunt_cone">▼ Blunt Cone</button>
+      <button class="btn active" data-tip="cone">▼ Cone</button>
       <button class="btn" data-tip="sphere">● Spherical</button>
       <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
       <button class="btn" data-tip="flat">▬ Flat Punch</button>
@@ -169,6 +168,10 @@ input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
       <button class="icon-btn" id="viewTop" style="flex:1;font-size:8px;">TOP</button>
       <button class="icon-btn" id="viewFront" style="flex:1;font-size:8px;">FRONT</button>
     </div>
+    <div class="view-btns" style="margin-top:4px;">
+      <button class="icon-btn" id="exportTipBtn"  style="flex:1;font-size:8px;background:rgba(201,122,255,0.15);border-color:#c97aff;color:#c97aff;">⬇ TIP .OBJ</button>
+      <button class="icon-btn" id="exportSurfBtn" style="flex:1;font-size:8px;background:rgba(0,229,176,0.12);border-color:#00e5b0;color:#00e5b0;">⬇ SURF .OBJ</button>
+    </div>
   </div>
 
   <!-- STATS -->
@@ -241,7 +244,7 @@ const tipKernel=new Float32Array(KW*KW);
 
 let vScale=3, scanPx=0, playing=false, rafId=null;
 let bounceDir=1, scanMode='loop';
-let currentTip='sharp_cone', currentSurf='sine';
+let currentTip='cone', currentSurf='sine';
 let needsMeshUpdate=false;
 
 // ════════════════════════════════════════════
@@ -268,8 +271,7 @@ function setMode(m){
 //  PARAM DEFS
 // ════════════════════════════════════════════
 const TIP_DEFS={
-  sharp_cone: [{id:'angle',label:'Half-angle α',min:3,max:70,step:1,val:15,unit:'°'}],
-  blunt_cone: [{id:'angle',label:'Half-angle α',min:3,max:80,step:1,val:35,unit:'°'}],
+  cone: [{id:'angle',label:'Half-angle α',min:3,max:80,step:1,val:15,unit:'°'}],
   sphere:     [{id:'R',label:'Radius R',min:3,max:50,step:1,val:20,unit:'nm'}],
   hyperboloid:[{id:'a',label:'Sharpness a',min:2,max:30,step:1,val:7,unit:'nm'}],
   flat:       [{id:'R',label:'Radius R',min:3,max:50,step:1,val:18,unit:'nm'}],
@@ -278,8 +280,8 @@ const TIP_DEFS={
                {id:'tilt',label:'Tilt angle',min:-40,max:40,step:1,val:15,unit:'°'}],
   double_tip: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:15,unit:'°'},
                {id:'gap',label:'Tip gap',min:5,max:80,step:1,val:30,unit:'nm'}],
-  sphere_cone:[{id:'R',label:'Apex Radius R',min:2,max:40,step:1,val:10,unit:'nm'},
-               {id:'angle',label:'Cone angle α',min:3,max:60,step:1,val:20,unit:'°'}],
+  sphere_cone:[{id:'R',label:'Ball Radius',min:5,max:60,step:1,val:30,unit:'nm'},
+               {id:'angle',label:'Tangent halfW',min:3,max:55,step:1,val:15,unit:'nm'}],
 };
 const SURF_DEFS={
   sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm'}],
@@ -385,7 +387,7 @@ function buildTipKernel(){
       const r_nm=Math.sqrt((dc*dNm)**2+(dr*dNm)**2);
       const idx=(dr+TIP_R)*KW+(dc+TIP_R);
       switch(currentTip){
-        case 'sharp_cone':case 'blunt_cone':
+        case 'cone':
           tipKernel[idx]=r_nm/Math.tan((p.angle||15)*Math.PI/180); break;
         case 'sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?R-Math.sqrt(R*R-r_nm*r_nm):1e9;break;}
         case 'hyperboloid':{const a=p.a||7;tipKernel[idx]=Math.sqrt(r_nm*r_nm+a*a)-a;break;}
@@ -400,14 +402,16 @@ function buildTipKernel(){
           const r2=Math.sqrt((dc*dNm+g)**2+(dr*dNm)**2);
           tipKernel[idx]=Math.min(r1,r2)/Math.tan(alpha);break;}
         case 'sphere_cone':{
-          const R=p.R||10, alpha=(p.angle||20)*Math.PI/180;
-          const sinA=Math.sin(alpha), cosA=Math.cos(alpha);
-          const r_t=R*sinA;
-          if(r_nm<=r_t){
+          // U-shape: arc at bottom (r ≤ halfW), straight sides (r > halfW)
+          // T(r) = R - sqrt(R²-r²)           for r ≤ halfW  (circular arc)
+          // T(r) = yTang + (r-halfW)*halfW/sv for r > halfW  (straight side, C1 join)
+          const R=p.R||30, halfW=p.angle||15;
+          const sv=Math.sqrt(Math.max(1e-6, R*R-halfW*halfW));
+          const yTang=R-sv;
+          if(r_nm<=halfW){
             tipKernel[idx]=R-Math.sqrt(Math.max(0,R*R-r_nm*r_nm));
           } else {
-            const z_t=R*(1-cosA);
-            tipKernel[idx]=z_t+(r_nm-r_t)/Math.tan(alpha);
+            tipKernel[idx]=yTang+(r_nm-halfW)*halfW/sv;
           }
           break;}
       }
@@ -620,8 +624,8 @@ function buildTipObj(){
   switch(currentTip){
 
     // ── SHARP / BLUNT CONE ─────────────────────────────────────────────────
-    case 'sharp_cone': case 'blunt_cone':{
-      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+    case 'cone':{
+      const alpha=(p.angle||15)*Math.PI/180;
       const bR=Math.min(shH*Math.tan(alpha), 85);
       tipObj.add(new THREE.Mesh(makeCone(bR, shH), mat));
       break;}
@@ -765,36 +769,43 @@ function buildTipObj(){
     // The sphere center sits at y=R. The cap is the lower portion of the sphere
     // from the bottom (y=0) up to the tangent point at polar angle alpha from bottom.
     case 'sphere_cone':{
-      const R     = Math.min(p.R||10, 26);
-      const alpha = (p.angle||20)*Math.PI/180;
-      const sinA  = Math.sin(alpha), cosA = Math.cos(alpha);
-      const z_t   = R*(1-cosA);   // height of tangent point above apex
-      const r_t   = R*sinA;       // radius at tangent point
+      // U-SHAPE: arc bottom + straight slanted sides (matches SolidWorks sketch)
+      // R = arc radius, halfW = tangent half-width (top = 2×halfW)
+      const R      = Math.min(p.R||30, 55);
+      const halfW  = Math.min(p.angle||15, R*0.95);
+      const topW   = halfW * 2;
+      const sv     = Math.sqrt(Math.max(1e-6, R*R - halfW*halfW));
+      const yTang  = R - sv;
+      const yTop   = yTang + (halfW*halfW)/sv;
 
-      // Spherical cap: from bottom (theta=π, south pole) up to tangent
-      // thetaStart = π/2 + (π/2 - alpha) = π - alpha from north pole
-      // thetaLength = alpha (spans from south pole up to tangent)
-      // Easier: build full bottom hemisphere and clip with a cylinder, OR
-      // use thetaStart/Length directly:
-      // In THREE: theta goes from 0 (north pole, +y) to π (south pole, -y).
-      // We want the cap from south pole (y=-R, which after flip = y=0) upward
-      // through angle alpha. After rotateX(π): south pole → bottom.
-      // thetaStart = π - alpha, thetaLength = alpha
-      const capThStart = Math.PI - alpha;
-      const capThLen   = alpha;
-      const sg = new THREE.SphereGeometry(R, 32, 16, 0, Math.PI*2, capThStart, capThLen);
-      sg.rotateX(Math.PI);   // south pole (y=-R) → bottom (y=+R after flip)
-      sg.translate(0, R, 0); // shift so apex at y=0
+      // LatheGeometry: profile = [Vector2(radius, height)] rotated around Y axis
+      // Apex at y=0, body goes up.
+      const pts2D = [];
+      // Arc section: r from 0 to halfW
+      const Narc = 48;
+      for(let k=0; k<=Narc; k++){
+        const r = (k/Narc)*halfW;
+        const y = R - Math.sqrt(Math.max(0, R*R - r*r));
+        pts2D.push(new THREE.Vector2(r, y));
+      }
+      // Straight side: r from halfW to topW (C1 join)
+      const Nside = 24;
+      for(let k=1; k<=Nside; k++){
+        const r = halfW + (k/Nside)*(topW - halfW);
+        const y = yTang + (r - halfW)*halfW/sv;
+        pts2D.push(new THREE.Vector2(r, y));
+      }
+      // Extend body straight up to shH
+      pts2D.push(new THREE.Vector2(topW, shH));
 
-      // Cone: from tangent point (y=z_t, r=r_t) up to top of shaft
-      const coneH  = shH - z_t;
-      const topR   = r_t + coneH*Math.tan(alpha);
-      const cg = new THREE.ConeGeometry(Math.max(0.1,topR), coneH, 32);
-      cg.rotateX(Math.PI);
-      cg.translate(0, z_t + coneH/2, 0);
+      const lathe = new THREE.LatheGeometry(pts2D, 64);
+      tipObj.add(new THREE.Mesh(lathe, mat));
 
-      tipObj.add(new THREE.Mesh(sg, mat));
-      tipObj.add(new THREE.Mesh(cg, mat));
+      // Arc centre marker (purple dot at y=R)
+      const cg2 = new THREE.SphereGeometry(1.8, 12, 12);
+      cg2.translate(0, R, 0);
+      tipObj.add(new THREE.Mesh(cg2,
+        new THREE.MeshBasicMaterial({color:0xc97aff, transparent:true, opacity:0.8})));
       break;}
   }
 
@@ -887,8 +898,8 @@ function drawTipPreview(){
   }
 
   switch(currentTip){
-    case 'sharp_cone': case 'blunt_cone':{
-      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+    case 'cone':{
+      const alpha=(p.angle||15)*Math.PI/180;
       const hw=Math.max(3, bodyNm*Math.tan(alpha)*wS);
       solid(()=>{
         tCtx.moveTo(cx, apexY);
@@ -978,22 +989,30 @@ function drawTipPreview(){
       }); break;}
 
     case 'sphere_cone':{
-      const R=p.R||10, alpha=(p.angle||20)*Math.PI/180;
-      const sinA=Math.sin(alpha), cosA=Math.cos(alpha);
-      const r_t=R*sinA, z_t=R*(1-cosA);
-      const capPts=[];
-      for(let i=0;i<=60;i++){
-        const r=(i/60)*r_t, T=R-Math.sqrt(Math.max(0,R*R-r*r));
-        capPts.push([r,T]);
-      }
-      const coneTopR=Math.max(r_t+3, r_t+(bodyNm-z_t)*Math.tan(alpha));
+      const R=p.R||30, halfW=p.angle||15, topW=halfW*2;
+      const sv=Math.sqrt(Math.max(1e-6,R*R-halfW*halfW));
+      const yTang=R-sv, yTop=yTang+(halfW*halfW)/sv;
+      const scNm=bodyNm/yTop;
+      const R_s=R*scNm, hw_s=halfW*scNm, top_s=topW*scNm, sv_s=sv*scNm, yt_s=yTang*scNm;
+      const pX=(x)=>cx+x*wS, pY=(y)=>apexY-y*hS;
+      const tRn=Math.atan2(-sv_s,hw_s), tLn=Math.atan2(-sv_s,-hw_s);
+      const N=60;
       solid(()=>{
-        tCtx.moveTo(cx, apexY);
-        capPts.forEach(([r,T])=>tCtx.lineTo(cx+r*wS, apexY-T*hS));
-        tCtx.lineTo(cx+coneTopR*wS, apexY-bodyH);
-        tCtx.lineTo(cx-coneTopR*wS, apexY-bodyH);
-        for(let i=capPts.length-1;i>=0;i--) tCtx.lineTo(cx-capPts[i][0]*wS, apexY-capPts[i][1]*hS);
-      }); break;}
+        tCtx.moveTo(pX(0),pY(0));
+        for(let k=0;k<=N;k++){const t=(-Math.PI/2)+(tRn+Math.PI/2)*k/N; tCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
+        tCtx.lineTo(pX(top_s),pY(yTop*scNm));
+        tCtx.lineTo(pX(-top_s),pY(yTop*scNm));
+        tCtx.lineTo(pX(-hw_s),pY(yt_s));
+        for(let k=0;k<=N;k++){const t=tLn+((-Math.PI/2)-tLn)*k/N; tCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
+      });
+      const pcY=pY(R_s);
+      if(pcY>apexY-bodyH && pcY<apexY){
+        tCtx.save();tCtx.beginPath();tCtx.arc(cx,pcY,3,0,Math.PI*2);
+        tCtx.strokeStyle='rgba(201,122,255,0.6)';tCtx.lineWidth=2;tCtx.stroke();
+        tCtx.beginPath();tCtx.arc(cx,pcY,1.5,0,Math.PI*2);
+        tCtx.fillStyle=cv('--accent4')||'#c97aff';tCtx.fill();tCtx.restore();
+      }
+      break;}
   }
 
   tCtx.beginPath(); tCtx.arc(cx,apexY,5,0,Math.PI*2);
@@ -1012,7 +1031,7 @@ function drawTipPreview(){
     tCtx.fillStyle=cv('--accent3'); tCtx.font='7px Courier New'; tCtx.textAlign='left';
     tCtx.fillText('INV',3,10);
   }
-  const names={sharp_cone:'SHARP',blunt_cone:'BLUNT',sphere:'SPHERE',hyperboloid:'HYPER.',
+  const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
     flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE'};
   tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
   tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
@@ -1118,6 +1137,164 @@ document.getElementById('noiseSlider').addEventListener('input',function(){
 document.getElementById('viewIso').addEventListener('click',()=>controls.setView('iso'));
 document.getElementById('viewTop').addEventListener('click',()=>controls.setView('top'));
 document.getElementById('viewFront').addEventListener('click',()=>controls.setView('front'));
+
+// ════════════════════════════════════════════
+//  OBJ EXPORTER
+// ════════════════════════════════════════════
+function geometryToOBJ(geometry, objectName){
+  // Convert a THREE.BufferGeometry to OBJ format string
+  const pos  = geometry.attributes.position;
+  const norm = geometry.attributes.normal;
+  const idx  = geometry.index;
+  const lines = [];
+
+  lines.push('# AFM Simulator — exported mesh');
+  lines.push(`# Object: ${objectName}`);
+  lines.push(`# Vertices: ${pos.count}  Faces: ${idx ? idx.count/3 : pos.count/3}`);
+  lines.push('');
+  lines.push(`o ${objectName}`);
+  lines.push('');
+
+  // Vertices
+  for(let i=0;i<pos.count;i++){
+    lines.push(`v ${pos.getX(i).toFixed(5)} ${pos.getY(i).toFixed(5)} ${pos.getZ(i).toFixed(5)}`);
+  }
+  lines.push('');
+
+  // Normals
+  if(norm){
+    for(let i=0;i<norm.count;i++){
+      lines.push(`vn ${norm.getX(i).toFixed(5)} ${norm.getY(i).toFixed(5)} ${norm.getZ(i).toFixed(5)}`);
+    }
+    lines.push('');
+  }
+
+  // Faces (1-indexed)
+  if(idx){
+    for(let i=0;i<idx.count;i+=3){
+      const a=idx.getX(i)+1, b=idx.getX(i+1)+1, c=idx.getX(i+2)+1;
+      if(norm){
+        lines.push(`f ${a}//${a} ${b}//${b} ${c}//${c}`);
+      } else {
+        lines.push(`f ${a} ${b} ${c}`);
+      }
+    }
+  } else {
+    for(let i=0;i<pos.count;i+=3){
+      const a=i+1, b=i+2, c=i+3;
+      if(norm){
+        lines.push(`f ${a}//${a} ${b}//${b} ${c}//${c}`);
+      } else {
+        lines.push(`f ${a} ${b} ${c}`);
+      }
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function downloadOBJ(content, filename){
+  const blob = new Blob([content], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportTipOBJ(){
+  // Collect all meshes from tipObj
+  const allLines = ['# AFM Tip Mesh', `# Tip: ${currentTip}`, ''];
+  let vOffset = 0;
+
+  tipObj.traverse(child => {
+    if(!(child instanceof THREE.Mesh)) return;
+    const geo = child.geometry.clone();
+    // Apply world transform
+    child.updateWorldMatrix(true, false);
+    geo.applyMatrix4(child.matrixWorld);
+    geo.computeVertexNormals();
+
+    const pos  = geo.attributes.position;
+    const norm = geo.attributes.normal;
+    const idx  = geo.index;
+    const name = currentTip + '_part' + (vOffset === 0 ? '' : '_'+vOffset);
+
+    allLines.push(`o ${name}`);
+    for(let i=0;i<pos.count;i++)
+      allLines.push(`v ${pos.getX(i).toFixed(4)} ${pos.getY(i).toFixed(4)} ${pos.getZ(i).toFixed(4)}`);
+    if(norm){
+      for(let i=0;i<norm.count;i++)
+        allLines.push(`vn ${norm.getX(i).toFixed(4)} ${norm.getY(i).toFixed(4)} ${norm.getZ(i).toFixed(4)}`);
+    }
+    allLines.push('');
+    if(idx){
+      for(let i=0;i<idx.count;i+=3){
+        const a=idx.getX(i)+1+vOffset, b=idx.getX(i+1)+1+vOffset, c=idx.getX(i+2)+1+vOffset;
+        allLines.push(norm ? `f ${a}//${a} ${b}//${b} ${c}//${c}` : `f ${a} ${b} ${c}`);
+      }
+    } else {
+      for(let i=0;i<pos.count;i+=3){
+        const a=i+1+vOffset, b=i+2+vOffset, c=i+3+vOffset;
+        allLines.push(norm ? `f ${a}//${a} ${b}//${b} ${c}//${c}` : `f ${a} ${b} ${c}`);
+      }
+    }
+    vOffset += pos.count;
+    allLines.push('');
+    geo.dispose();
+  });
+
+  const p = tipP[currentTip]||{};
+  const paramStr = Object.entries(p).map(([k,v])=>`${k}${v}`).join('_');
+  downloadOBJ(allLines.join('\n'), `tip_${currentTip}_${paramStr}.obj`);
+}
+
+function exportSurfOBJ(){
+  // Export the currently displayed surface mesh (true or measured)
+  const meshObj = scene.getObjectByName('surfMesh') || scene.getObjectByName('measMesh');
+  // Walk scene to find mesh geometries
+  const allLines = ['# AFM Surface Mesh', `# Surface: ${currentSurf}`, ''];
+  let vOffset=0;
+
+  scene.traverse(child=>{
+    if(!(child instanceof THREE.Mesh)) return;
+    if(child === tipObj || tipObj.children.includes(child)) return;
+    const geo = child.geometry.clone();
+    child.updateWorldMatrix(true,false);
+    geo.applyMatrix4(child.matrixWorld);
+    geo.computeVertexNormals();
+
+    const pos=geo.attributes.position, norm=geo.attributes.normal, idx=geo.index;
+    allLines.push(`o ${currentSurf}_mesh`);
+    for(let i=0;i<pos.count;i++)
+      allLines.push(`v ${pos.getX(i).toFixed(4)} ${pos.getY(i).toFixed(4)} ${pos.getZ(i).toFixed(4)}`);
+    if(norm){
+      for(let i=0;i<norm.count;i++)
+        allLines.push(`vn ${norm.getX(i).toFixed(4)} ${norm.getY(i).toFixed(4)} ${norm.getZ(i).toFixed(4)}`);
+    }
+    allLines.push('');
+    if(idx){
+      for(let i=0;i<idx.count;i+=3){
+        const a=idx.getX(i)+1+vOffset, b=idx.getX(i+1)+1+vOffset, c=idx.getX(i+2)+1+vOffset;
+        allLines.push(norm ? `f ${a}//${a} ${b}//${b} ${c}//${c}` : `f ${a} ${b} ${c}`);
+      }
+    } else {
+      for(let i=0;i<pos.count;i+=3){
+        const a=i+1+vOffset, b=i+2+vOffset, c=i+3+vOffset;
+        allLines.push(norm ? `f ${a}//${a} ${b}//${b} ${c}//${c}` : `f ${a} ${b} ${c}`);
+      }
+    }
+    vOffset+=pos.count;
+    allLines.push('');
+    geo.dispose();
+  });
+
+  downloadOBJ(allLines.join('\n'), `surface_${currentSurf}.obj`);
+}
+
+document.getElementById('exportTipBtn').addEventListener('click', exportTipOBJ);
+document.getElementById('exportSurfBtn').addEventListener('click', exportSurfOBJ);
 document.getElementById('tipBtns').addEventListener('click',e=>{
   const t=e.target.closest('[data-tip]');if(!t)return;
   currentTip=t.dataset.tip;

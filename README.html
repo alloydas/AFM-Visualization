@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AFM Simulator — User Guide</title>
+<style>
+:root {
+  --bg:      #06080c;
+  --panel:   #0b1017;
+  --panel2:  #0e1620;
+  --border:  #17293a;
+  --border2: #1e3448;
+  --teal:    #00e5b0;
+  --blue:    #2ea8ff;
+  --orange:  #ff7043;
+  --purple:  #c97aff;
+  --yellow:  #f0c040;
+  --red:     #ff4466;
+  --text:    #6a8fa0;
+  --text-hi: #b8d4e8;
+  --text-lo: #2a4a5a;
+  --mono:    'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  line-height: 1.7;
+}
+
+/* ── SCANLINE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+  );
+}
+
+/* ── LAYOUT ── */
+.page { max-width: 900px; margin: 0 auto; padding: 60px 24px 100px; }
+
+/* ── HEADER ── */
+.hero {
+  border: 1px solid var(--border);
+  padding: 48px 40px 40px;
+  margin-bottom: 48px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% -20%, rgba(0,229,176,0.07), transparent 65%);
+  pointer-events: none;
+}
+.hero-label {
+  font-size: 8px; letter-spacing: 4px; color: var(--text-lo);
+  text-transform: uppercase; margin-bottom: 16px;
+}
+.hero-title {
+  font-size: 28px; letter-spacing: 8px; color: var(--teal);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.hero-sub {
+  font-size: 10px; letter-spacing: 3px; color: var(--text);
+  text-transform: uppercase; margin-bottom: 24px;
+}
+.hero-desc {
+  font-size: 11px; color: var(--text-hi); max-width: 620px; line-height: 2;
+}
+.hero-corner {
+  position: absolute; top: 16px; right: 20px;
+  font-size: 7px; letter-spacing: 2px; color: var(--text-lo);
+}
+
+/* ── TOC ── */
+.toc {
+  border: 1px solid var(--border);
+  padding: 24px 28px;
+  margin-bottom: 40px;
+  background: var(--panel);
+}
+.toc-title {
+  font-size: 8px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--teal); margin-bottom: 16px;
+}
+.toc-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
+.toc-item { font-size: 9px; }
+.toc-item a {
+  color: var(--text); text-decoration: none;
+  transition: color 0.15s;
+}
+.toc-item a:hover { color: var(--teal); }
+.toc-num { color: var(--text-lo); margin-right: 8px; }
+
+/* ── SECTIONS ── */
+.section { margin-bottom: 52px; scroll-margin-top: 20px; }
+
+.section-header {
+  display: flex; align-items: center; gap: 14px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px; margin-bottom: 24px;
+}
+.section-num {
+  font-size: 8px; letter-spacing: 3px; color: var(--text-lo);
+  background: var(--panel); border: 1px solid var(--border);
+  padding: 4px 8px; flex-shrink: 0;
+}
+.section-title {
+  font-size: 13px; letter-spacing: 4px; color: var(--text-hi);
+  text-transform: uppercase;
+}
+
+/* ── TEXT ── */
+p { font-size: 11px; color: var(--text); margin-bottom: 14px; line-height: 2; }
+.highlight { color: var(--text-hi); }
+.teal   { color: var(--teal); }
+.blue   { color: var(--blue); }
+.orange { color: var(--orange); }
+.purple { color: var(--purple); }
+.yellow { color: var(--yellow); }
+
+/* ── FORMULA BOX ── */
+.formula {
+  background: var(--panel2); border: 1px solid var(--border2);
+  border-left: 3px solid var(--teal);
+  padding: 16px 20px; margin: 16px 0 20px;
+  font-size: 11px; color: var(--teal);
+  letter-spacing: 1px;
+}
+.formula .label {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--text-lo); margin-bottom: 8px;
+}
+
+/* ── TIP / SURFACE CARDS ── */
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+.tip-card {
+  background: var(--panel); border: 1px solid var(--border);
+  padding: 14px 16px; transition: border-color 0.15s;
+}
+.tip-card:hover { border-color: var(--teal); }
+.tip-name {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-hi); margin-bottom: 6px;
+}
+.tip-name .icon { margin-right: 6px; color: var(--teal); }
+.tip-formula { font-size: 9px; color: var(--purple); margin-bottom: 5px; font-style: italic; }
+.tip-desc { font-size: 9px; color: var(--text); line-height: 1.7; }
+.tip-artifact {
+  font-size: 8px; color: var(--orange); margin-top: 6px;
+  border-top: 1px solid var(--border); padding-top: 5px;
+}
+
+/* ── TABLE ── */
+.ref-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 10px; }
+.ref-table th {
+  text-align: left; padding: 8px 12px;
+  font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-lo); border-bottom: 1px solid var(--border2);
+}
+.ref-table td {
+  padding: 9px 12px; border-bottom: 1px solid var(--border);
+  color: var(--text); vertical-align: top;
+}
+.ref-table tr:hover td { background: var(--panel); }
+.ref-table td:first-child { color: var(--text-hi); white-space: nowrap; }
+.ref-table td:nth-child(2) { color: var(--purple); font-style: italic; }
+
+/* ── STEP LIST ── */
+.steps { margin: 16px 0; }
+.step {
+  display: flex; gap: 16px; padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.step-num {
+  flex-shrink: 0; width: 28px; height: 28px;
+  border: 1px solid var(--teal); color: var(--teal);
+  font-size: 9px; display: flex; align-items: center; justify-content: center;
+}
+.step-content { flex: 1; }
+.step-title { font-size: 10px; color: var(--text-hi); margin-bottom: 4px; }
+.step-desc  { font-size: 9px; color: var(--text); line-height: 1.8; }
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border: 1px solid var(--border2);
+  padding: 14px 18px; margin: 16px 0;
+  font-size: 10px; line-height: 1.9;
+}
+.callout.teal   { border-left: 3px solid var(--teal);   background: rgba(0,229,176,0.04); }
+.callout.blue   { border-left: 3px solid var(--blue);   background: rgba(46,168,255,0.04); }
+.callout.orange { border-left: 3px solid var(--orange); background: rgba(255,112,67,0.04); }
+.callout.purple { border-left: 3px solid var(--purple); background: rgba(201,122,255,0.04); }
+.callout-title {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.callout.teal   .callout-title { color: var(--teal); }
+.callout.blue   .callout-title { color: var(--blue); }
+.callout.orange .callout-title { color: var(--orange); }
+.callout.purple .callout-title { color: var(--purple); }
+
+/* ── TOGGLE GRID ── */
+.toggle-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 16px 0; }
+.toggle-item {
+  background: var(--panel); border: 1px solid var(--border);
+  padding: 12px 14px;
+}
+.toggle-name {
+  font-size: 9px; letter-spacing: 1px; color: var(--text-hi);
+  margin-bottom: 4px; text-transform: uppercase;
+}
+.toggle-desc { font-size: 8px; color: var(--text); line-height: 1.7; }
+
+/* ── SURFACE GRID ── */
+.surf-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 16px 0; }
+.surf-item {
+  background: var(--panel); border: 1px solid var(--border);
+  padding: 10px 12px; text-align: center;
+}
+.surf-name { font-size: 8px; color: var(--blue); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+.surf-eq   { font-size: 7px; color: var(--text); font-style: italic; }
+
+/* ── NAV ── */
+.nav-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(6,8,12,0.92); border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; gap: 0; padding: 0 24px;
+  height: 42px;
+}
+.nav-logo { font-size: 9px; letter-spacing: 3px; color: var(--teal); margin-right: 24px; }
+.nav-links { display: flex; gap: 0; overflow-x: auto; }
+.nav-link {
+  font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text); text-decoration: none; padding: 0 12px; height: 42px;
+  display: flex; align-items: center; border-right: 1px solid var(--border);
+  transition: color 0.15s; white-space: nowrap;
+}
+.nav-link:hover { color: var(--teal); }
+.nav-right { margin-left: auto; display: flex; gap: 8px; }
+.nav-btn {
+  font-size: 7px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 5px 12px; border: 1px solid; cursor: pointer; text-decoration: none;
+  transition: all 0.15s;
+}
+.nav-btn.teal  { color: var(--teal); border-color: rgba(0,229,176,0.3); background: transparent; }
+.nav-btn.blue  { color: var(--blue); border-color: rgba(46,168,255,0.3); background: transparent; }
+.nav-btn.teal:hover { background: var(--teal); color: var(--bg); }
+.nav-btn.blue:hover { background: var(--blue); color: var(--bg); }
+
+/* ── PHYSICS BLOCK ── */
+.physics-block {
+  background: var(--panel); border: 1px solid var(--border2);
+  padding: 24px; margin: 16px 0;
+}
+.physics-title {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--text-lo); margin-bottom: 16px;
+}
+.physics-eq {
+  font-size: 14px; color: var(--teal); text-align: center;
+  padding: 14px 0; letter-spacing: 2px;
+}
+.physics-sub {
+  font-size: 9px; color: var(--text); margin-top: 12px;
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px;
+}
+.physics-sub dt { color: var(--purple); }
+.physics-sub dd { color: var(--text); }
+
+/* ── FOOTER ── */
+.footer {
+  margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--border);
+  font-size: 8px; letter-spacing: 2px; color: var(--text-lo);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer a { color: var(--blue); text-decoration: none; }
+
+/* Push content below fixed nav */
+.page { padding-top: 80px; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav-bar">
+  <span class="nav-logo">AFM-SIM</span>
+  <div class="nav-links">
+    <a class="nav-link" href="#overview">Overview</a>
+    <a class="nav-link" href="#physics">Physics</a>
+    <a class="nav-link" href="#tips">Tips</a>
+    <a class="nav-link" href="#surfaces">Surfaces</a>
+    <a class="nav-link" href="#2d-guide">2D Guide</a>
+    <a class="nav-link" href="#3d-guide">3D Guide</a>
+    <a class="nav-link" href="#controls">Controls</a>
+    <a class="nav-link" href="#export">Export</a>
+    <a class="nav-link" href="#dataset">Dataset</a>
+  </div>
+  <div class="nav-right">
+    <a class="nav-btn teal" href="afm-2d.html">2D SIM</a>
+    <a class="nav-btn blue" href="afm-3d.html">3D SIM</a>
+  </div>
+</nav>
+
+<div class="page">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-corner">v3.0 · Iowa State University</div>
+  <div class="hero-label">User Documentation</div>
+  <div class="hero-title">AFM Contact Mode<br>Simulator</div>
+  <div class="hero-sub">Atomic Force Microscopy · Tip–Sample Convolution · Minkowski Morphology</div>
+  <div class="hero-desc">
+    An interactive educational tool for understanding how AFM tip geometry distorts surface measurements.
+    Select from 8 tip types and 10 surface profiles to visualise contact-mode imaging artifacts in real time —
+    with rigorous physics, live error statistics, and dataset export.
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <div class="toc-list">
+    <div class="toc-item"><span class="toc-num">01</span><a href="#overview">What Is This?</a></div>
+    <div class="toc-item"><span class="toc-num">02</span><a href="#physics">Physics &amp; Formula</a></div>
+    <div class="toc-item"><span class="toc-num">03</span><a href="#tips">Tip Geometries (8 types)</a></div>
+    <div class="toc-item"><span class="toc-num">04</span><a href="#surfaces">Surface Profiles (10 types)</a></div>
+    <div class="toc-item"><span class="toc-num">05</span><a href="#2d-guide">2D Simulator Guide</a></div>
+    <div class="toc-item"><span class="toc-num">06</span><a href="#3d-guide">3D Simulator Guide</a></div>
+    <div class="toc-item"><span class="toc-num">07</span><a href="#controls">All Controls Explained</a></div>
+    <div class="toc-item"><span class="toc-num">08</span><a href="#export">Exporting Meshes (.OBJ)</a></div>
+    <div class="toc-item"><span class="toc-num">09</span><a href="#dataset">Dataset Generator</a></div>
+    <div class="toc-item"><span class="toc-num">10</span><a href="#reference">Quick Reference</a></div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="overview">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <span class="section-title">What Is This?</span>
+  </div>
+
+  <p>
+    In Atomic Force Microscopy (AFM), the <span class="highlight">measured surface is never the true surface</span>.
+    The physical tip has a finite size and shape — it cannot fit into features narrower than itself,
+    and it adds its own geometry to every feature it scans over.
+    This effect is called a <span class="teal">tip–sample convolution artifact</span>.
+  </p>
+  <p>
+    This simulator lets you explore those artifacts interactively.
+    You choose a <span class="teal">tip geometry</span> and a <span class="blue">surface profile</span>,
+    watch the scan animate in real time, and immediately see how much the measured surface
+    deviates from the truth — quantified as <span class="orange">max artifact</span> and
+    <span class="orange">RMS error</span>.
+  </p>
+
+  <div class="callout teal">
+    <div class="callout-title">Two simulators</div>
+    <strong class="teal">2D Simulator</strong> — Cross-sectional scan (one line profile).
+    Fast, detailed, shows the tip moving in real time. Best for understanding the physics.<br><br>
+    <strong class="blue">3D Simulator</strong> — Full raster scan over an 80×80 nm grid.
+    Builds the measured surface row by row. Shows 3D tip geometry and exports mesh files.
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="physics">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <span class="section-title">Physics &amp; Formula</span>
+  </div>
+
+  <p>
+    AFM contact mode imaging is modelled as a
+    <span class="teal">Minkowski dilation</span> (or erosion) of the surface by the tip profile.
+    The correct formula is:
+  </p>
+
+  <div class="physics-block">
+    <div class="physics-title">Core AFM Minkowski Formula</div>
+    <div class="physics-eq">M[i] = max<sub>j</sub> { S[i+j] − T[j] }</div>
+    <dl class="physics-sub">
+      <dt>M[i]</dt><dd>Measured (artifact-distorted) surface height at scan position i</dd>
+      <dt>S[i+j]</dt><dd>True surface height at offset j from position i</dd>
+      <dt>T[j]</dt><dd>Tip profile height above apex at lateral offset j (always ≥ 0)</dd>
+    </dl>
+  </div>
+
+  <div class="callout orange">
+    <div class="callout-title">Why subtract T, not add?</div>
+    On a perfectly flat surface, the measured height should equal the true height.
+    With the correct formula: M[i] = max<sub>j</sub>{BASE − T[j]} = BASE − min(T) = BASE − 0 = BASE ✓<br>
+    If you add T, a flat surface gives M = BASE + T_max — completely wrong.
+    The subtraction is the physically correct Minkowski dilation direction.
+  </div>
+
+  <p>
+    For the <span class="purple">Concave Sphere</span> tip only, the operation switches to
+    <span class="purple">Minkowski erosion</span>:
+  </p>
+
+  <div class="formula">
+    <div class="label">Erosion (Concave Sphere only)</div>
+    M[i] = min<sub>j</sub> { S[i+j] + T[j] }
+  </div>
+
+  <p>
+    The <span class="highlight">Invert toggles</span> in the sidebar let you flip between
+    dilation and erosion manually for any tip, enabling exploration of deconvolution effects.
+  </p>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="tips">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <span class="section-title">Tip Geometries — 8 Types</span>
+  </div>
+
+  <p>
+    Each tip is defined by its profile function <span class="purple">T(r)</span>,
+    where <span class="purple">r</span> is the lateral (horizontal) distance from the apex.
+    T(r) is always zero at the apex (r = 0) and increases as you move away.
+    Blocked positions (tip body cannot reach) are set to infinity.
+  </p>
+
+  <div class="card-grid">
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">▼</span>Cone</div>
+      <div class="tip-formula">T(r) = r / tan(α)</div>
+      <div class="tip-desc">
+        Pure conical tip. Half-angle α from the tip axis (vertical).
+        Small α = very sharp needle. Large α = blunt wide cone.
+        Slider range: 3°–80°, default 15°.
+      </div>
+      <div class="tip-artifact">↳ Broadens all features. Peaks widen by r·tan(α) on each side.</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">●</span>Spherical</div>
+      <div class="tip-formula">T(r) = R − √(R²−r²)  for r &lt; R</div>
+      <div class="tip-desc">
+        Hemispherical apex. Radius R in nm.
+        Typical commercial AFM probes have R = 5–30 nm.
+        The sphere only interacts within r &lt; R.
+      </div>
+      <div class="tip-artifact">↳ Smooth rounding of sharp features. Broadening radius ≈ R.</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">⌓</span>Hyperboloid</div>
+      <div class="tip-formula">T(r) = √(r² + a²) − a</div>
+      <div class="tip-desc">
+        Hyperboloidal tip with curvature parameter a.
+        Intermediate between cone and sphere.
+        Sharp at apex, curves smoothly outward.
+      </div>
+      <div class="tip-artifact">↳ Intermediate broadening. Sharper than sphere, softer than cone.</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">▬</span>Flat Punch</div>
+      <div class="tip-formula">T(r) = 0 for r ≤ R,  ∞ for r &gt; R</div>
+      <div class="tip-desc">
+        Flat circular face of radius R. Cannot resolve features
+        narrower than 2R (the full punch diameter).
+        Sharp edge creates characteristic plateaus.
+      </div>
+      <div class="tip-artifact">↳ Flattens peaks. Features &lt; 2R appear wider and flattened.</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">⌣</span>Concave Sphere</div>
+      <div class="tip-formula">T(r) = R − √(R²−r²)  [EROSION mode]</div>
+      <div class="tip-desc">
+        A spherical bowl (concave). The rim contacts the surface,
+        not the centre. Uses erosion operation — measured surface
+        is BELOW the true surface. Purple in the simulator.
+      </div>
+      <div class="tip-artifact">↳ Narrowing artifact. Features appear thinner (erosion).</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">↗</span>Asymmetric</div>
+      <div class="tip-formula">T(dc) = |dc|/tan(α) + dc·tan(φ)</div>
+      <div class="tip-desc">
+        Tilted cone. α = half-angle, φ = tilt angle.
+        The signed offset dc makes one side steeper, one shallower.
+        Creates directional artifacts — features appear shifted.
+      </div>
+      <div class="tip-artifact">↳ Lateral shift. Features displaced in the tilt direction.</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">⌤</span>Double Tip</div>
+      <div class="tip-formula">T(dc) = min(|dc−g|, |dc+g|) / tan(α)</div>
+      <div class="tip-desc">
+        Two identical apexes separated by gap = 2g.
+        T = 0 at both dc = ±g (both apex positions).
+        Centre between tips is raised by g/tan(α).
+      </div>
+      <div class="tip-artifact">↳ Ghost image. Every surface feature appears TWICE at ±gap offset.</div>
+    </div>
+
+    <div class="tip-card">
+      <div class="tip-name"><span class="icon">◓</span>Cone + Sphere (U-Shape)</div>
+      <div class="tip-formula">Arc: T = R−√(R²−r²) · Side: T = y<sub>t</sub>+(r−w)·w/sv</div>
+      <div class="tip-desc">
+        Exact SolidWorks U-shape geometry. Circular arc of radius R
+        at apex, C1-continuous join to straight slanted sides at
+        tangent half-width w. Top width = 2w. Centre marked in purple.
+      </div>
+      <div class="tip-artifact">↳ Combined rounding + broadening. Arc-dominated at narrow features.</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="surfaces">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <span class="section-title">Surface Profiles — 10 Types</span>
+  </div>
+
+  <p>
+    All surfaces are defined in the range 0–240 nm (horizontal) and sit on a
+    <span class="teal">base height of 25 nm</span>. Amplitudes are set so features
+    stay in the 10–70 nm range, well within the 100 nm display window.
+  </p>
+
+  <div class="surf-grid">
+    <div class="surf-item">
+      <div class="surf-name">Sinusoidal</div>
+      <div class="surf-eq">A·sin(2πx/T)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Step Edge</div>
+      <div class="surf-eq">H·θ(x−x₀)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Sharp Spike</div>
+      <div class="surf-eq">H(1−|x|/w)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Nanoparticle</div>
+      <div class="surf-eq">√(R²−x²)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Nano-pit</div>
+      <div class="surf-eq">R−√(R²−x²)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Trenches</div>
+      <div class="surf-eq">periodic step</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Rough</div>
+      <div class="surf-eq">Σ sin(kx+φ)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">DNA Ridges</div>
+      <div class="surf-eq">A|sin(πx/T)|</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Chirp</div>
+      <div class="surf-eq">A·sin(2π(f₀+βx)x)</div>
+    </div>
+    <div class="surf-item">
+      <div class="surf-name">Lattice</div>
+      <div class="surf-eq">cos²(πx/d)·cos²(πy/d)</div>
+    </div>
+  </div>
+
+  <div class="callout blue">
+    <div class="callout-title">Best combinations to try</div>
+    <strong class="teal">Sharp Cone + Spike</strong> — Maximum broadening artifact, very obvious.<br>
+    <strong class="teal">Flat Punch + DNA Ridges</strong> — Ridges narrower than 2R disappear entirely.<br>
+    <strong class="blue">Double Tip + Nanoparticle</strong> — Classic ghost image, two bumps from one.<br>
+    <strong class="blue">Sphere + Lattice</strong> — Resolution limit visible as lattice fades with period.<br>
+    <strong class="purple">Concave Sphere + Hemisphere</strong> — Erosion makes the dome appear narrower.<br>
+    <strong class="orange">Asymmetric + Step Edge</strong> — Step looks higher on one side than the other.
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="2d-guide">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <span class="section-title">2D Simulator — Step by Step</span>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Select a Tip Geometry</div>
+        <div class="step-desc">Click any tip button in the left sidebar. The tip shape updates instantly in the preview thumbnail below the buttons. Adjust the sliders that appear (e.g. radius R, half-angle α) to customise the tip size and shape. The tip shape redraws live as you drag.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Select a Surface Profile</div>
+        <div class="step-desc">Click a surface button. The true surface (teal line) updates immediately in the main canvas. Adjust amplitude, period, depth etc. with the surface sliders. The surface always sits above the 25 nm baseline.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Press PLAY</div>
+        <div class="step-desc">The tip (shown as a coloured silhouette) scans from left to right. The orange dashed line shows the AFM-measured surface building up in real time. The white dot at the tip apex glows <span class="teal">green</span> when touching the true surface, <span class="orange">orange</span> when floating above it (artifact gap).</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Read the Statistics</div>
+        <div class="step-desc"><span class="orange">Max Artifact</span> — largest single-point deviation (nm).<br><span class="orange">RMS Error</span> — root-mean-square error across the full scan (nm).<br>These update live during the scan. A flat surface with any tip should give 0 nm artifact.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Experiment with Invert Toggles</div>
+        <div class="step-desc">The six toggle switches change how the Minkowski operation is applied. <span class="blue">Erosion mode</span> swaps dilation for erosion — measured surface drops below true. <span class="blue">Inv Tip</span> negates the tip profile. See Section 07 for all toggle details.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">Try the Scan Modes</div>
+        <div class="step-desc"><span class="highlight">ONCE</span> — single left→right pass then stops.<br><span class="highlight">LOOP</span> — continuous left→right, resets at end.<br><span class="highlight">BOUNCE</span> — scans left→right then right→left, like real AFM bidirectional scanning.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout teal">
+    <div class="callout-title">Three canvas panels</div>
+    <strong class="teal">Main canvas (top)</strong> — True surface (teal) and measured surface (orange dashed) with the scanning tip silhouette. A dashed vertical line shows where the tip currently is.<br><br>
+    <strong class="blue">Error bar (middle)</strong> — Per-pixel artifact magnitude as a bar chart. Tall bars = large artifacts at that x position.<br><br>
+    <strong class="yellow">FD Curve (bottom)</strong> — Force–distance approach curve for the tip at the current scan position.
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="3d-guide">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <span class="section-title">3D Simulator — Step by Step</span>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Select Tip and Surface</div>
+        <div class="step-desc">Same as 2D — click buttons in the left sidebar. The 3D tip geometry updates immediately in the viewport. Adjust sliders for tip and surface parameters. The surface mesh rebuilds instantly.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Press PLAY — Watch the Raster Scan</div>
+        <div class="step-desc">The tip (3D mesh) scans across the surface row by row, left to right, front to back. Each completed row appears in orange as the measured surface builds up. The scan covers an 80×80 grid over a 200×200 nm area.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Orbit the View</div>
+        <div class="step-desc">
+          <strong>Drag</strong> — orbit around the scene.<br>
+          <strong>Scroll</strong> — zoom in and out.<br>
+          <strong>ISO / TOP / FRONT</strong> buttons — snap to preset views.<br>
+          Use TOP view to compare true and measured surface morphology from above.
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Adjust Vertical Exaggeration</div>
+        <div class="step-desc">The V. Exaggeration slider (0.5×–10×) scales the Z axis of the surface mesh. Increase it to make shallow features visible. The true scan physics are not affected — it's purely a display scaling for visual clarity.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Export Meshes</div>
+        <div class="step-desc">Two export buttons below the view controls:<br>
+        <span class="purple">⬇ TIP .OBJ</span> — downloads the current tip mesh as a Wavefront .obj file, named with the tip type and parameters (e.g. <code>tip_sphere_cone_R30_angle15.obj</code>).<br>
+        <span class="teal">⬇ SURF .OBJ</span> — downloads the current surface mesh.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="controls">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <span class="section-title">All Controls Explained</span>
+  </div>
+
+  <p style="margin-bottom:16px;">The six <span class="blue">INVERT / TRANSFORM</span> toggles modify the scan operation:</p>
+
+  <div class="toggle-grid">
+    <div class="toggle-item">
+      <div class="toggle-name teal">Inv Z</div>
+      <div class="toggle-desc">Flips all surface heights. Peaks become valleys and vice versa. Useful for studying how tip–sample interaction changes on inverted topography.</div>
+    </div>
+    <div class="toggle-item">
+      <div class="toggle-name teal">Mirror X</div>
+      <div class="toggle-desc">Flips the surface left–right (horizontal mirror). Useful with asymmetric tips to see directional artifact reversal.</div>
+    </div>
+    <div class="toggle-item">
+      <div class="toggle-name teal">Mirror Y</div>
+      <div class="toggle-desc">(3D only) Flips the surface front–back. Combined with Mirror X gives a 180° rotation of the scan pattern.</div>
+    </div>
+    <div class="toggle-item">
+      <div class="toggle-name blue">Inv Tip</div>
+      <div class="toggle-desc">Negates the tip profile T(r) → −T(r). Combined with Erosion it effectively deconvolves: estimates the true surface from a measured one.</div>
+    </div>
+    <div class="toggle-item">
+      <div class="toggle-name blue">Rev Scan</div>
+      <div class="toggle-desc">Reverses the scan direction (right→left instead of left→right). Shows how directional artifacts depend on scan orientation — important for asymmetric tips.</div>
+    </div>
+    <div class="toggle-item">
+      <div class="toggle-name blue">Erosion</div>
+      <div class="toggle-desc">Switches from Minkowski dilation (M = max{S−T}) to erosion (M = min{S+T}). Measured surface falls BELOW true surface. The Concave Sphere tip always uses erosion automatically.</div>
+    </div>
+  </div>
+
+  <table class="ref-table" style="margin-top:24px;">
+    <tr><th>Control</th><th>Effect on physics</th><th>Notes</th></tr>
+    <tr>
+      <td>Speed slider</td>
+      <td>Scan pixels per animation frame</td>
+      <td>Range 1–12. Higher = faster scan but coarser animation.</td>
+    </tr>
+    <tr>
+      <td>Noise slider</td>
+      <td>Adds ±noise_amp Gaussian noise to surface</td>
+      <td>0 nm = clean. 3–5 nm = realistic lab conditions.</td>
+    </tr>
+    <tr>
+      <td>V. Exaggeration (3D)</td>
+      <td>Scales Z display only — no physics change</td>
+      <td>1× = true proportions. 5–10× useful for shallow surfaces.</td>
+    </tr>
+    <tr>
+      <td>🎲 Randomize</td>
+      <td>Picks random tip + surface + parameters</td>
+      <td>Good for exploring unexpected combinations quickly.</td>
+    </tr>
+    <tr>
+      <td>↺ Reset</td>
+      <td>Resets scan to start position</td>
+      <td>Does not change tip or surface selection.</td>
+    </tr>
+    <tr>
+      <td>◑ Light/Dark</td>
+      <td>Toggles colour theme</td>
+      <td>Preference is saved in localStorage.</td>
+    </tr>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="export">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <span class="section-title">Exporting Meshes (.OBJ)</span>
+  </div>
+
+  <p>
+    The 3D simulator can export any tip or surface mesh as a standard
+    <span class="teal">Wavefront .OBJ file</span>, which can be opened in Blender, MeshLab,
+    SolidWorks, FreeCAD, 3D printing slicers, and Python via <code>trimesh</code> or <code>open3d</code>.
+  </p>
+
+  <div class="callout purple">
+    <div class="callout-title">How to export</div>
+    1. Open the <strong>3D Simulator</strong> (afm-3d.html)<br>
+    2. Select the tip and surface you want<br>
+    3. Adjust sliders to the exact geometry you need<br>
+    4. Click <strong class="purple">⬇ TIP .OBJ</strong> to download the tip mesh<br>
+    5. Click <strong class="teal">⬇ SURF .OBJ</strong> to download the current surface mesh<br><br>
+    The tip filename includes the tip type and parameter values:<br>
+    <code>tip_sphere_cone_R30_angle15.obj</code><br>
+    <code>surface_sine.obj</code>
+  </div>
+
+  <p>The .OBJ file contains:</p>
+  <table class="ref-table">
+    <tr><th>Section</th><th>Content</th></tr>
+    <tr><td>v x y z</td><td>Vertex positions in 3D space (nm units)</td></tr>
+    <tr><td>vn x y z</td><td>Vertex normals (computed automatically for smooth shading)</td></tr>
+    <tr><td>f a//a b//b c//c</td><td>Triangular faces with vertex/normal indices (1-based)</td></tr>
+  </table>
+
+  <div class="callout blue">
+    <div class="callout-title">Loading in Python</div>
+    <code>import trimesh<br>
+    mesh = trimesh.load('tip_sphere_cone_R30_angle15.obj')<br>
+    print(mesh.vertices.shape, mesh.faces.shape)</code>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="dataset">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <span class="section-title">Dataset Generator</span>
+  </div>
+
+  <p>
+    A Python script (<code>afm_dataset_generator.py</code>) generates large batches of
+    AFM simulation images using the same physics as the simulator.
+    Each sample produces 5 images and a JSON parameter file.
+  </p>
+
+  <div class="callout teal">
+    <div class="callout-title">Output per sample</div>
+    <strong class="teal">true_surface_16bit.png</strong> — Ground-truth height map (16-bit lossless)<br>
+    <strong class="teal">true_surface_rgb.png</strong>   — Teal-cyan false colour<br>
+    <strong class="orange">measured_afm_16bit.png</strong> — AFM-measured height map (16-bit lossless)<br>
+    <strong class="orange">measured_afm_rgb.png</strong>   — Orange false colour<br>
+    <strong class="yellow">error_map_rgb.png</strong>      — Artifact error (blue → green → red)<br>
+    <strong class="blue">params.json</strong>              — All parameters + statistics (err_rms, err_max, …)
+  </div>
+
+  <p style="margin-top:16px;">Install dependencies:</p>
+  <div class="formula">pip install numpy pillow tqdm scipy</div>
+
+  <p>Generate all 80 combinations (8 tips × 10 surfaces), 100 samples each at 256×256:</p>
+  <div class="formula">
+    <div class="label">Shell loop — organised subfolders</div>
+for TIP in cone sphere hyperboloid flat inv_sphere asymmetric double_tip sphere_cone; do<br>
+&nbsp;&nbsp;for SURF in sine hills hemisphere pit trench rough pyramid dna chirp lattice; do<br>
+&nbsp;&nbsp;&nbsp;&nbsp;python afm_dataset_generator.py \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--n_samples 100 --grid_size 256 \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--tip $TIP --surf $SURF \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--out_dir dataset/${TIP}__${SURF}<br>
+&nbsp;&nbsp;done<br>
+done
+  </div>
+
+  <p>Or all at once with joblib parallelism:</p>
+  <div class="formula">
+    <div class="label">Parallel — all cores</div>
+    python afm_dataset_generator.py --parallel --n_per_combo 100 --grid_size 256
+  </div>
+
+  <table class="ref-table" style="margin-top:16px;">
+    <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+    <tr><td>--n_samples</td><td>100</td><td>Number of samples to generate</td></tr>
+    <tr><td>--grid_size</td><td>256</td><td>Image resolution N×N pixels</td></tr>
+    <tr><td>--tip</td><td>random</td><td>Fix a single tip type</td></tr>
+    <tr><td>--surf</td><td>random</td><td>Fix a single surface type</td></tr>
+    <tr><td>--max_noise</td><td>1.5</td><td>Max additive noise in nm</td></tr>
+    <tr><td>--no_rotation</td><td>off</td><td>Disable random tip rotation (0–360°)</td></tr>
+    <tr><td>--no_scan_angle</td><td>off</td><td>Disable random surface scan angle</td></tr>
+    <tr><td>--seed</td><td>42</td><td>Random seed for reproducibility</td></tr>
+    <tr><td>--parallel</td><td>off</td><td>Use joblib for multi-core parallelism</td></tr>
+    <tr><td>--n_per_combo</td><td>100</td><td>Samples per tip×surface combo (with --parallel)</td></tr>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════════════ -->
+<div class="section" id="reference">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <span class="section-title">Quick Reference</span>
+  </div>
+
+  <table class="ref-table">
+    <tr><th>Term</th><th>Formula / Value</th><th>Description</th></tr>
+    <tr>
+      <td>Dilation</td>
+      <td>M[i] = max_j { S[i+j] − T[j] }</td>
+      <td>Standard AFM contact mode. Measured ≥ True.</td>
+    </tr>
+    <tr>
+      <td>Erosion</td>
+      <td>M[i] = min_j { S[i+j] + T[j] }</td>
+      <td>Concave tip or deconvolution. Measured ≤ True.</td>
+    </tr>
+    <tr>
+      <td>Base height</td>
+      <td>25 nm</td>
+      <td>All surfaces sit at this height at their lowest.</td>
+    </tr>
+    <tr>
+      <td>Display range</td>
+      <td>0–100 nm</td>
+      <td>Y axis of the 2D and 3D display.</td>
+    </tr>
+    <tr>
+      <td>Scan width</td>
+      <td>240 nm (2D) / 200 nm (3D)</td>
+      <td>Total horizontal extent of the simulated scan.</td>
+    </tr>
+    <tr>
+      <td>Grid size</td>
+      <td>700 px (2D) / 80×80 (3D)</td>
+      <td>Number of scan positions.</td>
+    </tr>
+    <tr>
+      <td>Kernel radius</td>
+      <td>30 nm</td>
+      <td>Maximum lateral extent of tip interaction.</td>
+    </tr>
+    <tr>
+      <td>T_clip</td>
+      <td>75 nm</td>
+      <td>Kernel values above this are treated as blocked (∞).</td>
+    </tr>
+  </table>
+
+  <div class="callout orange" style="margin-top:24px;">
+    <div class="callout-title">Common misconceptions</div>
+    <strong>❌ "The measured surface is always higher than the true surface."</strong><br>
+    Only for dilation mode. Erosion (concave sphere, or Erosion toggle) gives measured &lt; true.<br><br>
+    <strong>❌ "A sharper tip always gives less artifact."</strong><br>
+    True for broadening. But a very sharp cone has a large T_MAX, causing severe broadening of tall features. A blunt sphere may outperform a sharp cone on smooth surfaces.<br><br>
+    <strong>❌ "The flat punch has zero artifact."</strong><br>
+    On a flat surface, yes. On any feature narrower than 2R, the flat punch cannot resolve it — it measures a widened, flattened version.
+  </div>
+</div>
+
+
+<!-- FOOTER -->
+<div class="footer">
+  <div>AFM Contact Mode Simulator · Iowa State University · Mech-AI Lab</div>
+  <div><a href="https://alloydas.github.io">alloydas.github.io</a> · EE 5490X Advanced Microscopy</div>
+</div>
+
+</div><!-- end .page -->
+</body>
+</html>

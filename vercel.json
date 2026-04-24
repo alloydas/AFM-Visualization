@@ -7,6 +7,8 @@
   "routes": [
     { "src": "/", "dest": "/index.html" },
     { "src": "/afm-2d", "dest": "/afm-2d.html" },
-    { "src": "/afm-3d", "dest": "/afm-3d.html" }
+    { "src": "/afm-3d", "dest": "/afm-3d.html" },
+    { "src": "/readme", "dest": "/README.html" },
+    { "src": "/guide", "dest": "/README.html" }
   ]
 }

@@ -1,851 +1,919 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>AFM 2D Simulator</title>
 <style>
-/* ── THEMES ── */
-:root,[data-theme="dark"]{
-  --bg:#06080c;--panel:#0b1017;--border:#17293a;
-  --accent:#00e5b0;--accent2:#2ea8ff;--accent3:#ff6b35;--accent4:#c97aff;
-  --text:#6a8fa0;--text-hi:#b0d0e0;
-  --canvas-bg:#040608;--grid1:#182434;--grid2:#0c1820;
-  --axis:#304a58;--border2:#1a2e3e;
-  --btn-on-bg:rgba(0,229,176,0.12);--btn-on-border:var(--accent);--btn-on-text:var(--accent);
-}
-[data-theme="light"]{
-  --bg:#eef2f7;--panel:#ffffff;--border:#c5d5e5;
-  --accent:#009e7a;--accent2:#1a7acc;--accent3:#d94f1e;--accent4:#8844cc;
-  --text:#4a6070;--text-hi:#1a2838;
-  --canvas-bg:#f8fafc;--grid1:#d0dce8;--grid2:#e4edf5;
-  --axis:#8090a8;--border2:#c0d0e0;
-  --btn-on-bg:rgba(0,158,122,0.12);--btn-on-border:var(--accent);--btn-on-text:var(--accent);
-}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:11px;padding:10px;min-height:100vh;transition:background 0.2s,color 0.2s;}
-.header{text-align:center;margin-bottom:10px;}
-.header h1{font-size:13px;letter-spacing:5px;color:var(--accent);text-transform:uppercase;}
-.header p{font-size:7px;letter-spacing:3px;color:var(--text);margin-top:2px;opacity:0.6;}
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.topbar a{font-size:8px;letter-spacing:1px;color:var(--accent2);text-decoration:none;border:1px solid rgba(46,168,255,0.3);padding:3px 8px;}
-.topbar a:hover{background:rgba(46,168,255,0.08);}
-.theme-toggle{background:var(--panel);border:1px solid var(--border);color:var(--accent);font-family:inherit;font-size:9px;letter-spacing:1px;padding:3px 10px;cursor:pointer;}
-.theme-toggle:hover{background:var(--accent);color:var(--bg);}
-/* LAYOUT */
-.layout{display:flex;gap:10px;align-items:flex-start;}
-.sidebar{width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:7px;position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#1a2e40 transparent;}
+body{background:#06080c;color:#6a8fa0;font-family:'Courier New',monospace;font-size:11px;}
+.topbar{display:flex;align-items:center;padding:6px 10px;gap:8px;border-bottom:1px solid #162230;}
+.topbar a{font-size:8px;color:#2ea8ff;text-decoration:none;border:1px solid rgba(46,168,255,0.3);padding:3px 8px;}
+.title{flex:1;text-align:center;font-size:12px;letter-spacing:4px;color:#00e5b0;text-transform:uppercase;}
+.wrap{display:flex;height:calc(100vh - 34px);overflow:hidden;}
+.sidebar{width:190px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;border-right:1px solid #162230;padding:7px;display:flex;flex-direction:column;gap:6px;}
 .sidebar::-webkit-scrollbar{width:3px;}
-.sidebar::-webkit-scrollbar-thumb{background:#1a2e40;}
-.main-col{flex:1;display:flex;flex-direction:column;gap:5px;}
-/* PANELS */
-.panel{background:var(--panel);border:1px solid var(--border);padding:8px;}
-.panel-label{font-size:7px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:3px;display:flex;align-items:center;justify-content:space-between;}
-/* BUTTONS */
-.btn-group{display:flex;flex-direction:column;gap:2px;}
-.btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 7px;font-family:inherit;font-size:9px;cursor:pointer;text-align:left;transition:all 0.1s;width:100%;}
-.btn:hover{border-color:rgba(46,168,255,0.4);color:var(--text-hi);}
-.btn.active{background:var(--btn-on-bg);border-color:var(--btn-on-border);color:var(--btn-on-text);}
-/* TOGGLE BUTTONS (invert) */
-.toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:4px;}
-.tgl{background:transparent;border:1px solid var(--border);color:var(--text);padding:5px 4px;font-family:inherit;font-size:8px;cursor:pointer;text-align:center;transition:all 0.12s;letter-spacing:0.5px;}
-.tgl:hover{border-color:var(--accent3);color:var(--text-hi);}
-.tgl.on{background:rgba(255,107,53,0.12);border-color:var(--accent3);color:var(--accent3);}
-.tgl.on-2{background:rgba(201,122,255,0.12);border-color:var(--accent4);color:var(--accent4);}
-/* SLIDERS */
-.slider-section{margin-top:6px;display:flex;flex-direction:column;gap:4px;}
-.slider-row{display:flex;flex-direction:column;gap:1px;}
-.slider-header{display:flex;justify-content:space-between;font-size:7px;letter-spacing:1px;}
-.slider-header span:first-child{color:var(--text);opacity:0.65;text-transform:uppercase;}
-.slider-val{color:var(--accent);}
-input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
-/* TIP PREVIEW */
-#tipPreview{display:block;background:var(--canvas-bg);border:1px solid var(--border);margin-top:5px;width:100%;}
-/* PLAY CONTROLS */
-.play-row{display:flex;gap:3px;align-items:center;margin-bottom:6px;flex-wrap:wrap;}
-.play-btn{background:rgba(0,229,176,0.08);border:1px solid var(--accent);color:var(--accent);padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;letter-spacing:1px;flex:1;}
-.play-btn:hover{background:rgba(0,229,176,0.18);}
-.icon-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 7px;font-family:inherit;font-size:9px;cursor:pointer;}
-.icon-btn:hover{border-color:var(--accent2);color:var(--accent2);}
-.rand-btn{background:rgba(201,122,255,0.1);border:1px solid var(--accent4);color:var(--accent4);padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;letter-spacing:1px;flex:1;}
-.rand-btn:hover{background:rgba(201,122,255,0.2);}
-.speed-row{display:flex;align-items:center;gap:4px;font-size:8px;margin-bottom:4px;}
-/* MODE TOGGLES */
-.mode-row{display:flex;gap:3px;margin-bottom:4px;}
-.mode-btn{flex:1;background:transparent;border:1px solid var(--border);color:var(--text);padding:4px 3px;font-family:inherit;font-size:8px;cursor:pointer;text-align:center;}
-.mode-btn.on{background:rgba(46,168,255,0.1);border-color:var(--accent2);color:var(--accent2);}
-/* STATS */
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
-.stat-box{background:var(--canvas-bg);border:1px solid var(--border);padding:4px 5px;}
-.stat-label{font-size:6px;letter-spacing:1px;color:var(--text);text-transform:uppercase;margin-bottom:1px;opacity:0.7;}
-.stat-val{font-size:12px;font-weight:bold;color:var(--accent);}
-.stat-val.err{color:var(--accent3);}
-.stat-val.warn{color:#f0c040;}
-/* NOTE */
-.note-box{background:rgba(46,168,255,0.04);border:1px solid rgba(46,168,255,0.12);padding:7px 8px;font-size:8px;line-height:1.7;color:var(--text);}
-.note-box strong{color:var(--accent2);}
-/* CANVAS PANELS */
-.canvas-panel{position:relative;background:var(--panel);border:1px solid var(--border);}
-.cp-label{position:absolute;top:5px;left:8px;font-size:7px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;opacity:0.6;pointer-events:none;}
-canvas{display:block;}
-/* LEGEND + INFO */
-.legend-row{display:flex;gap:12px;padding:2px 5px;font-size:7px;letter-spacing:1px;align-items:center;flex-wrap:wrap;}
-.leg{display:flex;align-items:center;gap:3px;}
-.leg-line{width:18px;height:2px;}
-.info-bar{font-size:7px;letter-spacing:1px;color:var(--text);padding:3px 7px;background:var(--panel);border:1px solid var(--border);transition:background 0.2s;}
-#cursorInfo{font-size:7px;color:var(--accent2);padding:2px 6px;background:rgba(0,10,20,0.85);border:1px solid rgba(46,168,255,0.2);margin-left:auto;}
-[data-theme="light"] #cursorInfo{background:rgba(240,245,255,0.95);}
+.sidebar::-webkit-scrollbar-thumb{background:#162230;}
+.main{flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:20px 8px 10px 8px;gap:5px;}
+.panel{background:#0b1017;border:1px solid #162230;padding:6px;}
+.plabel{font-size:7px;letter-spacing:2px;color:#00e5b0;text-transform:uppercase;margin-bottom:5px;border-bottom:1px solid #162230;padding-bottom:2px;}
+.btn{display:block;width:100%;background:transparent;border:1px solid #162230;color:#6a8fa0;padding:3px 6px;font-family:inherit;font-size:9px;cursor:pointer;text-align:left;margin-bottom:2px;}
+.btn:hover{border-color:rgba(46,168,255,.4);color:#b0d0e0;}
+.btn.on{background:rgba(0,229,176,.08);border-color:#00e5b0;color:#00e5b0;}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:4px;}
+.tgl{background:transparent;border:1px solid #162230;color:#6a8fa0;padding:4px 2px;font-family:inherit;font-size:8px;cursor:pointer;text-align:center;}
+.tgl:hover{border-color:#ff6b35;color:#b0d0e0;}
+.tgl.on{background:rgba(255,107,53,.12);border-color:#ff6b35;color:#ff6b35;}
+.srow{display:flex;flex-direction:column;gap:1px;margin-bottom:4px;}
+.shdr{display:flex;justify-content:space-between;font-size:7px;letter-spacing:1px;}
+.shdr span:first-child{color:#6a8fa0;opacity:.65;text-transform:uppercase;}
+.sval{color:#00e5b0;}
+input[type=range]{width:100%;accent-color:#00e5b0;height:12px;}
+.prow{display:flex;gap:3px;margin-bottom:4px;}
+.pbtn{flex:1;background:rgba(0,229,176,.08);border:1px solid #00e5b0;color:#00e5b0;padding:4px;font-family:inherit;font-size:9px;cursor:pointer;letter-spacing:1px;}
+.pbtn:hover{background:rgba(0,229,176,.2);}
+.ibtn{background:transparent;border:1px solid #162230;color:#6a8fa0;padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;}
+.ibtn:hover{border-color:#2ea8ff;color:#2ea8ff;}
+.mrow{display:flex;gap:2px;margin-bottom:4px;}
+.mbtn{flex:1;background:transparent;border:1px solid #162230;color:#6a8fa0;padding:3px 2px;font-family:inherit;font-size:8px;cursor:pointer;text-align:center;}
+.mbtn.on{background:rgba(46,168,255,.1);border-color:#2ea8ff;color:#2ea8ff;}
+.rbtn{background:rgba(201,122,255,.1);border:1px solid #c97aff;color:#c97aff;padding:4px;font-family:inherit;font-size:9px;cursor:pointer;width:100%;letter-spacing:1px;}
+.rbtn:hover{background:rgba(201,122,255,.2);}
+#tipPrev{display:block;width:100%;height:70px;background:#040608;border:1px solid #162230;margin-top:4px;}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
+.sbox{background:#040608;border:1px solid #162230;padding:3px 5px;}
+.slbl{font-size:6px;letter-spacing:1px;color:#6a8fa0;text-transform:uppercase;opacity:.7;}
+.snum{font-size:11px;font-weight:bold;color:#00e5b0;}
+.snum.e{color:#ff6b35;}
+.snum.w{color:#f0c040;}
+canvas.main-cv{display:block;width:100%;background:#040608;}
+.ibar{font-size:7px;letter-spacing:1px;color:#6a8fa0;padding:2px 5px;background:#0b1017;border:1px solid #162230;flex-shrink:0;}
 </style>
 </head>
 <body>
 <div class="topbar">
   <a href="index.html">← Home</a>
-  <div class="header" style="flex:1">
-    <h1>AFM 2D Simulator</h1>
-    <p>Tip–Sample Convolution · Minkowski Sum · Real-time Analysis</p>
-  </div>
-  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◑ LIGHT</button>
+  <div class="title">AFM 2D Simulator</div>
 </div>
+<div class="wrap">
 
-<div class="layout">
-<!-- ══ SIDEBAR ══ -->
+<!-- SIDEBAR -->
 <div class="sidebar">
 
-<!-- TIP -->
-<div class="panel">
-  <div class="panel-label">Tip Geometry</div>
-  <div class="btn-group" id="tipBtns">
-    <button class="btn active" data-tip="sharp_cone">▼ Sharp Cone</button>
-    <button class="btn" data-tip="blunt_cone">▼ Blunt Cone</button>
-    <button class="btn" data-tip="sphere">● Spherical</button>
-    <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
-    <button class="btn" data-tip="flat">▬ Flat Punch</button>
-    <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
-    <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
-    <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
+  <div class="panel">
+    <div class="plabel">Tip Geometry</div>
+    <div id="tipBtns">
+      <button class="btn on" data-tip="sharp_cone">▼ Sharp Cone</button>
+      <button class="btn" data-tip="blunt_cone">▼ Blunt Cone</button>
+      <button class="btn" data-tip="sphere">● Spherical</button>
+      <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
+      <button class="btn" data-tip="flat">▬ Flat Punch</button>
+      <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
+      <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
+      <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
+      <button class="btn" data-tip="sphere_cone">◓ Cone+Sphere</button>
+    </div>
+    <div id="tipSliders"></div>
+    <canvas id="tipPrev" width="174" height="70"></canvas>
   </div>
-  <div class="slider-section" id="tipSliders"></div>
-  <canvas id="tipPreview" width="184" height="80"></canvas>
-</div>
 
-<!-- SURFACE -->
-<div class="panel">
-  <div class="panel-label">Sample Surface</div>
-  <div class="btn-group" id="surfBtns">
-    <button class="btn active" data-surf="sine">~ Sinusoidal</button>
-    <button class="btn" data-surf="step">| Step Edge</button>
-    <button class="btn" data-surf="spike">△ Sharp Spike</button>
-    <button class="btn" data-surf="hemisphere">◗ Nanoparticle</button>
-    <button class="btn" data-surf="pit">◑ Nano-pit</button>
-    <button class="btn" data-surf="trench">⊓ Trenches</button>
-    <button class="btn" data-surf="rough">≈ Rough</button>
-    <button class="btn" data-surf="dna">⊛ DNA Helix</button>
-    <button class="btn" data-surf="chirp">≋ Chirp</button>
-    <button class="btn" data-surf="lattice">⊞ Atomic Lattice</button>
+  <div class="panel">
+    <div class="plabel">Sample Surface</div>
+    <div id="surfBtns">
+      <button class="btn on" data-surf="sine">~ Sinusoidal</button>
+      <button class="btn" data-surf="step">⌐ Step Edge</button>
+      <button class="btn" data-surf="spike">△ Sharp Spike</button>
+      <button class="btn" data-surf="hemisphere">● Nanoparticle</button>
+      <button class="btn" data-surf="pit">○ Nano-pit</button>
+      <button class="btn" data-surf="trench">⊓ Trenches</button>
+      <button class="btn" data-surf="rough">≈ Rough</button>
+      <button class="btn" data-surf="dna">⊛ DNA Ridges</button>
+      <button class="btn" data-surf="chirp">≋ Chirp</button>
+      <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
+    </div>
+    <div id="surfSliders"></div>
+    <div class="srow" style="margin-top:5px;">
+      <div class="shdr"><span>Noise</span><span class="sval" id="noiseVal">0 nm</span></div>
+      <input type="range" id="noiseSlider" min="0" max="10" step="0.5" value="0">
+    </div>
   </div>
-  <div class="slider-section" id="surfSliders"></div>
-  <div class="slider-row" style="margin-top:6px;">
-    <div class="slider-header"><span>Surface Noise</span><span class="slider-val" id="noiseVal">0 nm</span></div>
-    <input type="range" id="noiseSlider" min="0" max="10" step="0.5" value="0">
-  </div>
-</div>
 
-<!-- INVERT & TRANSFORM -->
-<div class="panel">
-  <div class="panel-label">Invert &amp; Transform</div>
-  <div class="toggle-grid">
-    <button class="tgl" id="tgl_invZ"    onclick="toggleInvert('invZ')"   >↕ Inv. Surface Z</button>
-    <button class="tgl" id="tgl_mirrorX" onclick="toggleInvert('mirrorX')">↔ Mirror X</button>
-    <button class="tgl" id="tgl_invTip"  onclick="toggleInvert('invTip')" >⊙ Inv. Tip</button>
-    <button class="tgl" id="tgl_revScan" onclick="toggleInvert('revScan')">← Rev. Scan</button>
-    <button class="tgl on-2" id="tgl_invErr"  onclick="toggleInvert('invErr')" style="background:transparent;border-color:var(--border);color:var(--text);">⊟ Inv. Errors</button>
-    <button class="tgl" id="tgl_erosion" onclick="toggleInvert('erosion')">⊖ Erosion Mode</button>
+  <div class="panel">
+    <div class="plabel">Invert &amp; Transform</div>
+    <div class="tgrid">
+      <button class="tgl" id="tg_invZ"    onclick="tog('invZ')">↕ Inv Z</button>
+      <button class="tgl" id="tg_mirrorX" onclick="tog('mirrorX')">↔ Mirror X</button>
+      <button class="tgl" id="tg_invTip"  onclick="tog('invTip')">⊙ Inv Tip</button>
+      <button class="tgl" id="tg_revScan" onclick="tog('revScan')">↩ Rev Scan</button>
+      <button class="tgl" id="tg_erosion" onclick="tog('erosion')">⊖ Erosion</button>
+      <button class="tgl" id="tg_invErr"  onclick="tog('invErr')">⊘ Inv Err</button>
+    </div>
+    <button class="rbtn" onclick="randomizeAll()">🎲 RANDOMIZE</button>
   </div>
-  <button class="rand-btn" style="width:100%;margin-top:4px;" onclick="randomizeAll()">🎲 RANDOMIZE ALL</button>
-</div>
 
-<!-- SCAN CONTROL -->
-<div class="panel">
-  <div class="panel-label">Scan Control</div>
-  <div class="play-row">
-    <button class="play-btn" id="playBtn">▶ PLAY</button>
-    <button class="icon-btn" id="resetBtn">↺</button>
+  <div class="panel">
+    <div class="plabel">Scan Control</div>
+    <div class="prow">
+      <button class="pbtn" id="playBtn">▶ PLAY</button>
+      <button class="ibtn" onclick="doReset()">↺</button>
+    </div>
+    <div class="mrow">
+      <button class="mbtn" id="mSingle" onclick="setMode('single')">ONCE</button>
+      <button class="mbtn on" id="mLoop"   onclick="setMode('loop')">LOOP</button>
+      <button class="mbtn" id="mBounce" onclick="setMode('bounce')">BOUNCE</button>
+    </div>
+    <div class="srow">
+      <div class="shdr"><span>Speed</span><span class="sval" id="spdVal">3</span></div>
+      <input type="range" id="spdSlider" min="1" max="10" value="3">
+    </div>
   </div>
-  <div class="mode-row">
-    <button class="mode-btn" id="modeSingle" onclick="setMode('single')">ONCE</button>
-    <button class="mode-btn on" id="modeLoop" onclick="setMode('loop')">LOOP</button>
-    <button class="mode-btn" id="modeBounce" onclick="setMode('bounce')">BOUNCE</button>
-  </div>
-  <div class="speed-row">
-    <span>SPEED</span>
-    <input type="range" id="speedSlider" min="1" max="20" value="4">
-    <span id="speedVal">4</span>
-  </div>
-</div>
 
-<!-- STATS -->
-<div class="panel">
-  <div class="panel-label">Live Statistics</div>
-  <div class="stat-grid">
-    <div class="stat-box"><div class="stat-label">Max Artifact</div><div class="stat-val err" id="statArt">—</div></div>
-    <div class="stat-box"><div class="stat-label">RMS Error</div><div class="stat-val warn" id="statRms">—</div></div>
-    <div class="stat-box"><div class="stat-label">Scan %</div><div class="stat-val" id="statPct">0%</div></div>
-    <div class="stat-box"><div class="stat-label">Tip Type</div><div class="stat-val" id="statTip" style="font-size:9px;">—</div></div>
+  <div class="panel">
+    <div class="plabel">Stats</div>
+    <div class="sgrid">
+      <div class="sbox"><div class="slbl">Max Artifact</div><div class="snum e" id="stArt">—</div></div>
+      <div class="sbox"><div class="slbl">RMS Error</div><div class="snum w" id="stRms">—</div></div>
+    </div>
   </div>
-</div>
-
-<div class="note-box">
-  <strong>INVERT GUIDE</strong><br>
-  <b>Inv Z</b>: flip surface heights<br>
-  <b>Mirror X</b>: flip left–right<br>
-  <b>Inv Tip</b>: negate tip profile<br>
-  <b>Rev Scan</b>: scan right→left<br>
-  <b>Inv Errors</b>: flip error colormap<br>
-  <b>Erosion</b>: dilation→erosion<br>
-  <b>Double Tip</b>: ghost artifact demo<br>
-  <b>Asymmetric</b>: tilt-induced error
-</div>
 
 </div><!-- sidebar -->
 
-<!-- ══ MAIN ══ -->
-<div class="main-col">
-  <div class="canvas-panel"><div class="cp-label">SCAN PROFILE</div>
-    <canvas id="mainCanvas" width="930" height="310"></canvas></div>
-  <div class="legend-row">
-    <div class="leg"><div class="leg-line" style="background:#4fc3f7"></div><span>True Surface</span></div>
-    <div class="leg"><div class="leg-line" style="background:#ff7043"></div><span>Measured</span></div>
-    <div class="leg"><div class="leg-line" style="background:rgba(255,80,20,0.35);height:7px"></div><span>Artifact Zone</span></div>
-    <span id="cursorInfo">Hover to inspect</span>
-  </div>
-  <div class="canvas-panel"><div class="cp-label">ARTIFACT ERROR MAP</div>
-    <canvas id="errCanvas" width="930" height="90"></canvas></div>
-  <div class="canvas-panel"><div class="cp-label">FORCE–DISTANCE CURVE</div>
-    <canvas id="fdCanvas" width="930" height="150"></canvas></div>
-  <div class="info-bar" id="infoBar">Ready — press PLAY</div>
+<!-- MAIN -->
+<div class="main">
+  <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
+  <canvas class="main-cv" id="cv1" width="700" height="70"></canvas>
+  <canvas class="main-cv" id="cv2" width="700" height="120"></canvas>
+  <div class="ibar" id="ibar">Ready — press PLAY</div>
 </div>
-</div>
+
+</div><!-- wrap -->
 
 <script>
-// ══════════════════════════════════════════
-//  THEME
-// ══════════════════════════════════════════
-(function(){
-  const s=localStorage.getItem('afm-theme')||'dark';
-  document.documentElement.setAttribute('data-theme',s);
-  document.addEventListener('DOMContentLoaded',()=>{
-    const b=document.getElementById('themeToggle');
-    if(b)b.textContent=s==='dark'?'◑ LIGHT':'◑ DARK';
-  });
-})();
-function toggleTheme(){
-  const c=document.documentElement.getAttribute('data-theme')||'dark';
-  const n=c==='dark'?'light':'dark';
-  document.documentElement.setAttribute('data-theme',n);
-  localStorage.setItem('afm-theme',n);
-  const b=document.getElementById('themeToggle');
-  if(b)b.textContent=n==='dark'?'◑ LIGHT':'◑ DARK';
-  if(!playing)render();
-}
-function cv(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
-
-// ══════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  CONSTANTS
-// ══════════════════════════════════════════
-const NX=930, X_NM=240, Y_NM=95, dxNm=X_NM/NX;
-const TIP_R=Math.ceil(55/dxNm);
-const surface=new Float32Array(NX), measured=new Float32Array(NX);
-const tipProf=new Float32Array(2*TIP_R+1);
-const CW=930,CH=310,ML=46,MR=10,MT=50,MB=28;
-const PW=CW-ML-MR, PH=CH-MT-MB;
-const xC=i=>ML+(i/NX)*PW;
-const yC=nm=>MT+PH-(nm/Y_NM)*PH;
-const ECW=930,ECH=90,EML=46,EMR=10,EMT=18,EMB=14;
-const EPW=ECW-EML-EMR, EPH=ECH-EMT-EMB;
-const exC=i=>EML+(i/NX)*EPW;
-const FCW=930,FCH=150,FML=54,FMR=18,FMT=22,FMB=28;
-const FPW=FCW-FML-FMR, FPH=FCH-FMT-FMB;
-
-let currentTip='sharp_cone', currentSurf='sine';
-
-// ══════════════════════════════════════════
-//  INVERT STATE
-// ══════════════════════════════════════════
-const INV={invZ:false,mirrorX:false,invTip:false,revScan:false,invErr:false,erosion:false};
-function toggleInvert(k){
-  INV[k]=!INV[k];
-  const el=document.getElementById('tgl_'+k);
-  if(el)el.classList.toggle('on',INV[k]);
-  buildTip(currentTip); buildSurface(currentSurf);
-  applyNoiseAndTransforms(); computeMeasured();
-  reset(); if(!playing)render();
+// ═══════════════════════════════════════════════════
+const NX=700, X_NM=240, Y_NM=80, DX=X_NM/NX;
+const CV0H=520;  // canvas 0 pixel height — doubled
+const ML=44,MR=8,MT=36,MB=20;
+const PW=NX-ML-MR, PH=CV0H-MT-MB;
+function xC(i){return ML+i/NX*PW;}
+// clamp yC so values never draw outside the plot
+function yC(nm){
+  const y=MT+PH-(nm/Y_NM)*PH;
+  return Math.max(MT, Math.min(MT+PH, y));
 }
 
-// ══════════════════════════════════════════
-//  SCAN MODE
-// ══════════════════════════════════════════
-let scanMode='loop'; // single | loop | bounce
-let bounceDir=1;
-function setMode(m){
-  scanMode=m;
-  ['single','loop','bounce'].forEach(x=>{
-    document.getElementById('mode'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('on',x===m);
-  });
-}
+// Error map
+const EML=44,EMR=8,EMT=12,EMB=10;
+const EPW=NX-EML-EMR, EPH=70-EMT-EMB;
+function exC(i){return EML+i/NX*EPW;}
 
-// ══════════════════════════════════════════
-//  PARAM DEFS
-// ══════════════════════════════════════════
-const TIP_DEFS={
-  sharp_cone: [{id:'angle',label:'Half-angle α',min:3,max:70,step:1,val:15,unit:'°'}],
-  blunt_cone: [{id:'angle',label:'Half-angle α',min:3,max:80,step:1,val:35,unit:'°'}],
-  sphere:     [{id:'R',label:'Radius R',min:3,max:50,step:1,val:20,unit:'nm'}],
-  hyperboloid:[{id:'a',label:'Sharpness a',min:2,max:30,step:1,val:7,unit:'nm'}],
-  flat:       [{id:'R',label:'Radius R',min:3,max:50,step:1,val:18,unit:'nm'}],
-  inv_sphere: [{id:'R',label:'Bowl Radius',min:3,max:50,step:1,val:20,unit:'nm'}],
-  asymmetric: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:20,unit:'°'},
-               {id:'tilt', label:'Tilt',min:-40,max:40,step:1,val:15,unit:'°'}],
-  double_tip: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:15,unit:'°'},
-               {id:'gap',  label:'Tip gap',min:5,max:80,step:1,val:30,unit:'nm'}],
+// FD
+const FML=48,FMR=12,FMT=18,FMB=22;
+const FPW=NX-FML-FMR, FPH=120-FMT-FMB;
+
+const surface  = new Float32Array(NX);
+const measured = new Float32Array(NX);
+const rawSurf  = new Float32Array(NX);
+const TIP_R    = Math.ceil(50/DX);
+const tipProf  = new Float32Array(2*TIP_R+1);
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let currentTip  = 'sharp_cone';
+let currentSurf = 'sine';
+let scanIdx = 0, playing = false, raf = null;
+let bounceDir = 1, scanMode = 'loop';
+let noiseSeed = 42;
+const INV = {invZ:false,mirrorX:false,invTip:false,revScan:false,erosion:false,invErr:false};
+
+// ═══════════════════════════════════════════════════
+//  TIP PARAMETER DEFINITIONS
+// ═══════════════════════════════════════════════════
+const TIP_DEFS = {
+  sharp_cone:  [{id:'angle', label:'Half-angle α', min:3,  max:70, step:1,  val:15, unit:'°'}],
+  blunt_cone:  [{id:'angle', label:'Half-angle α', min:3,  max:80, step:1,  val:35, unit:'°'}],
+  sphere:      [{id:'R',     label:'Radius R',     min:3,  max:50, step:1,  val:20, unit:'nm'}],
+  hyperboloid: [{id:'a',     label:'Sharpness a',  min:2,  max:30, step:1,  val:7,  unit:'nm'}],
+  flat:        [{id:'R',     label:'Radius R',     min:3,  max:50, step:1,  val:18, unit:'nm'}],
+  inv_sphere:  [{id:'R',     label:'Bowl Radius',  min:3,  max:50, step:1,  val:20, unit:'nm'}],
+  asymmetric:  [{id:'angle', label:'Half-angle α', min:3,  max:60, step:1,  val:20, unit:'°'},
+                {id:'tilt',  label:'Tilt φ',       min:-40,max:40, step:1,  val:15, unit:'°'}],
+  double_tip:  [{id:'angle', label:'Half-angle α', min:3,  max:60, step:1,  val:15, unit:'°'},
+                {id:'gap',   label:'Tip gap',      min:5,  max:80, step:1,  val:30, unit:'nm'}],
+  sphere_cone: [{id:'R',     label:'Apex Radius',  min:2,  max:40, step:1,  val:10, unit:'nm'},
+                {id:'angle', label:'Cone angle α', min:3,  max:60, step:1,  val:20, unit:'°'}],
 };
-const SURF_DEFS={
-  sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm'}],
-  step:     [{id:'height',label:'Height',min:5,max:75,step:1,val:28,unit:'nm'}],
-  spike:    [{id:'height',label:'Height',min:5,max:75,step:1,val:38,unit:'nm'},{id:'width',label:'Width',min:3,max:80,step:1,val:35,unit:'nm'}],
-  hemisphere:[{id:'R',label:'Radius R',min:5,max:60,step:1,val:28,unit:'nm'}],
-  pit:      [{id:'R',label:'Radius R',min:5,max:60,step:1,val:28,unit:'nm'}],
-  trench:   [{id:'period',label:'Period',min:15,max:120,step:5,val:65,unit:'nm'},{id:'depth',label:'Depth',min:5,max:75,step:1,val:30,unit:'nm'}],
-  rough:    [{id:'scale',label:'Amplitude',min:1,max:45,step:1,val:10,unit:'×0.3'}],
-  dna:      [{id:'amp',label:'Amplitude',min:5,max:50,step:1,val:22,unit:'nm'},{id:'period',label:'Period',min:20,max:100,step:5,val:50,unit:'nm'}],
-  chirp:    [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:18,unit:'nm'},{id:'chirpRate',label:'Chirp Rate',min:1,max:20,step:1,val:8,unit:'×'}],
-  lattice:  [{id:'amp',label:'Height',min:2,max:30,step:1,val:10,unit:'nm'},{id:'spacing',label:'Spacing',min:8,max:60,step:2,val:20,unit:'nm'}],
+const SURF_DEFS = {
+  sine:      [{id:'amp',   label:'Amplitude', min:2,  max:45, step:1, val:18, unit:'nm'},
+              {id:'period',label:'Period',    min:10, max:120,step:5, val:55, unit:'nm'}],
+  step:      [{id:'height',label:'Height',   min:5,  max:60, step:1, val:28, unit:'nm'}],
+  spike:     [{id:'height',label:'Height',   min:5,  max:70, step:1, val:38, unit:'nm'},
+              {id:'width', label:'Width',    min:5,  max:60, step:1, val:20, unit:'nm'}],
+  hemisphere:[{id:'R',     label:'Radius R', min:5,  max:60, step:1, val:28, unit:'nm'}],
+  pit:       [{id:'R',     label:'Radius R', min:5,  max:60, step:1, val:28, unit:'nm'}],
+  trench:    [{id:'period',label:'Period',   min:15, max:120,step:5, val:65, unit:'nm'},
+              {id:'depth', label:'Depth',   min:5,  max:75, step:1, val:30, unit:'nm'}],
+  rough:     [{id:'scale', label:'Scale',   min:1,  max:45, step:1, val:10, unit:''}],
+  dna:       [{id:'amp',   label:'Amplitude',min:5,max:50,  step:1, val:22, unit:'nm'},
+              {id:'period',label:'Period',  min:20, max:100,step:5, val:50, unit:'nm'}],
+  chirp:     [{id:'amp',   label:'Amplitude',min:2,max:40,  step:1, val:18, unit:'nm'},
+              {id:'rate',  label:'Rate',    min:1,  max:20, step:1, val:8,  unit:'×'}],
+  lattice:   [{id:'amp',   label:'Height',  min:2,  max:30, step:1, val:10, unit:'nm'},
+              {id:'spacing',label:'Spacing',min:8,  max:60, step:2, val:20, unit:'nm'}],
 };
+
+// Initialise param stores from defaults
 const tipP={}, surfP={};
-for(const[k,d]of Object.entries(TIP_DEFS))  tipP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
-for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
+for(const [k,defs] of Object.entries(TIP_DEFS))
+  tipP[k] = Object.fromEntries(defs.map(d=>[d.id,d.val]));
+for(const [k,defs] of Object.entries(SURF_DEFS))
+  surfP[k] = Object.fromEntries(defs.map(d=>[d.id,d.val]));
 
-// ══════════════════════════════════════════
-//  SLIDERS UI
-// ══════════════════════════════════════════
-function makeSliders(container,defs,store,onChange){
-  container.innerHTML='';
+// ═══════════════════════════════════════════════════
+//  SLIDER UI
+// ═══════════════════════════════════════════════════
+function makeSliders(containerId, defs, store, onChange){
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
   (defs||[]).forEach(d=>{
-    const row=document.createElement('div'); row.className='slider-row';
-    row.innerHTML=`<div class="slider-header"><span>${d.label}</span><span class="slider-val" id="sv_${d.id}">${store[d.id]}${d.unit}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
-    container.appendChild(row);
-    row.querySelector('input').addEventListener('input',function(){
-      store[d.id]=parseFloat(this.value);
-      document.getElementById('sv_'+d.id).textContent=store[d.id]+d.unit;
+    const row = document.createElement('div');
+    row.className = 'srow';
+    row.innerHTML = `<div class="shdr"><span>${d.label}</span><span class="sval" id="sv_${d.id}">${store[d.id]}${d.unit}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
+    el.appendChild(row);
+    row.querySelector('input').addEventListener('input', function(){
+      store[d.id] = parseFloat(this.value);
+      document.getElementById('sv_'+d.id).textContent = store[d.id]+d.unit;
       onChange();
     });
   });
 }
 function refreshTipSliders(){
-  makeSliders(document.getElementById('tipSliders'),TIP_DEFS[currentTip],tipP[currentTip],
-    ()=>{buildTip(currentTip);computeMeasured();drawTipPreview();if(!playing)render();});
+  makeSliders('tipSliders', TIP_DEFS[currentTip], tipP[currentTip]||{}, ()=>{
+    buildTip(); computeMeas(); drawPreview(); if(!playing) render();
+  });
 }
 function refreshSurfSliders(){
-  makeSliders(document.getElementById('surfSliders'),SURF_DEFS[currentSurf],surfP[currentSurf],
-    ()=>{buildSurface(currentSurf);applyNoiseAndTransforms();computeMeasured();reset();});
+  makeSliders('surfSliders', SURF_DEFS[currentSurf], surfP[currentSurf]||{}, ()=>{
+    buildSurf(); applyTransforms(); computeMeas(); if(!playing) render();
+  });
 }
 
-// ══════════════════════════════════════════
-//  TIP PROFILES
-// ══════════════════════════════════════════
-const rawSurf=new Float32Array(NX);
-
-function buildTip(type){
-  const p=tipP[type]||{};
-  for(let i=0;i<=2*TIP_R;i++){
-    const r=Math.abs(i-TIP_R)*dxNm;
-    switch(type){
-      case 'sharp_cone':case 'blunt_cone':
-        tipProf[i]=r/Math.tan((p.angle||15)*Math.PI/180); break;
-      case 'sphere':{const R=p.R||20; tipProf[i]=r<R?R-Math.sqrt(R*R-r*r):1e9; break;}
-      case 'hyperboloid':{const a=p.a||7; tipProf[i]=Math.sqrt(r*r+a*a)-a; break;}
-      case 'flat':{const R=p.R||18; tipProf[i]=r<=R?0:1e9; break;}
-      case 'inv_sphere':{const R=p.R||20; tipProf[i]=r<R?Math.sqrt(R*R-r*r)-R:1e9; break;}
-      case 'asymmetric':{
-        const alpha=(p.angle||20)*Math.PI/180;
-        const tilt=(p.tilt||15)*Math.PI/180;
-        const signed=(i-TIP_R)*dxNm;
-        tipProf[i]=Math.abs(signed)/Math.tan(alpha) + signed*Math.tan(tilt);
-        if(tipProf[i]<0)tipProf[i]=0;
-        break;}
-      case 'double_tip':{
-        const alpha=(p.angle||15)*Math.PI/180;
-        const g=(p.gap||30)/2;
-        const cone1=Math.abs(r)/Math.tan(alpha);
-        const signed=(i-TIP_R)*dxNm;
-        const cone2=Math.abs(signed-g)/Math.tan(alpha);
-        const cone3=Math.abs(signed+g)/Math.tan(alpha);
-        tipProf[i]=Math.min(cone2,cone3);
-        break;}
-    }
-    // Invert tip: negate profile (erosion-style with sign flip)
-    if(INV.invTip && tipProf[i]<1e6) tipProf[i]=-tipProf[i];
+// ═══════════════════════════════════════════════════
+//  TIP PROFILE  T(r)
+// ═══════════════════════════════════════════════════
+function tipT(r){
+  const p = tipP[currentTip]||{};
+  switch(currentTip){
+    case 'sharp_cone': case 'blunt_cone':
+      return r / Math.tan((p.angle||15)*Math.PI/180);
+    case 'sphere':{const R=p.R||20; return r<R ? R-Math.sqrt(R*R-r*r) : Infinity;}
+    case 'hyperboloid':{const a=p.a||7; return Math.sqrt(r*r+a*a)-a;}
+    case 'flat':{const R=p.R||18; return r<=R ? 0 : Infinity;}
+    case 'inv_sphere':{const R=p.R||20; return r<R ? Math.sqrt(R*R-r*r)-R : Infinity;}
+    case 'asymmetric':{
+      const a=(p.angle||20)*Math.PI/180, tl=(p.tilt||15)*Math.PI/180;
+      return Math.max(0, r/Math.tan(a) + r*Math.tan(tl));}
+    case 'double_tip':{
+      const a=(p.angle||15)*Math.PI/180, g=(p.gap||30)/2;
+      return Math.min(Math.abs(r-g), Math.abs(r+g)) / Math.tan(a);}
+    case 'sphere_cone':{
+      const R=p.R||10, a=(p.angle||20)*Math.PI/180;
+      const r_t=R*Math.sin(a), z_t=R*(1-Math.cos(a));
+      return r<=r_t ? R-Math.sqrt(Math.max(0,R*R-r*r)) : z_t+(r-r_t)/Math.tan(a);}
+    default: return r;
   }
 }
 
-// ══════════════════════════════════════════
-//  SURFACE PROFILES
-// ══════════════════════════════════════════
-let noiseSeed=42;
-function seededRand(i){
-  let x=Math.sin(i*127.1+noiseSeed*311.7)*43758.5453;
-  return x-Math.floor(x);
+function buildTip(){
+  for(let j=0;j<=2*TIP_R;j++){
+    const r=Math.abs(j-TIP_R)*DX;
+    tipProf[j] = tipT(r);
+  }
 }
 
-function buildSurface(type){
-  const base=14,p=surfP[type]||{};
+// ═══════════════════════════════════════════════════
+//  SURFACE BUILD
+// ═══════════════════════════════════════════════════
+function rand(i){let x=Math.sin(i*127.1+noiseSeed*311.7)*43758.5453;return x-Math.floor(x);}
+
+function buildSurf(){
+  const p=surfP[currentSurf]||{}, base=25;
   for(let i=0;i<NX;i++){
-    const x=i*dxNm;
-    switch(type){
-      case 'sine':{const a=p.amp||18,T=p.period||55; rawSurf[i]=base+a*Math.sin(2*Math.PI*x/T); break;}
-      case 'step':{rawSurf[i]=i<NX*0.48?base:base+(p.height||28); break;}
-      case 'spike':{const h=p.height||38,hw=(p.width||35)/dxNm,d=Math.abs(i-NX*.5); rawSurf[i]=d<hw?base+h*(1-d/hw):base; break;}
-      case 'hemisphere':{const R=p.R||28,cx=X_NM/2,dx2=x-cx; rawSurf[i]=Math.abs(dx2)<R?base+Math.sqrt(R*R-dx2*dx2):base; break;}
-      case 'pit':{const R=p.R||28,cx=X_NM/2,tH=base+R,dx2=x-cx; rawSurf[i]=Math.abs(dx2)<R?tH-Math.sqrt(R*R-dx2*dx2):tH; break;}
-      case 'trench':{const T=p.period||65,dep=p.depth||30; rawSurf[i]=(x%T)/T<0.45?base:base+dep; break;}
-      case 'rough':{const sc=(p.scale||10)*.3; rawSurf[i]=base+sc*4.5+sc*3*Math.sin(2*Math.PI*x/48+.9)+sc*1.7*Math.sin(2*Math.PI*x/22+2.1)+sc*Math.sin(2*Math.PI*x/11+1.4)+sc*.5*Math.sin(2*Math.PI*x/5.5+3); break;}
-      case 'dna':{const a=p.amp||22,T=p.period||50; rawSurf[i]=base+a*Math.abs(Math.sin(Math.PI*x/T)); break;}
-      case 'chirp':{const a=p.amp||18,cr=(p.chirpRate||8)*0.0002; rawSurf[i]=base+a*Math.sin(2*Math.PI*x*(0.015+cr*x)); break;}
-      case 'lattice':{const a=p.amp||10,sp=p.spacing||20; rawSurf[i]=base+a*(0.5+0.5*Math.cos(2*Math.PI*x/sp))*(0.5+0.5*Math.cos(2*Math.PI*x/(sp*1.15))); break;}
+    const x=i*DX, cx=X_NM/2, dx=x-cx;
+    switch(currentSurf){
+      case 'sine':    rawSurf[i]=base+(p.amp||15)*Math.sin(2*Math.PI*x/(p.period||55)); break;
+      case 'step':    rawSurf[i]=i<NX*0.48 ? base : base+(p.height||22); break;
+      case 'spike':{  const h=p.height||30, w=(p.width||20)/DX;
+                      rawSurf[i]=Math.abs(i-NX/2)<w ? base+h*(1-Math.abs(i-NX/2)/w) : base; break;}
+      case 'hemisphere':{const R=p.R||22; rawSurf[i]=Math.abs(dx)<R ? base+Math.sqrt(R*R-dx*dx) : base; break;}
+      case 'pit':{    const R=p.R||22; rawSurf[i]=Math.abs(dx)<R ? (base+R)-Math.sqrt(R*R-dx*dx) : base+R; break;}
+      case 'trench':  rawSurf[i]=(x%(p.period||65))/(p.period||65)<0.45 ? base : base+(p.depth||22); break;
+      case 'rough':{  const s=(p.scale||10)*0.25;
+                      rawSurf[i]=base+s*4+s*3*Math.sin(2*Math.PI*x/48+.9)+s*2*Math.sin(2*Math.PI*x/22+2.1)+s*Math.sin(2*Math.PI*x/11+1.4); break;}
+      case 'dna':     rawSurf[i]=base+(p.amp||18)*Math.abs(Math.sin(Math.PI*x/(p.period||50))); break;
+      case 'chirp':   rawSurf[i]=base+(p.amp||15)*Math.sin(2*Math.PI*x*(0.015+(p.rate||8)*0.0002*x)); break;
+      case 'lattice':{const sp=p.spacing||20; rawSurf[i]=base+(p.amp||10)*(0.5+0.5*Math.cos(2*Math.PI*x/sp))*(0.5+0.5*Math.cos(2*Math.PI*x/(sp*1.15))); break;}
+      default: rawSurf[i]=base;
     }
   }
 }
 
-function applyNoiseAndTransforms(){
-  const noiseAmp=parseFloat(document.getElementById('noiseSlider').value)||0;
-  // Copy raw -> surface, apply noise
-  for(let i=0;i<NX;i++){
-    surface[i]=rawSurf[i]+(noiseAmp>0?(seededRand(i)-0.5)*2*noiseAmp:0);
-  }
-  // Invert Z
+function applyTransforms(){
+  const noise=parseFloat(document.getElementById('noiseSlider').value)||0;
+  for(let i=0;i<NX;i++) surface[i]=rawSurf[i]+(noise>0?(rand(i)-.5)*2*noise:0);
   if(INV.invZ){
     let mn=Infinity,mx=-Infinity;
     for(let i=0;i<NX;i++){mn=Math.min(mn,surface[i]);mx=Math.max(mx,surface[i]);}
     for(let i=0;i<NX;i++) surface[i]=mn+mx-surface[i];
   }
-  // Mirror X
   if(INV.mirrorX){
     const tmp=surface.slice();
     for(let i=0;i<NX;i++) surface[i]=tmp[NX-1-i];
   }
 }
 
-// ══════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  MINKOWSKI DILATION / EROSION
-// ══════════════════════════════════════════
-function computeMeasured(){
-  if(INV.erosion){
-    // Erosion: min over j of (surface[i+j] - tipProf[j])
+// ═══════════════════════════════════════════════════
+function computeMeas(){
+  const doErosion = INV.erosion !== INV.invTip;
+  if(doErosion){
     for(let i=0;i<NX;i++){
       let best=Infinity;
-      const lo=Math.max(-TIP_R,-i),hi=Math.min(TIP_R,NX-1-i);
-      for(let j=lo;j<=hi;j++){
-        const d=tipProf[j+TIP_R]; if(d>1e6)continue;
-        const v=surface[i+j]-d; if(v<best)best=v;
+      for(let j=Math.max(-TIP_R,-i);j<=Math.min(TIP_R,NX-1-i);j++){
+        const d=tipProf[j+TIP_R]; if(d>1e6) continue;
+        const v=surface[i+j]-d; if(v<best) best=v;
       }
-      measured[i]=best;
+      measured[i]=Math.max(0, Math.min(Y_NM-2, best));
     }
   } else {
-    // Dilation: max over j of (surface[i+j] + tipProf[j])
     for(let i=0;i<NX;i++){
       let best=-Infinity;
-      const lo=Math.max(-TIP_R,-i),hi=Math.min(TIP_R,NX-1-i);
-      for(let j=lo;j<=hi;j++){
-        const d=tipProf[j+TIP_R]; if(d>1e6)continue;
-        const v=surface[i+j]+d; if(v>best)best=v;
+      for(let j=Math.max(-TIP_R,-i);j<=Math.min(TIP_R,NX-1-i);j++){
+        const d=tipProf[j+TIP_R]; if(d>1e6) continue;
+        const v=surface[i+j]+d; if(v>best) best=v;
       }
-      measured[i]=best;
+      measured[i]=Math.max(0, Math.min(Y_NM-2, best));
     }
   }
 }
 
-// ══════════════════════════════════════════
-//  RANDOMIZE
-// ══════════════════════════════════════════
-function randomizeAll(){
-  const tips=Object.keys(TIP_DEFS);
-  const surfs=Object.keys(SURF_DEFS);
-  currentTip=tips[Math.floor(Math.random()*tips.length)];
-  currentSurf=surfs[Math.floor(Math.random()*surfs.length)];
-  // Random params
-  for(const d of TIP_DEFS[currentTip]||[]){
-    const range=d.max-d.min;
-    tipP[currentTip][d.id]=Math.round((d.min+Math.random()*range)/d.step)*d.step;
-  }
-  for(const d of SURF_DEFS[currentSurf]||[]){
-    const range=d.max-d.min;
-    surfP[currentSurf][d.id]=Math.round((d.min+Math.random()*range)/d.step)*d.step;
-  }
-  // Random noise
-  document.getElementById('noiseSlider').value=Math.random()*5;
-  document.getElementById('noiseVal').textContent=(+document.getElementById('noiseSlider').value).toFixed(1)+' nm';
-  noiseSeed=Math.floor(Math.random()*1000);
-  // Random inversions
-  ['invZ','mirrorX','invTip','revScan','invErr','erosion'].forEach(k=>{
-    INV[k]=Math.random()<0.25;
-    const el=document.getElementById('tgl_'+k);
-    if(el)el.classList.toggle('on',INV[k]);
-  });
-  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.toggle('active',b.dataset.tip===currentTip));
-  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.toggle('active',b.dataset.surf===currentSurf));
-  refreshTipSliders(); refreshSurfSliders();
-  buildTip(currentTip); buildSurface(currentSurf); applyNoiseAndTransforms(); computeMeasured();
-  drawTipPreview(); reset();
-}
+// ═══════════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════════
+const cv0=document.getElementById('cv0');
+const cx0=cv0.getContext('2d');
+const cv1=document.getElementById('cv1');
+const cx1=cv1.getContext('2d');
+const cv2=document.getElementById('cv2');
+const cx2=cv2.getContext('2d');
 
-// ══════════════════════════════════════════
-//  DRAW — MAIN CANVAS
-// ══════════════════════════════════════════
-const mainCanvas=document.getElementById('mainCanvas');
-const ctx=mainCanvas.getContext('2d');
+function getIdx(raw){ return INV.revScan ? NX-1-raw : raw; }
 
-function drawMainGrid(){
-  ctx.clearRect(0,0,CW,CH);
-  const isDark=document.documentElement.getAttribute('data-theme')!=='light';
+// ── Main scan panel ──────────────────────────────
+function drawMain(){
+  cx0.clearRect(0,0,NX,CV0H);
+  cx0.fillStyle='#040608';
+  cx0.fillRect(0,0,NX,CV0H);
+
+  // Grid
   for(let y=0;y<=Y_NM;y+=10){
-    ctx.strokeStyle=y===0?cv('--grid1'):cv('--grid2'); ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(ML,yC(y));ctx.lineTo(CW-MR,yC(y));ctx.stroke();
+    cx0.strokeStyle=y===0?'#182434':'#0c1820';
+    cx0.lineWidth=1;
+    cx0.beginPath();cx0.moveTo(ML,yC(y));cx0.lineTo(NX-MR,yC(y));cx0.stroke();
   }
   for(let x=0;x<=X_NM;x+=40){
-    ctx.strokeStyle=cv('--grid2'); ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(xC(x/dxNm),MT);ctx.lineTo(xC(x/dxNm),MT+PH);ctx.stroke();
+    cx0.strokeStyle='#0c1820'; cx0.lineWidth=1;
+    const px=xC(x/DX);
+    cx0.beginPath();cx0.moveTo(px,MT);cx0.lineTo(px,MT+PH);cx0.stroke();
   }
-  ctx.strokeStyle=cv('--border2'); ctx.lineWidth=1; ctx.strokeRect(ML,MT,PW,PH);
-  ctx.fillStyle=cv('--axis'); ctx.font='8px Courier New'; ctx.textAlign='right';
-  for(let y=0;y<=Y_NM;y+=10)ctx.fillText(y,ML-3,yC(y)+3);
-  ctx.textAlign='center';
-  for(let x=0;x<=X_NM;x+=40)ctx.fillText(x+'nm',xC(x/dxNm),MT+PH+14);
-  ctx.save();ctx.translate(12,MT+PH/2);ctx.rotate(-Math.PI/2);
-  ctx.fillStyle=cv('--axis');ctx.font='8px Courier New';ctx.textAlign='center';
-  ctx.fillText('Height (nm)',0,0);ctx.restore();
+  cx0.strokeStyle='#1a2e3e';cx0.lineWidth=1;
+  cx0.strokeRect(ML,MT,PW,PH);
+
+  // Axis labels
+  cx0.fillStyle='#304a58';cx0.font='8px Courier New';cx0.textAlign='right';
+  for(let y=0;y<=Y_NM;y+=10) cx0.fillText(y,ML-3,yC(y)+3);
+  cx0.textAlign='center';
+  for(let x=0;x<=X_NM;x+=40) cx0.fillText(x+'nm',xC(x/DX),MT+PH+14);
+  cx0.save();cx0.translate(12,MT+PH/2);cx0.rotate(-Math.PI/2);
+  cx0.fillStyle='#304a58';cx0.font='8px Courier New';cx0.textAlign='center';
+  cx0.fillText('Height (nm)',0,0);cx0.restore();
+
   // Mode badge
-  ctx.fillStyle=cv('--accent');ctx.font='7px Courier New';ctx.textAlign='left';
-  const mode=INV.erosion?'EROSION MODE':'DILATION MODE';
-  ctx.fillText(mode,ML+4,MT-6);
-  if(INV.invZ){ctx.fillStyle=cv('--accent3');ctx.fillText('Z⁻¹',ML+110,MT-6);}
-  if(INV.mirrorX){ctx.fillStyle=cv('--accent3');ctx.fillText('↔',ML+140,MT-6);}
-  if(INV.invTip){ctx.fillStyle=cv('--accent4');ctx.fillText('TIP⁻¹',ML+160,MT-6);}
-  if(INV.revScan){ctx.fillStyle=cv('--accent2');ctx.fillText('←SCAN',ML+205,MT-6);}
-}
+  cx0.fillStyle='#00e5b0';cx0.font='7px Courier New';cx0.textAlign='left';
+  cx0.fillText(INV.erosion?'EROSION':'DILATION',ML+4,MT-6);
+  if(INV.invTip){cx0.fillStyle='#c97aff';cx0.fillText('TIP⁻¹',ML+90,MT-6);}
+  if(INV.revScan){cx0.fillStyle='#2ea8ff';cx0.fillText('←SCAN',ML+140,MT-6);}
 
-function drawArtifactFill(upTo){
-  if(upTo<2)return;
-  const g=ctx.createLinearGradient(ML,MT,ML,MT+PH);
-  g.addColorStop(0,'rgba(255,80,30,0.25)');g.addColorStop(1,'rgba(255,80,30,0.03)');
-  ctx.beginPath();
-  const idxs=getIdxOrder(upTo);
-  idxs.forEach((i,k)=>{k===0?ctx.moveTo(xC(i),yC(measured[i])):ctx.lineTo(xC(i),yC(measured[i]));});
-  [...idxs].reverse().forEach(i=>ctx.lineTo(xC(i),yC(surface[i])));
-  ctx.closePath();ctx.fillStyle=g;ctx.fill();
-}
+  cx0.save();cx0.beginPath();cx0.rect(ML,MT,PW,PH);cx0.clip();
 
-function getIdxOrder(upTo){
-  // returns scan indices in display order, accounting for reverse scan
-  if(INV.revScan){
-    // reverse: scan from NX-1 down to NX-1-upTo
-    const arr=[];
-    for(let k=0;k<upTo;k++) arr.push(NX-1-k);
-    return arr;
+  // True surface fill
+  cx0.beginPath();
+  cx0.moveTo(xC(0),yC(surface[0]));
+  for(let i=1;i<NX;i++) cx0.lineTo(xC(i),yC(surface[i]));
+  cx0.lineTo(NX-MR,MT+PH);cx0.lineTo(ML,MT+PH);cx0.closePath();
+  cx0.fillStyle='rgba(0,229,176,0.08)';cx0.fill();
+
+  // True surface line
+  cx0.beginPath();cx0.strokeStyle='#00e5b0';cx0.lineWidth=1.8;
+  cx0.moveTo(xC(0),yC(surface[0]));
+  for(let i=1;i<NX;i++) cx0.lineTo(xC(i),yC(surface[i]));
+  cx0.stroke();
+
+  // Measured surface (up to scanIdx)
+  if(scanIdx>1){
+    // Artifact fill
+    cx0.beginPath();
+    for(let i=0;i<scanIdx;i++){
+      const ri=getIdx(i);
+      i===0 ? cx0.moveTo(xC(getIdx(0)),yC(measured[getIdx(0)])) : cx0.lineTo(xC(ri),yC(measured[ri]));
+    }
+    for(let i=scanIdx-1;i>=0;i--) cx0.lineTo(xC(getIdx(i)),yC(surface[getIdx(i)]));
+    cx0.closePath();
+    const artG=cx0.createLinearGradient(ML,MT,ML,MT+PH);
+    artG.addColorStop(0,'rgba(255,107,53,0.18)');artG.addColorStop(1,'rgba(255,107,53,0.02)');
+    cx0.fillStyle=artG;cx0.fill();
+
+    // Measured line (glow)
+    cx0.beginPath();cx0.strokeStyle='rgba(255,107,53,0.18)';cx0.lineWidth=6;
+    cx0.moveTo(xC(getIdx(0)),yC(measured[getIdx(0)]));
+    for(let i=1;i<scanIdx;i++) cx0.lineTo(xC(getIdx(i)),yC(measured[getIdx(i)]));
+    cx0.stroke();
+    cx0.beginPath();cx0.strokeStyle='#ff7043';cx0.lineWidth=1.8;
+    cx0.moveTo(xC(getIdx(0)),yC(measured[getIdx(0)]));
+    for(let i=1;i<scanIdx;i++) cx0.lineTo(xC(getIdx(i)),yC(measured[getIdx(i)]));
+    cx0.stroke();
   }
-  const arr=[];for(let i=0;i<upTo;i++)arr.push(i);return arr;
+
+  cx0.restore();  // remove clip
+
+  // Tip body — drawn AFTER restore so no clip issues, own save/clip inside
+  if(scanIdx>0) drawTipShape(cx0, Math.min(scanIdx-1, NX-1));
 }
 
-function drawSurface(){
-  ctx.beginPath();
-  for(let i=0;i<NX;i++){const x=xC(i),y=yC(surface[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
-  ctx.lineTo(xC(NX-1),yC(0));ctx.lineTo(xC(0),yC(0));ctx.closePath();
-  ctx.fillStyle='rgba(79,195,247,0.05)';ctx.fill();
-  ctx.beginPath();ctx.strokeStyle='#4fc3f7';ctx.lineWidth=1.5;ctx.globalAlpha=0.7;
-  for(let i=0;i<NX;i++){const x=xC(i),y=yC(surface[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
-  ctx.stroke();ctx.globalAlpha=1;
-}
+// ── Tip silhouette ───────────────────────────────
+function drawTipShape(g2d, si){
+  const rawI = Math.min(si, NX-1);
+  const di   = getIdx(rawI);
+  const ax   = xC(di);
+  const ay   = yC(measured[di]);   // measured surface (where tip math apex is)
+  const sy   = yC(surface[di]);    // true surface (visual contact point)
+  const wS   = PW/X_NM, hS = PH/Y_NM;
+  const p    = tipP[currentTip]||{};
 
-function drawMeasured(upTo){
-  if(upTo<=1)return;
-  const idxs=getIdxOrder(upTo);
-  ctx.beginPath();ctx.strokeStyle='rgba(255,112,67,0.2)';ctx.lineWidth=6;
-  idxs.forEach((i,k)=>{k===0?ctx.moveTo(xC(i),yC(measured[i])):ctx.lineTo(xC(i),yC(measured[i]));});
-  ctx.stroke();
-  ctx.beginPath();ctx.strokeStyle='#ff7043';ctx.lineWidth=1.8;
-  idxs.forEach((i,k)=>{k===0?ctx.moveTo(xC(i),yC(measured[i])):ctx.lineTo(xC(i),yC(measured[i]));});
-  ctx.stroke();
-}
+  // Tip body extends 50nm above the TRUE surface contact point
+  const contactY = sy;             // tip visually touches the TRUE surface
+  const bodyNm   = Math.min(50, Math.max((contactY - MT)/hS, 4));
+  const bodyPx   = bodyNm * hS;
+  const tipTopY  = contactY - bodyPx;
 
-function drawTipBody(scanIdx){
-  const idx=INV.revScan?NX-1-Math.min(scanIdx,NX-1):Math.min(scanIdx,NX-1);
-  if(idx<0||idx>=NX)return;
-  const ax=xC(idx),ay=yC(measured[idx]),wS=PW/X_NM,hS=PH/Y_NM,p=tipP[currentTip]||{};
-  ctx.save();ctx.beginPath();ctx.rect(ML,MT,PW,PH);ctx.clip();
-  const tG=ctx.createLinearGradient(ax,MT,ax,ay);
-  tG.addColorStop(0,'rgba(144,180,200,0)');tG.addColorStop(1,'rgba(144,180,200,0.18)');
-  ctx.strokeStyle='rgba(176,200,215,0.7)';ctx.fillStyle=tG;ctx.lineWidth=1;
-  ctx.beginPath();
-  switch(currentTip){
-    case 'sharp_cone':case 'blunt_cone':{
-      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180,bH=Math.max(ay-MT,10),hwPx=(bH/hS)*Math.tan(alpha)*wS;
-      ctx.moveTo(ax,ay);ctx.lineTo(ax-hwPx,ay-bH);ctx.lineTo(ax+hwPx,ay-bH);ctx.closePath();break;}
-    case 'sphere':{const Rp=(p.R||20)*hS;ctx.arc(ax,ay+Rp,Rp,Math.PI,0);ctx.lineTo(ax+Rp,MT);ctx.lineTo(ax-Rp,MT);ctx.closePath();break;}
-    case 'hyperboloid':{const a=p.a||7,pts=[],mH=(ay-MT)/hS;for(let h=0;h<=mH;h+=.8){const r=Math.sqrt((h+a)**2-a**2);pts.push([ax+r*wS,ay-h*hS]);}ctx.moveTo(ax,ay);pts.forEach(([px,py])=>ctx.lineTo(px,py));for(let i=pts.length-1;i>=0;i--)ctx.lineTo(ax-(pts[i][0]-ax),pts[i][1]);ctx.closePath();break;}
-    case 'flat':{const Rp=(p.R||18)*wS;ctx.rect(ax-Rp,MT,Rp*2,ay-MT);break;}
-    case 'inv_sphere':{const Rp=(p.R||20)*hS,hW=(p.R||20)*wS+4;ctx.moveTo(ax-hW,MT);ctx.lineTo(ax-hW,ay-Rp);ctx.arc(ax,ay-Rp,Rp,Math.PI,0,true);ctx.lineTo(ax+hW,MT);ctx.closePath();break;}
-    case 'asymmetric':{
-      const alpha=(p.angle||20)*Math.PI/180,bH=Math.max(ay-MT,10),tilt=(p.tilt||15)*Math.PI/180;
-      const leftH=bH,rightH=bH;
-      const leftW=(leftH/hS)*Math.tan(alpha)*wS+(leftH/hS)*Math.tan(Math.abs(tilt))*wS*Math.sign(p.tilt||15);
-      const rightW=(rightH/hS)*Math.tan(alpha)*wS-(rightH/hS)*Math.tan(Math.abs(tilt))*wS*Math.sign(p.tilt||15);
-      ctx.moveTo(ax,ay);ctx.lineTo(ax-Math.max(1,leftW),ay-leftH);ctx.lineTo(ax+Math.max(1,rightW),ay-rightH);ctx.closePath();break;}
-    case 'double_tip':{
-      const alpha=(p.angle||15)*Math.PI/180,bH=Math.max(ay-MT,10),g=(p.gap||30)*wS/2;
-      const hwPx=(bH/hS)*Math.tan(alpha)*wS;
-      // Left cone
-      ctx.moveTo(ax-g,ay);ctx.lineTo(ax-g-hwPx,ay-bH);ctx.lineTo(ax-g+hwPx,ay-bH);ctx.closePath();
-      ctx.fill();ctx.stroke();ctx.beginPath();
-      // Right cone
-      ctx.moveTo(ax+g,ay);ctx.lineTo(ax+g-hwPx,ay-bH);ctx.lineTo(ax+g+hwPx,ay-bH);ctx.closePath();break;}
+  g2d.save();
+  g2d.beginPath(); g2d.rect(ML, MT, PW, PH); g2d.clip();
+
+  const tG = g2d.createLinearGradient(ax, contactY, ax, tipTopY);
+  tG.addColorStop(0, 'rgba(180,215,240,0.65)');
+  tG.addColorStop(1, 'rgba(160,195,220,0.12)');
+  g2d.fillStyle  = tG;
+  g2d.strokeStyle = 'rgba(210,235,255,0.95)';
+  g2d.lineWidth  = 2;
+
+  function sh(fn){ g2d.beginPath(); fn(); g2d.closePath(); g2d.fill(); g2d.stroke(); }
+
+  if(currentTip === 'double_tip'){
+    const a=(p.angle||15)*Math.PI/180, gp=(p.gap||30)*wS/2;
+    const hw = bodyNm * Math.tan(a) * wS;
+    for(const off of [-gp, gp]){
+      sh(()=>{
+        g2d.moveTo(ax+off, contactY);          // apex at TRUE surface
+        g2d.lineTo(ax+off-hw, tipTopY);
+        g2d.lineTo(ax+off+hw, tipTopY);
+      });
+    }
+
+  } else if(currentTip === 'sphere'){
+    const R = p.R||20, pts = [];
+    for(let k=0; k<=80; k++){
+      const r = (k/80)*R, T = R - Math.sqrt(R*R - r*r);
+      if(T <= bodyNm) pts.push([r, T]);
+    }
+    if(pts.length < 2) pts.push([R, bodyNm]);
+    // Sphere apex is at ay (measured), body drawn from ay upward
+    const tG2 = g2d.createLinearGradient(ax, ay, ax, ay-bodyPx);
+    tG2.addColorStop(0,'rgba(180,215,240,0.65)');tG2.addColorStop(1,'rgba(160,195,220,0.12)');
+    g2d.fillStyle = tG2;
+    const sTopY = ay - bodyPx;
+    sh(()=>{
+      g2d.moveTo(ax, ay);
+      pts.forEach(([r,T]) => g2d.lineTo(ax+r*wS, ay-T*hS));
+      g2d.lineTo(ax + pts[pts.length-1][0]*wS, sTopY);
+      g2d.lineTo(ax - pts[pts.length-1][0]*wS, sTopY);
+      for(let k=pts.length-1; k>=0; k--) g2d.lineTo(ax-pts[k][0]*wS, ay-pts[k][1]*hS);
+    });
+
+  } else if(currentTip === 'hyperboloid'){
+    const a = p.a||7, pts = [];
+    // Hyperboloid apex at ay (measured), body upward
+    const tG2 = g2d.createLinearGradient(ax, ay, ax, ay-bodyPx);
+    tG2.addColorStop(0,'rgba(180,215,240,0.65)');tG2.addColorStop(1,'rgba(160,195,220,0.12)');
+    g2d.fillStyle = tG2;
+    for(let k=0; k<=100; k++){
+      const h = (k/100)*bodyNm, r = Math.sqrt((h+a)*(h+a) - a*a);
+      pts.push([r, h]);
+    }
+    sh(()=>{
+      g2d.moveTo(ax, ay);
+      pts.forEach(([r,h]) => g2d.lineTo(ax+r*wS, ay-h*hS));
+      for(let k=pts.length-1; k>=0; k--) g2d.lineTo(ax-pts[k][0]*wS, ay-pts[k][1]*hS);
+    });
+
+  } else if(currentTip === 'flat'){
+    // Flat: face at measured line ay
+    const tG2 = g2d.createLinearGradient(ax, ay, ax, ay-bodyPx);
+    tG2.addColorStop(0,'rgba(180,215,240,0.65)');tG2.addColorStop(1,'rgba(160,195,220,0.12)');
+    g2d.fillStyle = tG2;
+    const rp = (p.R||18)*wS;
+    const fTopY = ay - bodyPx;
+    sh(()=>{
+      g2d.moveTo(ax-rp, ay); g2d.lineTo(ax+rp, ay);
+      g2d.lineTo(ax+rp, fTopY); g2d.lineTo(ax-rp, fTopY);
+    });
+    g2d.save();
+    g2d.strokeStyle='rgba(220,248,255,0.95)'; g2d.lineWidth=2.5;
+    g2d.beginPath(); g2d.moveTo(ax-rp,ay); g2d.lineTo(ax+rp,ay); g2d.stroke();
+    g2d.restore();
+
+  } else if(currentTip === 'inv_sphere'){
+    const R = p.R||20;
+    // Half-width of cylinder walls
+    const hw = Math.min(R*wS + 10, PW/4);
+    // Bowl radius must fit inside the walls: Rp <= hw
+    const Rp = Math.min(R*hS, hw * 0.9);
+    const iTopY = ay - bodyPx;
+    const tG2 = g2d.createLinearGradient(ax, iTopY, ax, ay);
+    tG2.addColorStop(0,'rgba(160,195,220,0.12)'); tG2.addColorStop(1,'rgba(180,215,240,0.65)');
+    g2d.fillStyle = tG2;
+    // Bowl arc: center at (ax, ay-Rp) with radius Rp
+    // arc(0→π, anticlockwise=true) = TOP half = curves upward = CONCAVE bowl ✓
+    // This arc starts at (ax+Rp, ay-Rp) and ends at (ax-Rp, ay-Rp)
+    // The rim of the bowl sits at y = ay-Rp ± 0, lowest point at y = ay-2*Rp (top of bowl)
+    // Wait — center at (ax, ay-Rp), angle π/2 in canvas = DOWN → point = (ax, ay-Rp+Rp) = (ax,ay) ✓
+    // angle -π/2 (top) → (ax, ay-Rp-Rp) = (ax, ay-2Rp) — deepest point of bowl
+    // So arc(ax, ay-Rp, Rp, 0, π, true) goes from (ax+Rp, ay-Rp) UP through (ax, ay-2Rp) to (ax-Rp, ay-Rp)
+    // The bowl OPENS at y=ay-Rp (rim level) and curves UP — CONCAVE ✓
+    sh(()=>{
+      g2d.moveTo(ax-hw, iTopY);
+      g2d.lineTo(ax+hw, iTopY);         // top edge
+      g2d.lineTo(ax+hw, ay-Rp);         // right wall down to rim
+      g2d.arc(ax, ay-Rp, Rp, 0, Math.PI, true); // concave bowl (top half, curves up)
+      g2d.lineTo(ax-hw, ay-Rp);         // left wall bottom to rim
+    });
+    g2d.save();
+    g2d.strokeStyle='rgba(100,200,240,0.95)'; g2d.lineWidth=2.5;
+    g2d.beginPath(); g2d.arc(ax, ay-Rp, Rp, 0, Math.PI, true); g2d.stroke();
+    g2d.restore();
+
+  } else if(currentTip === 'sphere_cone'){
+    const R = p.R||10, a = (p.angle||20)*Math.PI/180;
+    const sinA=Math.sin(a), cosA=Math.cos(a);
+    const r_t=R*sinA, z_t=R*(1-cosA);
+    const capPts = [];
+    for(let k=0; k<=60; k++){
+      const r=(k/60)*r_t, T=R-Math.sqrt(Math.max(0,R*R-r*r));
+      capPts.push([r, T]);
+    }
+    const coneNm = Math.max(0, bodyNm - z_t);
+    const topR   = r_t + coneNm*Math.tan(a);
+    // Draw apex at contactY (true surface), cap and cone rise upward
+    sh(()=>{
+      g2d.moveTo(ax, contactY);                         // apex at TRUE surface
+      capPts.forEach(([r,T]) => g2d.lineTo(ax+r*wS, contactY-T*hS));
+      g2d.lineTo(ax+topR*wS, tipTopY);
+      g2d.lineTo(ax-topR*wS, tipTopY);
+      for(let k=capPts.length-1; k>=0; k--)
+        g2d.lineTo(ax-capPts[k][0]*wS, contactY-capPts[k][1]*hS);
+    });
+
+  } else {
+    // sharp_cone, blunt_cone, asymmetric — apex at TRUE surface
+    const a    = (p.angle||(currentTip==='blunt_cone'?35:15)) * Math.PI/180;
+    const tilt = (p.tilt||0) * Math.PI/180;
+    const lw   = Math.max(3, bodyNm*(Math.tan(a)+Math.tan(tilt))*wS);
+    const rw   = Math.max(3, bodyNm*(Math.tan(a)-Math.tan(tilt))*wS);
+    sh(()=>{
+      g2d.moveTo(ax,    contactY);       // apex at TRUE surface
+      g2d.lineTo(ax-lw, tipTopY);
+      g2d.lineTo(ax+rw, tipTopY);
+    });
   }
-  ctx.fill();ctx.stroke();ctx.restore();
-  ctx.save();ctx.strokeStyle='rgba(0,229,176,0.1)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.beginPath();ctx.moveTo(ax,MT);ctx.lineTo(ax,MT+PH);ctx.stroke();ctx.setLineDash([]);ctx.restore();
-  ctx.beginPath();ctx.arc(ax,ay,4,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.12)';ctx.fill();
-  ctx.beginPath();ctx.arc(ax,ay,2.5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.shadowColor=cv('--accent');ctx.shadowBlur=10;ctx.fill();ctx.shadowBlur=0;
-  // double tip second apex
-  if(currentTip==='double_tip'){
-    const g=(tipP.double_tip.gap||30)*wS/2;
-    [ax-g,ax+g].forEach(x=>{ctx.beginPath();ctx.arc(x,ay,2,0,Math.PI*2);ctx.fillStyle=cv('--accent');ctx.fill();});
-  }
-  ctx.save();ctx.beginPath();ctx.rect(ML,MT,PW,PH);ctx.clip();
-  ctx.strokeStyle='rgba(0,229,176,0.12)';ctx.lineWidth=1;ctx.setLineDash([2,5]);
-  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax,yC(0));ctx.stroke();ctx.setLineDash([]);ctx.restore();
+
+  g2d.restore();
+
+  // Apex glow dot at TRUE surface contact point
+  g2d.beginPath(); g2d.arc(ax, contactY, 4, 0, Math.PI*2);
+  g2d.fillStyle='rgba(0,229,176,0.15)'; g2d.fill();
+  g2d.beginPath(); g2d.arc(ax, contactY, 2.5, 0, Math.PI*2);
+  g2d.fillStyle='#00e5b0';
+  g2d.shadowColor='#00e5b0'; g2d.shadowBlur=10; g2d.fill(); g2d.shadowBlur=0;
 }
 
-let hoverX=-1;
-function drawCrosshair(mxPx){
-  if(mxPx<ML||mxPx>CW-MR)return;
-  const raw=Math.round((mxPx-ML)/PW*NX);
-  const i=INV.revScan?NX-1-raw:raw;
-  if(i<0||i>=NX)return;
-  const ax=xC(INV.revScan?NX-1-i:i);
-  ctx.save();ctx.beginPath();ctx.rect(ML,MT,PW,PH);ctx.clip();
-  ctx.strokeStyle='rgba(46,168,255,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(ax,MT);ctx.lineTo(ax,MT+PH);ctx.stroke();ctx.setLineDash([]);
-  ctx.beginPath();ctx.arc(ax,yC(surface[i]),3.5,0,Math.PI*2);ctx.fillStyle='#4fc3f7';ctx.fill();
-  if(raw<scanIdx){ctx.beginPath();ctx.arc(ax,yC(measured[i]),3.5,0,Math.PI*2);ctx.fillStyle='#ff7043';ctx.fill();}
-  ctx.restore();
-  const xnm=(i*dxNm).toFixed(1),art=raw<scanIdx?(measured[i]-surface[i]).toFixed(2):'—';
-  document.getElementById('cursorInfo').textContent=`x=${xnm}nm  true=${surface[i].toFixed(2)}  meas=${raw<scanIdx?measured[i].toFixed(2):'—'}  err=${art}nm`;
-}
+function drawError(){
+  cx1.clearRect(0,0,NX,70);
+  cx1.fillStyle='#040608';cx1.fillRect(0,0,NX,70);
+  cx1.strokeStyle='#1a2e3e';cx1.lineWidth=1;cx1.strokeRect(EML,EMT,EPW,EPH);
+  cx1.fillStyle='#304a58';cx1.font='7px Courier New';cx1.textAlign='left';
+  cx1.fillText('ARTIFACT ERROR MAP',EML+4,EMT-4);
+  if(scanIdx<2)return;
 
-function renderMain(){
-  drawMainGrid();drawArtifactFill(scanIdx);drawSurface();drawMeasured(scanIdx);
-  drawTipBody(scanIdx);if(hoverX>=0)drawCrosshair(hoverX);
-}
-
-// ══════════════════════════════════════════
-//  DRAW — ERROR MAP
-// ══════════════════════════════════════════
-const errCanvas=document.getElementById('errCanvas');
-const eCtx=errCanvas.getContext('2d');
-function renderError(upTo){
-  eCtx.clearRect(0,0,ECW,ECH);
-  eCtx.strokeStyle=cv('--border2');eCtx.lineWidth=1;eCtx.strokeRect(EML,EMT,EPW,EPH);
-  eCtx.fillStyle=cv('--axis');eCtx.font='7px Courier New';eCtx.textAlign='left';
-  if(upTo<2)return;
-  let maxErr=0;for(let i=0;i<upTo;i++){const e=Math.abs(measured[i]-surface[i]);if(e>maxErr)maxErr=e;}
-  if(maxErr<0.01)maxErr=0.01;
-  for(let i=0;i<upTo;i++){
-    const raw_i=INV.revScan?NX-1-i:i;
-    const e=Math.abs(measured[raw_i]-surface[raw_i]);
-    let t=e/maxErr;
-    if(INV.invErr)t=1-t;
+  let mx=0;
+  for(let i=0;i<scanIdx;i++){const e=Math.abs(measured[getIdx(i)]-surface[getIdx(i)]);if(e>mx)mx=e;}
+  if(mx<0.01)mx=0.01;
+  const bw=EPW/NX;
+  for(let i=0;i<scanIdx;i++){
+    const ri=getIdx(i);
+    let t=(Math.abs(measured[ri]-surface[ri])/mx);
+    if(INV.invErr) t=1-t;
     let r,g,b;
-    if(t<0.5){r=Math.round(t*2*255);g=Math.round(170+t*2*50);b=Math.round(160*(1-t*2));}
+    if(t<0.5){r=Math.round(t*2*255);g=Math.round(170+t*50);b=Math.round(160*(1-t*2));}
     else{r=255;g=Math.round(220*(1-(t-.5)*2));b=0;}
-    const x=exC(i),w=Math.max(1,EPW/NX+0.5),barH=(e/maxErr)*EPH;
-    eCtx.fillStyle=`rgb(${r},${g},${b})`;eCtx.globalAlpha=0.8;eCtx.fillRect(x,EMT+EPH-barH,w,barH);
+    const px=EML+i*bw;
+    cx1.fillStyle=`rgb(${r},${g},${b})`;
+    cx1.globalAlpha=0.85;
+    cx1.fillRect(px,EMT+EPH-(t*EPH),Math.max(1,bw+0.5),t*EPH);
   }
-  eCtx.globalAlpha=1;
-  eCtx.fillStyle=cv('--accent4');eCtx.font='7px Courier New';eCtx.textAlign='left';
-  eCtx.fillText(`max ${maxErr.toFixed(2)} nm${INV.invErr?' [INVERTED]':''}`,EML+3,EMT+10);
-  if(hoverX>=ML&&hoverX<=CW-MR){
-    const i=Math.round((hoverX-ML)/PW*NX);
-    if(i>=0&&i<upTo){const ax=exC(i);eCtx.strokeStyle='rgba(46,168,255,0.5)';eCtx.lineWidth=1;eCtx.setLineDash([2,3]);eCtx.beginPath();eCtx.moveTo(ax,EMT);eCtx.lineTo(ax,EMT+EPH);eCtx.stroke();eCtx.setLineDash([]);}
-  }
+  cx1.globalAlpha=1;
+  cx1.fillStyle='#c97aff';cx1.font='7px Courier New';cx1.textAlign='right';
+  cx1.fillText(`max ${mx.toFixed(2)} nm${INV.invErr?' [INV]':''}`,NX-EML,EMT+12);
 }
 
-// ══════════════════════════════════════════
-//  DRAW — FORCE–DISTANCE
-// ══════════════════════════════════════════
-const fdCanvas=document.getElementById('fdCanvas');
-const fCtx=fdCanvas.getContext('2d');
-function fdForce(d){if(d<0)return 10*(Math.pow(-d+1,2)-1);const s=0.3/(d+0.3);return-4*(Math.pow(s,6)-Math.pow(s,3));}
-function renderFD(tipIdx){
-  fCtx.clearRect(0,0,FCW,FCH);
-  for(let i=0;i<=4;i++){const y=FMT+(i/4)*FPH;fCtx.strokeStyle=cv('--grid2');fCtx.lineWidth=1;fCtx.beginPath();fCtx.moveTo(FML,y);fCtx.lineTo(FCW-FMR,y);fCtx.stroke();}
-  fCtx.strokeStyle=cv('--border2');fCtx.lineWidth=1;fCtx.strokeRect(FML,FMT,FPW,FPH);
-  fCtx.fillStyle=cv('--axis');fCtx.font='7px Courier New';fCtx.textAlign='center';
-  fCtx.fillText('Tip–Surface Separation (nm)',FML+FPW/2,FCH-4);
-  fCtx.save();fCtx.translate(14,FMT+FPH/2);fCtx.rotate(-Math.PI/2);fCtx.fillText('Force (a.u.)',0,0);fCtx.restore();
-  const zY=FMT+FPH*0.35;
-  fCtx.strokeStyle=cv('--border2');fCtx.lineWidth=1;fCtx.setLineDash([4,4]);fCtx.beginPath();fCtx.moveTo(FML,zY);fCtx.lineTo(FCW-FMR,zY);fCtx.stroke();fCtx.setLineDash([]);
-  const maxD=8,steps=300,sF=FPH*0.3;
-  const fg=fCtx.createLinearGradient(FML,FMT,FCW-FMR,FMT);
-  fg.addColorStop(0,'#c97aff');fg.addColorStop(0.4,'#2ea8ff');fg.addColorStop(1,'#ff6b35');
-  fCtx.strokeStyle=fg;fCtx.lineWidth=2;fCtx.beginPath();
-  for(let k=0;k<=steps;k++){const d=(k/steps)*maxD,f=fdForce(d),px=FML+(k/steps)*FPW,py=zY-f*sF;k===0?fCtx.moveTo(px,Math.max(FMT,Math.min(FMT+FPH,py))):fCtx.lineTo(px,Math.max(FMT,Math.min(FMT+FPH,py)));}
-  fCtx.stroke();
-  if(tipIdx>=0&&tipIdx<NX){
-    const idx=INV.revScan?NX-1-tipIdx:tipIdx;
-    const sep=Math.max(0,measured[idx]-surface[idx]),f=fdForce(sep>0?-sep:sep);
-    const px=FML+(Math.min(sep,maxD)/maxD)*FPW,py=zY-f*sF,cPy=Math.max(FMT+4,Math.min(FMT+FPH-4,py));
-    fCtx.beginPath();fCtx.arc(px,cPy,8,0,Math.PI*2);fCtx.fillStyle='rgba(0,229,176,0.12)';fCtx.fill();
-    fCtx.beginPath();fCtx.arc(px,cPy,4,0,Math.PI*2);fCtx.fillStyle=cv('--accent');fCtx.shadowColor=cv('--accent');fCtx.shadowBlur=8;fCtx.fill();fCtx.shadowBlur=0;
-    fCtx.strokeStyle='rgba(0,229,176,0.22)';fCtx.lineWidth=1;fCtx.setLineDash([2,4]);fCtx.beginPath();fCtx.moveTo(px,cPy);fCtx.lineTo(px,FMT+FPH);fCtx.stroke();fCtx.setLineDash([]);
+// ── Force-distance ───────────────────────────────
+function fdF(d){if(d<0)return 10*((-d+1)**2-1);const s=0.3/(d+0.3);return-4*(s**6-s**3);}
+function drawFD(){
+  cx2.clearRect(0,0,NX,120);
+  cx2.fillStyle='#040608';cx2.fillRect(0,0,NX,120);
+  cx2.strokeStyle='#1a2e3e';cx2.lineWidth=1;cx2.strokeRect(FML,FMT,FPW,FPH);
+  cx2.fillStyle='#304a58';cx2.font='7px Courier New';cx2.textAlign='center';
+  cx2.fillText('Tip–Surface Separation (nm)',FML+FPW/2,120-6);
+
+  const maxD=8, zY=FMT+FPH*0.35, sF=FPH*0.28;
+  cx2.strokeStyle='#162230';cx2.lineWidth=1;cx2.setLineDash([4,4]);
+  cx2.beginPath();cx2.moveTo(FML,zY);cx2.lineTo(FML+FPW,zY);cx2.stroke();cx2.setLineDash([]);
+
+  const g=cx2.createLinearGradient(FML,FMT,FML+FPW,FMT);
+  g.addColorStop(0,'#c97aff');g.addColorStop(0.4,'#2ea8ff');g.addColorStop(1,'#ff6b35');
+  cx2.strokeStyle=g;cx2.lineWidth=2;cx2.beginPath();
+  for(let k=0;k<=300;k++){
+    const d=(k/300)*maxD, py=zY-fdF(d)*sF, px=FML+(k/300)*FPW;
+    k===0?cx2.moveTo(px,Math.max(FMT,Math.min(FMT+FPH,py))):cx2.lineTo(px,Math.max(FMT,Math.min(FMT+FPH,py)));
+  }
+  cx2.stroke();
+
+  if(scanIdx>0){
+    const di=getIdx(Math.min(scanIdx-1,NX-1));
+    const sep=Math.max(0,measured[di]-surface[di]);
+    const f=fdF(sep>0?-sep:sep);
+    const px=FML+(Math.min(sep,maxD)/maxD)*FPW, py=Math.max(FMT+4,Math.min(FMT+FPH-4,zY-f*sF));
+    cx2.beginPath();cx2.arc(px,py,5,0,Math.PI*2);
+    cx2.fillStyle='#00e5b0';cx2.shadowColor='#00e5b0';cx2.shadowBlur=10;cx2.fill();cx2.shadowBlur=0;
     const reg=sep<0.1?'CONTACT':sep<1.5?'NEAR-CONTACT':'NON-CONTACT';
     const rc=sep<0.1?'#ff6b35':sep<1.5?'#2ea8ff':'#c97aff';
-    fCtx.fillStyle=rc;fCtx.font='7px Courier New';fCtx.textAlign='right';fCtx.fillText(`${reg}  sep=${sep.toFixed(2)}nm`,FCW-FMR-4,FMT+10);
+    cx2.fillStyle=rc;cx2.font='7px Courier New';cx2.textAlign='right';
+    cx2.fillText(`${reg}  d=${sep.toFixed(2)}nm`,NX-FML,FMT+12);
   }
-  fCtx.fillStyle=cv('--axis');fCtx.font='7px Courier New';fCtx.textAlign='center';
-  for(let d=0;d<=maxD;d+=2)fCtx.fillText(d,FML+(d/maxD)*FPW,FMT+FPH+12);
+  for(let d=0;d<=maxD;d+=2){
+    cx2.fillStyle='#304a58';cx2.font='7px Courier New';cx2.textAlign='center';
+    cx2.fillText(d,FML+(d/maxD)*FPW,FMT+FPH+12);
+  }
 }
 
-// ══════════════════════════════════════════
-//  TIP PREVIEW
-// ══════════════════════════════════════════
-const tpv=document.getElementById('tipPreview');
-const tCtx=tpv.getContext('2d');
-function drawTipPreview(){
-  tCtx.clearRect(0,0,184,80);
-  const cx=92,top=4,wS=1.7,hS=1.3,p=tipP[currentTip]||{};
-  const pg=tCtx.createLinearGradient(cx,top,cx,80);
-  const dark=document.documentElement.getAttribute('data-theme')!=='light';
-  pg.addColorStop(0,dark?'rgba(0,229,176,0)':'rgba(0,158,122,0)');
-  pg.addColorStop(1,dark?'rgba(0,229,176,0.18)':'rgba(0,158,122,0.12)');
-  tCtx.strokeStyle=cv('--accent');tCtx.fillStyle=pg;tCtx.lineWidth=1.4;
-  tCtx.beginPath();
-  switch(currentTip){
-    case 'sharp_cone':case 'blunt_cone':{const a=p.angle||(currentTip==='sharp_cone'?15:35),h=68,hw=h*Math.tan(a*Math.PI/180)*(wS/hS);tCtx.moveTo(cx,top);tCtx.lineTo(cx-hw,top+h);tCtx.lineTo(cx+hw,top+h);tCtx.closePath();break;}
-    case 'sphere':{const Rp=Math.min((p.R||20)*hS,32);tCtx.arc(cx,top+Rp,Rp,Math.PI,0);tCtx.lineTo(cx+Rp,80);tCtx.lineTo(cx-Rp,80);tCtx.closePath();break;}
-    case 'hyperboloid':{const a=p.a||7,pts=[];for(let h=0;h<=46;h++){const r=Math.sqrt((h+a)**2-a**2);pts.push([cx+r*wS*0.55,top+h*hS]);}tCtx.moveTo(cx,top);pts.forEach(([x,y])=>tCtx.lineTo(x,y));for(let i=pts.length-1;i>=0;i--)tCtx.lineTo(cx-(pts[i][0]-cx),pts[i][1]);tCtx.closePath();break;}
-    case 'flat':{const Rp=Math.min((p.R||18)*wS,80);tCtx.rect(cx-Rp,top,Rp*2,68);break;}
-    case 'inv_sphere':{const Rp=Math.min((p.R||20)*hS,32),hW=Math.min((p.R||20)*wS+4,80),bY=top+70;tCtx.moveTo(cx-hW,top);tCtx.lineTo(cx-hW,bY-Rp);tCtx.arc(cx,bY-Rp,Rp,Math.PI,0,true);tCtx.lineTo(cx+hW,top);tCtx.closePath();break;}
-    case 'asymmetric':{
-      const alpha=(p.angle||20)*Math.PI/180,h=68,t=(p.tilt||15)*Math.PI/180;
-      const lw=h*Math.tan(alpha)*(wS/hS)+h*Math.tan(Math.abs(t))*(wS/hS)*Math.sign(p.tilt||15);
-      const rw=h*Math.tan(alpha)*(wS/hS)-h*Math.tan(Math.abs(t))*(wS/hS)*Math.sign(p.tilt||15);
-      tCtx.moveTo(cx,top);tCtx.lineTo(cx-Math.max(2,lw),top+h);tCtx.lineTo(cx+Math.max(2,rw),top+h);tCtx.closePath();break;}
-    case 'double_tip':{
-      const alpha=(p.angle||15)*Math.PI/180,h=68,g=Math.min((p.gap||30)*wS*0.5,60),hw=h*Math.tan(alpha)*(wS/hS);
-      tCtx.moveTo(cx-g,top+2);tCtx.lineTo(cx-g-hw,top+h);tCtx.lineTo(cx-g+hw,top+h);tCtx.closePath();tCtx.fill();tCtx.stroke();tCtx.beginPath();
-      tCtx.moveTo(cx+g,top+2);tCtx.lineTo(cx+g-hw,top+h);tCtx.lineTo(cx+g+hw,top+h);tCtx.closePath();break;}
+// ── Tip preview ──────────────────────────────────
+const pvCv=document.getElementById('tipPrev');
+const pvCtx=pvCv.getContext('2d');
+
+function drawPreview(){
+  const W=174,H=70;
+  pvCtx.clearRect(0,0,W,H);
+  pvCtx.fillStyle='#040608';pvCtx.fillRect(0,0,W,H);
+  const cx=W/2, apexY=H-6, bodyH=H-12;
+  const NM=50, wS=W/60, hS=bodyH/NM;
+  const p=tipP[currentTip]||{};
+
+  const pg=pvCtx.createLinearGradient(cx,apexY,cx,apexY-bodyH);
+  pg.addColorStop(0,'rgba(180,215,235,0.38)');
+  pg.addColorStop(1,'rgba(144,180,200,0.06)');
+  pvCtx.fillStyle=pg;
+  pvCtx.strokeStyle='rgba(200,228,248,0.88)';
+  pvCtx.lineWidth=1.6;
+
+  function sh(fn){pvCtx.beginPath();fn();pvCtx.closePath();pvCtx.fill();pvCtx.stroke();}
+
+  if(currentTip==='double_tip'){
+    const a=(p.angle||15)*Math.PI/180, gp=(p.gap||30)*wS/2;
+    const hw=NM*Math.tan(a)*wS;
+    for(const off of [-gp,gp]){
+      sh(()=>{pvCtx.moveTo(cx+off,apexY);pvCtx.lineTo(cx+off-hw,apexY-bodyH);pvCtx.lineTo(cx+off+hw,apexY-bodyH);});
+    }
+  } else if(currentTip==='sphere'){
+    const R=p.R||20, pts=[];
+    for(let k=0;k<=80;k++){const r=(k/80)*R,T=R-Math.sqrt(R*R-r*r);if(T<=NM)pts.push([r,T]);}
+    sh(()=>{
+      pvCtx.moveTo(cx,apexY);
+      pts.forEach(([r,T])=>pvCtx.lineTo(cx+r*wS,apexY-T*hS));
+      pvCtx.lineTo(cx+(pts[pts.length-1]||[R])[0]*wS,apexY-bodyH);
+      pvCtx.lineTo(cx-(pts[pts.length-1]||[R])[0]*wS,apexY-bodyH);
+      for(let k=pts.length-1;k>=0;k--) pvCtx.lineTo(cx-pts[k][0]*wS,apexY-pts[k][1]*hS);
+    });
+  } else if(currentTip==='hyperboloid'){
+    const a=p.a||7, pts=[];
+    for(let k=0;k<=100;k++){const h=(k/100)*NM,r=Math.sqrt((h+a)*(h+a)-a*a);pts.push([r,h]);}
+    sh(()=>{
+      pvCtx.moveTo(cx,apexY);
+      pts.forEach(([r,h])=>pvCtx.lineTo(cx+r*wS,apexY-h*hS));
+      for(let k=pts.length-1;k>=0;k--) pvCtx.lineTo(cx-pts[k][0]*wS,apexY-pts[k][1]*hS);
+    });
+  } else if(currentTip==='flat'){
+    const rp=(p.R||18)*wS;
+    sh(()=>{pvCtx.moveTo(cx-rp,apexY);pvCtx.lineTo(cx+rp,apexY);pvCtx.lineTo(cx+rp,apexY-bodyH);pvCtx.lineTo(cx-rp,apexY-bodyH);});
+    pvCtx.save();pvCtx.strokeStyle='rgba(220,248,255,0.95)';pvCtx.lineWidth=2.5;
+    pvCtx.beginPath();pvCtx.moveTo(cx-(p.R||18)*wS,apexY);pvCtx.lineTo(cx+(p.R||18)*wS,apexY);pvCtx.stroke();pvCtx.restore();
+  } else if(currentTip==='inv_sphere'){
+    const R=p.R||20;
+    const hw=Math.min(R*wS+8, W/2-3);
+    const Rp=Math.min(R*hS, hw*0.9);  // bowl radius always fits inside walls
+    // Arc center at (cx, apexY-Rp): arc(0→π, anticlockwise=true) = top half = curves upward = CONCAVE ✓
+    sh(()=>{
+      pvCtx.moveTo(cx-hw,apexY-bodyH); pvCtx.lineTo(cx+hw,apexY-bodyH);  // top
+      pvCtx.lineTo(cx+hw,apexY-Rp);    // right wall down to rim
+      pvCtx.arc(cx,apexY-Rp,Rp,0,Math.PI,true);  // concave bowl
+      pvCtx.lineTo(cx-hw,apexY-Rp);    // left rim
+    });
+    pvCtx.save();pvCtx.strokeStyle='rgba(100,200,240,0.95)';pvCtx.lineWidth=2.5;
+    pvCtx.beginPath();pvCtx.arc(cx,apexY-Rp,Rp,0,Math.PI,true);pvCtx.stroke();pvCtx.restore();
+  } else if(currentTip==='sphere_cone'){
+    const R=p.R||10, a=(p.angle||20)*Math.PI/180;
+    const r_t=R*Math.sin(a), z_t=R*(1-Math.cos(a));
+    const capPts=[];
+    for(let k=0;k<=40;k++){const r=(k/40)*r_t,T=R-Math.sqrt(Math.max(0,R*R-r*r));capPts.push([r,T]);}
+    const topR=r_t+(NM-z_t)*Math.tan(a);
+    sh(()=>{
+      pvCtx.moveTo(cx,apexY);
+      capPts.forEach(([r,T])=>pvCtx.lineTo(cx+r*wS,apexY-T*hS));
+      pvCtx.lineTo(cx+topR*wS,apexY-bodyH);pvCtx.lineTo(cx-topR*wS,apexY-bodyH);
+      for(let k=capPts.length-1;k>=0;k--) pvCtx.lineTo(cx-capPts[k][0]*wS,apexY-capPts[k][1]*hS);
+    });
+  } else {
+    const a=(p.angle||(currentTip==='blunt_cone'?35:15))*Math.PI/180;
+    const tilt=(p.tilt||0)*Math.PI/180;
+    const lw=Math.max(2,NM*(Math.tan(a)+Math.tan(tilt))*wS);
+    const rw=Math.max(2,NM*(Math.tan(a)-Math.tan(tilt))*wS);
+    sh(()=>{pvCtx.moveTo(cx,apexY);pvCtx.lineTo(cx-lw,apexY-bodyH);pvCtx.lineTo(cx+rw,apexY-bodyH);});
   }
-  tCtx.fill();tCtx.stroke();
-  tCtx.beginPath();tCtx.arc(cx,top,4,0,Math.PI*2);tCtx.fillStyle=dark?'rgba(0,229,176,0.2)':'rgba(0,158,122,0.15)';tCtx.fill();
-  tCtx.beginPath();tCtx.arc(cx,top,2.5,0,Math.PI*2);tCtx.fillStyle=cv('--accent');tCtx.fill();
-  if(INV.invTip){tCtx.fillStyle=cv('--accent3');tCtx.font='7px Courier New';tCtx.textAlign='left';tCtx.fillText('INVERTED',4,78);}
-  const names={sharp_cone:'SHARP CONE',blunt_cone:'BLUNT CONE',sphere:'SPHERE',hyperboloid:'HYPERBOLOID',flat:'FLAT PUNCH',inv_sphere:'CONCAVE',asymmetric:'ASYMMETRIC',double_tip:'DOUBLE TIP'};
-  tCtx.fillStyle=cv('--axis');tCtx.font='7px Courier New';tCtx.textAlign='right';
-  tCtx.fillText(names[currentTip]||currentTip,180,78);
+
+  // Apex dot
+  pvCtx.beginPath();pvCtx.arc(cx,apexY,2.5,0,Math.PI*2);
+  pvCtx.fillStyle='#00e5b0';pvCtx.shadowColor='#00e5b0';pvCtx.shadowBlur=8;pvCtx.fill();pvCtx.shadowBlur=0;
+
+  // Sample surface line
+  pvCtx.save();pvCtx.strokeStyle='rgba(255,107,53,0.5)';pvCtx.lineWidth=1;pvCtx.setLineDash([3,4]);
+  pvCtx.beginPath();pvCtx.moveTo(4,apexY);pvCtx.lineTo(W-4,apexY);pvCtx.stroke();
+  pvCtx.setLineDash([]);pvCtx.restore();
+
+  // Label
+  if(INV.invTip){pvCtx.fillStyle='#c97aff';pvCtx.font='7px Courier New';pvCtx.textAlign='left';pvCtx.fillText('INV',3,10);}
+  const names={sharp_cone:'SHARP',blunt_cone:'BLUNT',sphere:'SPHERE',hyperboloid:'HYPER',
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM',double_tip:'DOUBLE',sphere_cone:'CONE+SPH'};
+  pvCtx.fillStyle='rgba(48,74,88,0.9)';pvCtx.font='7px Courier New';pvCtx.textAlign='right';
+  pvCtx.fillText(names[currentTip]||currentTip,W-3,10);
 }
 
-// ══════════════════════════════════════════
-//  STATS
-// ══════════════════════════════════════════
-function updateStats(upTo){
-  if(upTo<2){
-    document.getElementById('statArt').textContent='—';
-    document.getElementById('statRms').textContent='—';
-    document.getElementById('statPct').textContent='0%';
-    document.getElementById('statTip').textContent=currentTip.replace(/_/g,' ');
-    return;
-  }
+// ── Stats ────────────────────────────────────────
+function updateStats(){
+  if(scanIdx<2){document.getElementById('stArt').textContent='—';document.getElementById('stRms').textContent='—';return;}
   let mx=0,rms=0;
-  for(let i=0;i<upTo;i++){const idx=INV.revScan?NX-1-i:i;const e=Math.abs(measured[idx]-surface[idx]);if(e>mx)mx=e;rms+=e*e;}
-  document.getElementById('statArt').textContent=mx.toFixed(2)+' nm';
-  document.getElementById('statRms').textContent=Math.sqrt(rms/upTo).toFixed(2)+' nm';
-  document.getElementById('statPct').textContent=Math.round(upTo/NX*100)+'%';
-  document.getElementById('statTip').textContent=currentTip.replace(/_/g,' ');
-}
-
-function render(){
-  renderMain();renderError(scanIdx);renderFD(Math.min(scanIdx,NX-1));updateStats(scanIdx);
-}
-
-// ══════════════════════════════════════════
-//  ANIMATION
-// ══════════════════════════════════════════
-let scanIdx=0,playing=false,raf=null;
-
-function animate(){
-  const spd=parseInt(document.getElementById('speedSlider').value);
-  scanIdx+=spd;
-  if(scanIdx>=NX){
-    if(scanMode==='single'){scanIdx=NX;playing=false;document.getElementById('playBtn').textContent='▶ PLAY';render();return;}
-    else if(scanMode==='loop'){scanIdx=0;}
-    else if(scanMode==='bounce'){scanIdx=NX-2;bounceDir=-bounceDir;}
+  for(let i=0;i<scanIdx;i++){
+    const e=Math.abs(measured[getIdx(i)]-surface[getIdx(i)]);
+    if(e>mx)mx=e; rms+=e*e;
   }
-  if(scanIdx<0){scanIdx=1;bounceDir=-bounceDir;}
-  if(scanMode==='bounce'&&bounceDir<0){
-    // going backwards
-    scanIdx=Math.max(0,scanIdx-spd*2);
+  document.getElementById('stArt').textContent=mx.toFixed(2)+' nm';
+  document.getElementById('stRms').textContent=Math.sqrt(rms/scanIdx).toFixed(2)+' nm';
+}
+
+// ── Master render ────────────────────────────────
+function render(){drawMain();drawError();drawFD();updateStats();}
+
+// ═══════════════════════════════════════════════════
+//  ANIMATION
+// ═══════════════════════════════════════════════════
+function step(){
+  const spd=parseInt(document.getElementById('spdSlider').value)||3;
+  if(scanMode==='bounce'){
+    scanIdx+=spd*bounceDir;
+    if(scanIdx>=NX){scanIdx=NX-1;bounceDir=-1;}
+    if(scanIdx<=0){scanIdx=0;bounceDir=1;}
+  } else {
+    scanIdx=Math.min(scanIdx+spd,NX);
+    if(scanIdx>=NX){
+      if(scanMode==='loop') scanIdx=0;
+      else{playing=false;document.getElementById('playBtn').textContent='▶ PLAY';render();return;}
+    }
   }
   render();
-  document.getElementById('infoBar').textContent=
-    `Scan: ${(scanIdx*dxNm).toFixed(1)}/${X_NM}nm  ·  Tip: ${currentTip.replace(/_/g,' ')}  ·  Surface: ${currentSurf}  ·  Mode: ${INV.erosion?'EROSION':'DILATION'}${INV.revScan?' [REV]':''}`;
-  if(playing)raf=requestAnimationFrame(animate);
+  document.getElementById('ibar').textContent=
+    `Scan: ${(scanIdx*DX).toFixed(1)}/${X_NM}nm  ·  ${currentTip.replace(/_/g,' ')}  ·  ${currentSurf}  ·  ${INV.erosion?'EROSION':'DILATION'}`;
+  if(playing) raf=requestAnimationFrame(step);
 }
 
-function reset(){
-  scanIdx=0;playing=false;bounceDir=1;cancelAnimationFrame(raf);
+function doReset(){
+  cancelAnimationFrame(raf);
+  scanIdx=0;playing=false;bounceDir=1;
   document.getElementById('playBtn').textContent='▶ PLAY';
-  render();document.getElementById('infoBar').textContent='Ready — press PLAY';
+  render();
+  document.getElementById('ibar').textContent='Ready — press PLAY';
 }
 
-// ══════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 //  CONTROLS
-// ══════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 document.getElementById('playBtn').addEventListener('click',()=>{
   playing=!playing;
   document.getElementById('playBtn').textContent=playing?'⏸ PAUSE':'▶ PLAY';
-  if(playing)animate();else cancelAnimationFrame(raf);
+  if(playing) step(); else cancelAnimationFrame(raf);
 });
-document.getElementById('resetBtn').addEventListener('click',reset);
-document.getElementById('speedSlider').addEventListener('input',function(){document.getElementById('speedVal').textContent=this.value;});
+
+document.getElementById('spdSlider').addEventListener('input',function(){
+  document.getElementById('spdVal').textContent=this.value;
+});
+
 document.getElementById('noiseSlider').addEventListener('input',function(){
   document.getElementById('noiseVal').textContent=(+this.value).toFixed(1)+' nm';
-  buildSurface(currentSurf);applyNoiseAndTransforms();computeMeasured();if(!playing)render();
+  noiseSeed=Math.floor(Math.random()*1000);
+  applyTransforms(); computeMeas(); if(!playing) render();
 });
+
 document.getElementById('tipBtns').addEventListener('click',e=>{
   const t=e.target.closest('[data-tip]');if(!t)return;
   currentTip=t.dataset.tip;
-  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.toggle('active',b.dataset.tip===currentTip));
-  refreshTipSliders();buildTip(currentTip);computeMeasured();drawTipPreview();if(!playing)render();
+  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.tip===currentTip));
+  refreshTipSliders(); buildTip(); computeMeas(); drawPreview(); if(!playing) render();
 });
+
 document.getElementById('surfBtns').addEventListener('click',e=>{
   const t=e.target.closest('[data-surf]');if(!t)return;
   currentSurf=t.dataset.surf;
-  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.toggle('active',b.dataset.surf===currentSurf));
-  refreshSurfSliders();buildSurface(currentSurf);applyNoiseAndTransforms();computeMeasured();reset();
-});
-mainCanvas.addEventListener('mousemove',e=>{
-  const rect=mainCanvas.getBoundingClientRect(),scaleX=mainCanvas.width/rect.width;
-  hoverX=(e.clientX-rect.left)*scaleX;if(!playing)render();
-});
-mainCanvas.addEventListener('mouseleave',()=>{
-  hoverX=-1;document.getElementById('cursorInfo').textContent='Hover to inspect';if(!playing)render();
+  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.surf===currentSurf));
+  refreshSurfSliders(); buildSurf(); applyTransforms(); computeMeas(); doReset();
 });
 
-// ══════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════
-function init(){
-  refreshTipSliders();refreshSurfSliders();
-  buildTip(currentTip);buildSurface(currentSurf);applyNoiseAndTransforms();computeMeasured();
-  render();drawTipPreview();
-  setMode('loop');
+function tog(k){
+  INV[k]=!INV[k];
+  document.getElementById('tg_'+k).classList.toggle('on',INV[k]);
+  buildTip(); applyTransforms(); computeMeas(); drawPreview(); doReset();
 }
-init();
+
+function setMode(m){
+  scanMode=m;
+  ['Single','Loop','Bounce'].forEach(x=>document.getElementById('m'+x).classList.toggle('on',x.toLowerCase()===m));
+}
+
+// ═══════════════════════════════════════════════════
+//  RANDOMIZE
+// ═══════════════════════════════════════════════════
+function randomizeAll(){
+  const tips=Object.keys(TIP_DEFS), surfs=Object.keys(SURF_DEFS);
+  currentTip=tips[Math.floor(Math.random()*tips.length)];
+  currentSurf=surfs[Math.floor(Math.random()*surfs.length)];
+  for(const d of TIP_DEFS[currentTip]||[]){
+    tipP[currentTip][d.id]=Math.round((d.min+Math.random()*(d.max-d.min))/d.step)*d.step;
+  }
+  for(const d of SURF_DEFS[currentSurf]||[]){
+    surfP[currentSurf][d.id]=Math.round((d.min+Math.random()*(d.max-d.min))/d.step)*d.step;
+  }
+  document.getElementById('noiseSlider').value=Math.random()*6;
+  document.getElementById('noiseVal').textContent=(+document.getElementById('noiseSlider').value).toFixed(1)+' nm';
+  noiseSeed=Math.floor(Math.random()*1000);
+  ['invZ','mirrorX','invTip','revScan','erosion','invErr'].forEach(k=>{
+    INV[k]=Math.random()<0.2;
+    document.getElementById('tg_'+k).classList.toggle('on',INV[k]);
+  });
+  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.tip===currentTip));
+  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.surf===currentSurf));
+  refreshTipSliders(); refreshSurfSliders();
+  buildTip(); buildSurf(); applyTransforms(); computeMeas(); drawPreview(); doReset();
+}
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+refreshTipSliders();
+refreshSurfSliders();
+buildTip();
+buildSurf();
+applyTransforms();
+computeMeas();
+drawPreview();
+render();
+setMode('loop');
 </script>
 </body>
 </html>

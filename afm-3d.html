@@ -74,6 +74,7 @@ input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
 .note-box strong{color:var(--accent2);}
 #canvasContainer{flex:1;position:relative;overflow:hidden;}
 #canvasContainer canvas{display:block;width:100%!important;height:100%!important;}
+#tipPreview{display:block;background:var(--canvas-bg);border:1px solid var(--border);margin-top:5px;width:100%;height:auto;}
 .overlay-label{position:absolute;font-size:7px;letter-spacing:2px;color:rgba(0,229,176,.55);text-transform:uppercase;pointer-events:none;}
 .info-bar{font-size:7px;letter-spacing:1px;color:var(--text);padding:3px 8px;background:var(--panel);border-top:1px solid var(--border);flex-shrink:0;}
 </style>
@@ -100,6 +101,7 @@ input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
       <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
       <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
       <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
+      <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
     </div>
     <div class="slider-section" id="tipSliders"></div>
     <canvas id="tipPreview" width="182" height="76"></canvas>
@@ -276,6 +278,8 @@ const TIP_DEFS={
                {id:'tilt',label:'Tilt angle',min:-40,max:40,step:1,val:15,unit:'°'}],
   double_tip: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:15,unit:'°'},
                {id:'gap',label:'Tip gap',min:5,max:80,step:1,val:30,unit:'nm'}],
+  sphere_cone:[{id:'R',label:'Apex Radius R',min:2,max:40,step:1,val:10,unit:'nm'},
+               {id:'angle',label:'Cone angle α',min:3,max:60,step:1,val:20,unit:'°'}],
 };
 const SURF_DEFS={
   sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm'}],
@@ -325,23 +329,23 @@ let noiseSeed=42;
 function seededRand(i){let x=Math.sin(i*127.1+noiseSeed*311.7)*43758.5453;return x-Math.floor(x);}
 
 function buildSurface(){
-  const base=14,p=surfP[currentSurf]||{};
+  const base=25,p=surfP[currentSurf]||{};
   for(let r=0;r<GH;r++){
     for(let c=0;c<GW;c++){
       const x=c*dNm,y=r*dNm,cx=X_NM/2,cy=Y_NM/2,dx=x-cx,dy=y-cy;
       const dist=Math.sqrt(dx*dx+dy*dy);
       const idx=r*GW+c;
       switch(currentSurf){
-        case 'sine':{const A=p.amp||18,T=p.period||55;rawSurf[idx]=base+A*Math.sin(2*Math.PI*x/T)*0.7+A*0.3*Math.sin(2*Math.PI*y/T);break;}
-        case 'hills':{const A=p.amp||14,S=p.scale||60;rawSurf[idx]=base+A*(Math.sin(2*Math.PI*x/S+.5)*Math.cos(2*Math.PI*y/(S*.8))+.5*Math.sin(2*Math.PI*(x+y)/(S*1.3)+1.2));break;}
-        case 'hemisphere':{const R=p.R||30;rawSurf[idx]=dist<R?base+Math.sqrt(R*R-dist*dist):base;break;}
-        case 'pit':{const R=p.R||28,tH=base+R;rawSurf[idx]=dist<R?tH-Math.sqrt(R*R-dist*dist):tH;break;}
-        case 'trench':{const T=p.period||60,dep=p.depth||30;rawSurf[idx]=(x%T)/T<0.45?base:base+dep;break;}
-        case 'rough':{const s=(p.scale||10)*.3;rawSurf[idx]=base+s*4+s*3*Math.sin(2*Math.PI*x/48+.9)+s*2*Math.cos(2*Math.PI*y/36+1.3)+s*1.5*Math.sin(2*Math.PI*(x+y)/22+2.1)+s*Math.sin(2*Math.PI*x/11+1.4);break;}
-        case 'pyramid':{const H=p.h||40,W=(p.w||80)/2;const t=Math.max(0,1-Math.max(Math.abs(dx),Math.abs(dy))/W);rawSurf[idx]=base+H*t;break;}
-        case 'dna':{const A=p.amp||22,T=p.period||50;rawSurf[idx]=base+A*Math.abs(Math.sin(Math.PI*x/T));break;}
-        case 'chirp':{const A=p.amp||18,cr=(p.rate||8)*.0002;rawSurf[idx]=base+A*Math.sin(2*Math.PI*x*(0.015+cr*x));break;}
-        case 'lattice':{const A=p.amp||12,sp=p.spacing||22;rawSurf[idx]=base+A*(0.5+0.5*Math.cos(2*Math.PI*x/sp))*(0.5+0.5*Math.cos(2*Math.PI*y/sp));break;}
+        case 'sine':{const A=p.amp||15,T=p.period||55;rawSurf[idx]=base+A*Math.sin(2*Math.PI*x/T)*0.7+A*0.3*Math.sin(2*Math.PI*y/T);break;}
+        case 'hills':{const A=p.amp||12,S=p.scale||60;rawSurf[idx]=base+A*(Math.sin(2*Math.PI*x/S+.5)*Math.cos(2*Math.PI*y/(S*.8))+.5*Math.sin(2*Math.PI*(x+y)/(S*1.3)+1.2));break;}
+        case 'hemisphere':{const R=p.R||25;rawSurf[idx]=dist<R?base+Math.sqrt(R*R-dist*dist):base;break;}
+        case 'pit':{const R=p.R||25,tH=base+R;rawSurf[idx]=dist<R?tH-Math.sqrt(R*R-dist*dist):tH;break;}
+        case 'trench':{const T=p.period||60,dep=p.depth||22;rawSurf[idx]=(x%T)/T<0.45?base:base+dep;break;}
+        case 'rough':{const s=(p.scale||10)*.25;rawSurf[idx]=base+s*4+s*3*Math.sin(2*Math.PI*x/48+.9)+s*2*Math.cos(2*Math.PI*y/36+1.3)+s*1.5*Math.sin(2*Math.PI*(x+y)/22+2.1)+s*Math.sin(2*Math.PI*x/11+1.4);break;}
+        case 'pyramid':{const H=p.h||30,W=(p.w||80)/2;const t=Math.max(0,1-Math.max(Math.abs(dx),Math.abs(dy))/W);rawSurf[idx]=base+H*t;break;}
+        case 'dna':{const A=p.amp||18,T=p.period||50;rawSurf[idx]=base+A*Math.abs(Math.sin(Math.PI*x/T));break;}
+        case 'chirp':{const A=p.amp||15,cr=(p.rate||8)*.0002;rawSurf[idx]=base+A*Math.sin(2*Math.PI*x*(0.015+cr*x));break;}
+        case 'lattice':{const A=p.amp||10,sp=p.spacing||22;rawSurf[idx]=base+A*(0.5+0.5*Math.cos(2*Math.PI*x/sp))*(0.5+0.5*Math.cos(2*Math.PI*y/sp));break;}
       }
     }
   }
@@ -349,8 +353,10 @@ function buildSurface(){
 
 function applyTransforms(){
   const noiseAmp=parseFloat(document.getElementById('noiseSlider').value)||0;
-  // Noise + copy
-  for(let i=0;i<GW*GH;i++) surfGrid[i]=rawSurf[i]+(noiseAmp>0?(seededRand(i)-.5)*2*noiseAmp:0);
+  // Noise + copy + clamp to valid height range
+  for(let i=0;i<GW*GH;i++){
+    surfGrid[i]=Math.max(2, rawSurf[i]+(noiseAmp>0?(seededRand(i)-.5)*2*noiseAmp:0));
+  }
   // Invert Z
   if(INV.invZ){
     let mn=Infinity,mx=-Infinity;
@@ -379,23 +385,33 @@ function buildTipKernel(){
       const r_nm=Math.sqrt((dc*dNm)**2+(dr*dNm)**2);
       const idx=(dr+TIP_R)*KW+(dc+TIP_R);
       switch(currentTip){
-        case 'sharp_cone':case 'blunt_cone':tipKernel[idx]=r_nm/Math.tan((p.angle||15)*Math.PI/180);break;
+        case 'sharp_cone':case 'blunt_cone':
+          tipKernel[idx]=r_nm/Math.tan((p.angle||15)*Math.PI/180); break;
         case 'sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?R-Math.sqrt(R*R-r_nm*r_nm):1e9;break;}
         case 'hyperboloid':{const a=p.a||7;tipKernel[idx]=Math.sqrt(r_nm*r_nm+a*a)-a;break;}
         case 'flat':{const R=p.R||18;tipKernel[idx]=r_nm<=R?0:1e9;break;}
         case 'inv_sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?Math.sqrt(R*R-r_nm*r_nm)-R:1e9;break;}
         case 'asymmetric':{
           const alpha=(p.angle||20)*Math.PI/180,tilt=(p.tilt||15)*Math.PI/180;
-          let v=r_nm/Math.tan(alpha)+dc*dNm*Math.tan(tilt);
-          tipKernel[idx]=Math.max(0,v);break;}
+          tipKernel[idx]=Math.max(0,r_nm/Math.tan(alpha)+dc*dNm*Math.tan(tilt));break;}
         case 'double_tip':{
           const alpha=(p.angle||15)*Math.PI/180,g=(p.gap||30)/2;
           const r1=Math.sqrt((dc*dNm-g)**2+(dr*dNm)**2);
           const r2=Math.sqrt((dc*dNm+g)**2+(dr*dNm)**2);
           tipKernel[idx]=Math.min(r1,r2)/Math.tan(alpha);break;}
+        case 'sphere_cone':{
+          const R=p.R||10, alpha=(p.angle||20)*Math.PI/180;
+          const sinA=Math.sin(alpha), cosA=Math.cos(alpha);
+          const r_t=R*sinA;
+          if(r_nm<=r_t){
+            tipKernel[idx]=R-Math.sqrt(Math.max(0,R*R-r_nm*r_nm));
+          } else {
+            const z_t=R*(1-cosA);
+            tipKernel[idx]=z_t+(r_nm-r_t)/Math.tan(alpha);
+          }
+          break;}
       }
-      // Invert tip
-      if(INV.invTip&&tipKernel[idx]<1e6) tipKernel[idx]=-tipKernel[idx];
+      // invTip is handled in computeMeas by switching operation — don't modify kernel
     }
   }
 }
@@ -404,14 +420,18 @@ function buildTipKernel(){
 //  2D MINKOWSKI (dilation or erosion)
 // ════════════════════════════════════════════
 function computeMeas(){
-  if(INV.erosion){
+  // invTip XOR erosion: either one switches to erosion, both cancel out
+  const doErosion = INV.erosion !== INV.invTip;
+  // Max height that makes sense = max surface + typical tip artifact headroom
+  const H_MAX = 95;
+  if(doErosion){
     for(let r=0;r<GH;r++) for(let c=0;c<GW;c++){
       let best=Infinity;
       for(let dr=-TIP_R;dr<=TIP_R;dr++){const nr=r+dr;if(nr<0||nr>=GH)continue;
         for(let dc=-TIP_R;dc<=TIP_R;dc++){const nc=c+dc;if(nc<0||nc>=GW)continue;
           const d=tipKernel[(dr+TIP_R)*KW+(dc+TIP_R)];if(d>1e6)continue;
           const v=surfGrid[nr*GW+nc]-d;if(v<best)best=v;}}
-      measGrid[r*GW+c]=best;
+      measGrid[r*GW+c]=Math.max(0, Math.min(H_MAX, best));
     }
   } else {
     for(let r=0;r<GH;r++) for(let c=0;c<GW;c++){
@@ -420,7 +440,7 @@ function computeMeas(){
         for(let dc=-TIP_R;dc<=TIP_R;dc++){const nc=c+dc;if(nc<0||nc>=GW)continue;
           const d=tipKernel[(dr+TIP_R)*KW+(dc+TIP_R)];if(d>1e6)continue;
           const v=surfGrid[nr*GW+nc]+d;if(v>best)best=v;}}
-      measGrid[r*GW+c]=best;
+      measGrid[r*GW+c]=Math.max(0, Math.min(H_MAX, best));
     }
   }
 }
@@ -580,50 +600,207 @@ function buildTipObj(){
   if(tipObj)scene.remove(tipObj);
   tipObj=new THREE.Group();
   const p=tipP[currentTip]||{};
-  const mat=new THREE.MeshPhongMaterial({color:0xc0d8e8,specular:0x445566,shininess:90,transparent:true,opacity:0.88});
-  const shH=42;
-  switch(currentTip){
-    case 'sharp_cone':case 'blunt_cone':{
-      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
-      const bR=Math.min(shH*Math.tan(alpha),80);
-      const cg=new THREE.ConeGeometry(bR,shH,32);cg.translate(0,shH/2,0);
-      tipObj.add(new THREE.Mesh(cg,mat));break;}
-    case 'sphere':{
-      const R=Math.min(p.R||20,35)*.9;
-      const sg=new THREE.SphereGeometry(R,32,16,0,Math.PI*2,Math.PI/2,Math.PI/2);sg.translate(0,R,0);
-      const cyl=new THREE.CylinderGeometry(R,R,shH,32);cyl.translate(0,shH/2+R,0);
-      tipObj.add(new THREE.Mesh(sg,mat));tipObj.add(new THREE.Mesh(cyl,mat));break;}
-    case 'hyperboloid':{
-      const a=p.a||7,pts2=[];
-      for(let h=0;h<=shH;h+=1.5){const rv=Math.sqrt((h+a)**2-a*a)*.55;pts2.push(new THREE.Vector2(rv,h));}
-      tipObj.add(new THREE.Mesh(new THREE.LatheGeometry(pts2,32),mat));break;}
-    case 'flat':{
-      const R=Math.min(p.R||18,40)*.9;
-      const cyl=new THREE.CylinderGeometry(R,R,shH,32);cyl.translate(0,shH/2,0);
-      tipObj.add(new THREE.Mesh(cyl,mat));break;}
-    case 'inv_sphere':{
-      const R=Math.min(p.R||20,35)*.9;
-      const cyl=new THREE.CylinderGeometry(R*1.2,R*1.2,shH,32);cyl.translate(0,shH/2,0);
-      const bg=new THREE.SphereGeometry(R,32,16,0,Math.PI*2,0,Math.PI/2);bg.translate(0,R*.5,0);
-      tipObj.add(new THREE.Mesh(cyl,mat));
-      tipObj.add(new THREE.Mesh(bg,new THREE.MeshPhongMaterial({color:0xc0d8e8,side:THREE.BackSide,transparent:true,opacity:0.65})));break;}
-    case 'asymmetric':{
-      const alpha=(p.angle||20)*Math.PI/180,tilt=(p.tilt||15)*Math.PI/180;
-      const bR=Math.min(shH*Math.tan(alpha),80);
-      const cg=new THREE.ConeGeometry(bR,shH,32);cg.translate(0,shH/2,0);
-      const m=new THREE.Mesh(cg,mat);m.rotation.z=tilt;
-      tipObj.add(m);break;}
-    case 'double_tip':{
-      const alpha=(p.angle||15)*Math.PI/180,g=Math.min(p.gap||30,50)/2;
-      const bR=Math.min(shH*Math.tan(alpha),40);
-      [g,-g].forEach(offset=>{
-        const cg=new THREE.ConeGeometry(bR,shH,32);cg.translate(offset,shH/2,0);
-        tipObj.add(new THREE.Mesh(cg,mat));
-      });break;}
+  const mat=new THREE.MeshPhongMaterial({
+    color:0xc8dce8, specular:0x5577aa, shininess:100,
+    transparent:true, opacity:0.90, side:THREE.DoubleSide
+  });
+  const shH=48; // shaft height above apex
+
+  // ── Helper: cone with apex exactly at y=0, base at y=shH ─────────────────
+  // THREE.ConeGeometry default: apex at +y, base at -y (upside-down for us).
+  // Fix: rotateX(π) flips it so apex → -y, then translate up by height/2
+  // so apex sits at y=0 and base at y=height.
+  function makeCone(baseR, height, ox=0, oz=0){
+    const g = new THREE.ConeGeometry(Math.max(0.1, baseR), height, 32);
+    g.rotateX(Math.PI);
+    g.translate(ox, height/2, oz);
+    return g;
   }
-  // Glowing apex
-  const ag=new THREE.SphereGeometry(2.5,16,16);
-  tipObj.add(new THREE.Mesh(ag,new THREE.MeshBasicMaterial({color:0x00e5b0})));
+
+  switch(currentTip){
+
+    // ── SHARP / BLUNT CONE ─────────────────────────────────────────────────
+    case 'sharp_cone': case 'blunt_cone':{
+      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+      const bR=Math.min(shH*Math.tan(alpha), 85);
+      tipObj.add(new THREE.Mesh(makeCone(bR, shH), mat));
+      break;}
+
+    // ── SPHERE ─────────────────────────────────────────────────────────────
+    // Apex at y=0 = bottom of sphere. Center at y=R. Lower hemisphere only.
+    // SphereGeometry(R, wSegs, hSegs, phiStart, phiLen, thetaStart, thetaLen)
+    // thetaStart=0 (north pole), thetaLen=π/2 gives top hemisphere.
+    // We rotateX(π) to flip it → bottom hemisphere with apex at y=0.
+    case 'sphere':{
+      const R = Math.min((p.R||20), 36);
+      // Bottom hemisphere cap
+      const sg = new THREE.SphereGeometry(R, 32, 16, 0, Math.PI*2, 0, Math.PI/2);
+      sg.rotateX(Math.PI);   // flip so open face is at top
+      sg.translate(0, R, 0); // lift so lowest point (apex) sits at y=0
+      // Cylinder shaft above hemisphere
+      const cyl = new THREE.CylinderGeometry(R, R, shH, 32);
+      cyl.translate(0, R + shH/2, 0);
+      tipObj.add(new THREE.Mesh(sg, mat));
+      tipObj.add(new THREE.Mesh(cyl, mat));
+      break;}
+
+    // ── HYPERBOLOID ────────────────────────────────────────────────────────
+    // LatheGeometry rotates a 2D profile around the Y-axis.
+    // Profile: at height y above apex, radius = sqrt((y+a)^2 - a^2).
+    // y=0 → r=0 (apex). y increases → r increases (flares outward).
+    case 'hyperboloid':{
+      const a = p.a||7;
+      const pts2 = [];
+      for(let h=0; h<=shH; h+=1.0){
+        const rv = Math.sqrt(Math.max(0, (h+a)**2 - a*a));
+        pts2.push(new THREE.Vector2(rv, h));
+      }
+      tipObj.add(new THREE.Mesh(new THREE.LatheGeometry(pts2, 32), mat));
+      break;}
+
+    // ── FLAT PUNCH ─────────────────────────────────────────────────────────
+    // Cylinder with a flat bottom face — brightened face disk so it looks flat.
+    case 'flat':{
+      const R = Math.min((p.R||18), 42);
+      const cyl = new THREE.CylinderGeometry(R, R, shH, 32);
+      cyl.translate(0, shH/2, 0);
+      tipObj.add(new THREE.Mesh(cyl, mat));
+
+      // Bright flat face disk at y=0 — the defining feature of a flat punch
+      const diskMat = new THREE.MeshPhongMaterial({
+        color:0xe8f4ff, specular:0xffffff, shininess:160,
+        transparent:false, opacity:1.0
+      });
+      const disk = new THREE.CircleGeometry(R, 48);
+      disk.rotateX(Math.PI/2);  // face downward (-Y)
+      tipObj.add(new THREE.Mesh(disk, diskMat));
+
+      // Sharp edge ring
+      const ringMat = new THREE.MeshPhongMaterial({color:0xffffff, emissive:0x334455, shininess:200});
+      const ring = new THREE.TorusGeometry(R, 1.2, 8, 48);
+      ring.rotateX(Math.PI/2);
+      tipObj.add(new THREE.Mesh(ring, ringMat));
+      break;}
+
+    // ── CONCAVE SPHERE ─────────────────────────────────────────────────────
+    // Wide cylindrical body with a deep hemispherical bowl carved into the bottom.
+    // The bowl interior is a clearly visible curved depression — distinct from flat.
+    case 'inv_sphere':{
+      const R = Math.min((p.R||20), 34);
+      const outerR = R * 1.4;
+
+      // Outer cylinder (wider than flat, and taller to make shape clear)
+      const cyl = new THREE.CylinderGeometry(outerR, outerR, shH, 32);
+      cyl.translate(0, shH/2 + R, 0);
+      tipObj.add(new THREE.Mesh(cyl, mat));
+
+      // Bowl inner surface: render the TOP hemisphere with FrontSide from inside.
+      // Center at (0, R), so the opening (equator) is at y=0.
+      // thetaStart=0, thetaLen=π/2 gives the top hemisphere (from north pole down to equator).
+      // With BackSide this renders the INNER concave surface correctly.
+      const bowlMat = new THREE.MeshPhongMaterial({
+        color:0x88bbdd, side:THREE.BackSide,
+        transparent:false, opacity:1.0, shininess:120,
+        specular:0x6699bb
+      });
+      const bowl = new THREE.SphereGeometry(R, 48, 24, 0, Math.PI*2, 0, Math.PI/2);
+      bowl.translate(0, R, 0);
+      tipObj.add(new THREE.Mesh(bowl, bowlMat));
+
+      // Dark cavity fill — a slightly smaller sphere rendered FrontSide,
+      // making the bowl look deep and clearly concave (not flat).
+      const cavityMat = new THREE.MeshPhongMaterial({
+        color:0x112233, side:THREE.FrontSide,
+        transparent:true, opacity:0.7, shininess:20
+      });
+      const cavity = new THREE.SphereGeometry(R * 0.92, 48, 24, 0, Math.PI*2, 0, Math.PI/2);
+      cavity.translate(0, R, 0);
+      tipObj.add(new THREE.Mesh(cavity, cavityMat));
+
+      // Bright rim ring at y=0 (the bowl opening edge)
+      const rimMat = new THREE.MeshPhongMaterial({
+        color:0xaaddff, emissive:0x223344, shininess:180
+      });
+      const rim = new THREE.TorusGeometry(R, 1.4, 12, 48);
+      rim.rotateX(Math.PI/2);
+      tipObj.add(new THREE.Mesh(rim, rimMat));
+
+      // Outer rim of cylinder base
+      const outerRim = new THREE.TorusGeometry(outerR, 1.0, 8, 48);
+      outerRim.rotateX(Math.PI/2);
+      tipObj.add(new THREE.Mesh(outerRim, new THREE.MeshPhongMaterial({color:0xc0d8e8, shininess:100})));
+      break;}
+
+    // ── ASYMMETRIC CONE ────────────────────────────────────────────────────
+    // Standard cone but tilted around Z axis by the tilt angle.
+    // The makeCone helper already puts apex at y=0, so tilt is applied after.
+    case 'asymmetric':{
+      const alpha = (p.angle||20)*Math.PI/180;
+      const tilt  = (p.tilt ||15)*Math.PI/180;
+      const bR = Math.min(shH*Math.tan(alpha), 80);
+      const mesh = new THREE.Mesh(makeCone(bR, shH), mat);
+      mesh.rotation.z = tilt; // tilt around Z axis
+      tipObj.add(mesh);
+      break;}
+
+    // ── DOUBLE TIP ─────────────────────────────────────────────────────────
+    // Two cones offset in X, both with apex at y=0.
+    case 'double_tip':{
+      const alpha = (p.angle||15)*Math.PI/180;
+      const g = Math.min((p.gap||30)/2, 45);
+      const bR = Math.min(shH*Math.tan(alpha), 40);
+      [-g, g].forEach(offset=>{
+        tipObj.add(new THREE.Mesh(makeCone(bR, shH, offset, 0), mat));
+      });
+      // Second apex dot for the offset tips
+      [-g, g].forEach(offset=>{
+        const ag2 = new THREE.SphereGeometry(2, 12, 12);
+        ag2.translate(offset, 0, 0);
+        tipObj.add(new THREE.Mesh(ag2, new THREE.MeshBasicMaterial({color:0x00e5b0})));
+      });
+      break;}
+
+    // ── CONE + SPHERE APEX ─────────────────────────────────────────────────
+    // Spherical cap at apex (y=0..z_t), cone section above (y=z_t..shH).
+    // The sphere center sits at y=R. The cap is the lower portion of the sphere
+    // from the bottom (y=0) up to the tangent point at polar angle alpha from bottom.
+    case 'sphere_cone':{
+      const R     = Math.min(p.R||10, 26);
+      const alpha = (p.angle||20)*Math.PI/180;
+      const sinA  = Math.sin(alpha), cosA = Math.cos(alpha);
+      const z_t   = R*(1-cosA);   // height of tangent point above apex
+      const r_t   = R*sinA;       // radius at tangent point
+
+      // Spherical cap: from bottom (theta=π, south pole) up to tangent
+      // thetaStart = π/2 + (π/2 - alpha) = π - alpha from north pole
+      // thetaLength = alpha (spans from south pole up to tangent)
+      // Easier: build full bottom hemisphere and clip with a cylinder, OR
+      // use thetaStart/Length directly:
+      // In THREE: theta goes from 0 (north pole, +y) to π (south pole, -y).
+      // We want the cap from south pole (y=-R, which after flip = y=0) upward
+      // through angle alpha. After rotateX(π): south pole → bottom.
+      // thetaStart = π - alpha, thetaLength = alpha
+      const capThStart = Math.PI - alpha;
+      const capThLen   = alpha;
+      const sg = new THREE.SphereGeometry(R, 32, 16, 0, Math.PI*2, capThStart, capThLen);
+      sg.rotateX(Math.PI);   // south pole (y=-R) → bottom (y=+R after flip)
+      sg.translate(0, R, 0); // shift so apex at y=0
+
+      // Cone: from tangent point (y=z_t, r=r_t) up to top of shaft
+      const coneH  = shH - z_t;
+      const topR   = r_t + coneH*Math.tan(alpha);
+      const cg = new THREE.ConeGeometry(Math.max(0.1,topR), coneH, 32);
+      cg.rotateX(Math.PI);
+      cg.translate(0, z_t + coneH/2, 0);
+
+      tipObj.add(new THREE.Mesh(sg, mat));
+      tipObj.add(new THREE.Mesh(cg, mat));
+      break;}
+  }
+
+  // ── Glowing apex dot at y=0 ───────────────────────────────────────────────
+  const ag = new THREE.SphereGeometry(2.5, 16, 16);
+  tipObj.add(new THREE.Mesh(ag, new THREE.MeshBasicMaterial({color:0x00e5b0})));
   scene.add(tipObj);
 }
 
@@ -688,36 +865,160 @@ function updateStats(){
 const tpv=document.getElementById('tipPreview');
 const tCtx=tpv.getContext('2d');
 function drawTipPreview(){
-  tCtx.clearRect(0,0,182,76);
-  const cx=91,top=4,wS=1.7,hS=1.3,p=tipP[currentTip]||{};
+  const W=182, H=76;
+  tCtx.clearRect(0,0,W,H);
+  const cx=W/2, apexY=H-7, bodyH=H-13;
+  const p=tipP[currentTip]||{};
   const dark=document.documentElement.getAttribute('data-theme')!=='light';
-  const pg=tCtx.createLinearGradient(cx,top,cx,76);
-  pg.addColorStop(0,dark?'rgba(0,229,176,0)':'rgba(0,158,122,0)');
-  pg.addColorStop(1,dark?'rgba(0,229,176,0.18)':'rgba(0,158,122,0.12)');
-  tCtx.strokeStyle=cv('--accent');tCtx.fillStyle=pg;tCtx.lineWidth=1.4;tCtx.beginPath();
-  switch(currentTip){
-    case 'sharp_cone':case 'blunt_cone':{const a=p.angle||(currentTip==='sharp_cone'?15:35),h=68,hw=h*Math.tan(a*Math.PI/180)*(wS/hS);tCtx.moveTo(cx,top);tCtx.lineTo(cx-hw,top+h);tCtx.lineTo(cx+hw,top+h);tCtx.closePath();break;}
-    case 'sphere':{const Rp=Math.min((p.R||20)*hS,32);tCtx.arc(cx,top+Rp,Rp,Math.PI,0);tCtx.lineTo(cx+Rp,76);tCtx.lineTo(cx-Rp,76);tCtx.closePath();break;}
-    case 'hyperboloid':{const a=p.a||7,pts=[];for(let h=0;h<=46;h++){const r=Math.sqrt((h+a)**2-a**2);pts.push([cx+r*wS*0.55,top+h*hS]);}tCtx.moveTo(cx,top);pts.forEach(([x,y])=>tCtx.lineTo(x,y));for(let i=pts.length-1;i>=0;i--)tCtx.lineTo(cx-(pts[i][0]-cx),pts[i][1]);tCtx.closePath();break;}
-    case 'flat':{const Rp=Math.min((p.R||18)*wS,80);tCtx.rect(cx-Rp,top,Rp*2,66);break;}
-    case 'inv_sphere':{const Rp=Math.min((p.R||20)*hS,32),hW=Math.min((p.R||20)*wS+4,80),bY=top+68;tCtx.moveTo(cx-hW,top);tCtx.lineTo(cx-hW,bY-Rp);tCtx.arc(cx,bY-Rp,Rp,Math.PI,0,true);tCtx.lineTo(cx+hW,top);tCtx.closePath();break;}
-    case 'asymmetric':{
-      const a=(p.angle||20)*Math.PI/180,h=68,t=(p.tilt||15)*Math.PI/180;
-      const lw=h*Math.tan(a)*(wS/hS)+h*Math.tan(Math.abs(t))*(wS/hS)*Math.sign(p.tilt||15);
-      const rw=h*Math.tan(a)*(wS/hS)-h*Math.tan(Math.abs(t))*(wS/hS)*Math.sign(p.tilt||15);
-      tCtx.moveTo(cx,top);tCtx.lineTo(cx-Math.max(2,lw),top+h);tCtx.lineTo(cx+Math.max(2,rw),top+h);tCtx.closePath();break;}
-    case 'double_tip':{
-      const a=(p.angle||15)*Math.PI/180,h=68,g=Math.min((p.gap||30)*wS*0.5,58),hw=h*Math.tan(a)*(wS/hS);
-      tCtx.moveTo(cx-g,top+2);tCtx.lineTo(cx-g-hw,top+h);tCtx.lineTo(cx-g+hw,top+h);tCtx.closePath();tCtx.fill();tCtx.stroke();tCtx.beginPath();
-      tCtx.moveTo(cx+g,top+2);tCtx.lineTo(cx+g-hw,top+h);tCtx.lineTo(cx+g+hw,top+h);tCtx.closePath();break;}
+  const NM_W=60, NM_H=50;
+  const wS=W/NM_W, hS=bodyH/NM_H;
+  const bodyNm=NM_H;
+
+  const pg=tCtx.createLinearGradient(cx,apexY,cx,apexY-bodyH);
+  pg.addColorStop(0, dark?'rgba(180,215,240,0.60)':'rgba(0,130,105,0.30)');
+  pg.addColorStop(1, dark?'rgba(160,195,220,0.12)':'rgba(0,130,105,0.05)');
+  tCtx.fillStyle=pg;
+  tCtx.strokeStyle=dark?'rgba(210,235,255,0.95)':'rgba(0,110,90,0.90)';
+  tCtx.lineWidth=2;
+
+  function solid(pathFn){
+    tCtx.beginPath(); pathFn(); tCtx.closePath();
+    tCtx.fill(); tCtx.stroke();
   }
-  tCtx.fill();tCtx.stroke();
-  tCtx.beginPath();tCtx.arc(cx,top,4,0,Math.PI*2);tCtx.fillStyle=dark?'rgba(0,229,176,0.2)':'rgba(0,158,122,0.15)';tCtx.fill();
-  tCtx.beginPath();tCtx.arc(cx,top,2.5,0,Math.PI*2);tCtx.fillStyle=cv('--accent');tCtx.fill();
-  if(INV.invTip){tCtx.fillStyle=cv('--accent3');tCtx.font='7px Courier New';tCtx.textAlign='left';tCtx.fillText('INV',3,74);}
-  const names={sharp_cone:'SHARP',blunt_cone:'BLUNT',sphere:'SPHERE',hyperboloid:'HYPER.',flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE'};
-  tCtx.fillStyle=cv('--axis');tCtx.font='7px Courier New';tCtx.textAlign='right';tCtx.fillText(names[currentTip]||currentTip,178,74);
+
+  switch(currentTip){
+    case 'sharp_cone': case 'blunt_cone':{
+      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+      const hw=Math.max(3, bodyNm*Math.tan(alpha)*wS);
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        tCtx.lineTo(cx-hw, apexY-bodyH);
+        tCtx.lineTo(cx+hw, apexY-bodyH);
+      }); break;}
+
+    case 'sphere':{
+      const R=p.R||20, pts=[];
+      for(let i=0;i<=80;i++){
+        const r=(i/80)*R, T=R-Math.sqrt(R*R-r*r);
+        if(T<=bodyNm) pts.push([r,T]);
+      }
+      if(!pts.length) pts.push([R,bodyNm]);
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        pts.forEach(([r,T])=>tCtx.lineTo(cx+r*wS, apexY-T*hS));
+        tCtx.lineTo(cx+pts[pts.length-1][0]*wS, apexY-bodyH);
+        tCtx.lineTo(cx-pts[pts.length-1][0]*wS, apexY-bodyH);
+        for(let i=pts.length-1;i>=0;i--) tCtx.lineTo(cx-pts[i][0]*wS, apexY-pts[i][1]*hS);
+      }); break;}
+
+    case 'hyperboloid':{
+      const a=p.a||7, pts=[];
+      for(let i=0;i<=120;i++){
+        const h=(i/120)*bodyNm, r=Math.sqrt((h+a)*(h+a)-a*a);
+        pts.push([r,h]);
+      }
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        pts.forEach(([r,h])=>tCtx.lineTo(cx+r*wS, apexY-h*hS));
+        for(let i=pts.length-1;i>=0;i--) tCtx.lineTo(cx-pts[i][0]*wS, apexY-pts[i][1]*hS);
+      }); break;}
+
+    case 'flat':{
+      const R_px=(p.R||18)*wS;
+      solid(()=>{
+        tCtx.moveTo(cx-R_px, apexY); tCtx.lineTo(cx+R_px, apexY);
+        tCtx.lineTo(cx+R_px, apexY-bodyH); tCtx.lineTo(cx-R_px, apexY-bodyH);
+      });
+      tCtx.save();
+      tCtx.strokeStyle=dark?'rgba(220,248,255,0.98)':'rgba(0,80,140,0.9)'; tCtx.lineWidth=3;
+      tCtx.beginPath(); tCtx.moveTo(cx-R_px,apexY); tCtx.lineTo(cx+R_px,apexY); tCtx.stroke();
+      tCtx.restore(); break;}
+
+    case 'inv_sphere':{
+      const R=p.R||20;
+      const hw=Math.min(R*wS+8, W/2-2);
+      const R_px=Math.min(R*hS, hw*0.9);  // bowl radius always fits inside walls
+      // Arc center at (cx, apexY-R_px): top half (anticlockwise=true) = concave bowl ✓
+      solid(()=>{
+        tCtx.moveTo(cx-hw, apexY-bodyH);
+        tCtx.lineTo(cx+hw, apexY-bodyH);
+        tCtx.lineTo(cx+hw, apexY-R_px);
+        tCtx.arc(cx, apexY-R_px, R_px, 0, Math.PI, true);  // top half = concave
+        tCtx.lineTo(cx-hw, apexY-R_px);
+      });
+      tCtx.save();
+      tCtx.strokeStyle=dark?'rgba(100,200,240,0.95)':'rgba(0,100,180,0.90)'; tCtx.lineWidth=2.5;
+      tCtx.beginPath(); tCtx.arc(cx, apexY-R_px, R_px, 0, Math.PI, true); tCtx.stroke();
+      tCtx.restore(); break;}
+
+    case 'asymmetric':{
+      const alpha=(p.angle||20)*Math.PI/180, tilt=(p.tilt||15)*Math.PI/180;
+      const lw=Math.max(3, bodyNm*(Math.tan(alpha)+Math.tan(tilt))*wS);
+      const rw=Math.max(3, bodyNm*(Math.tan(alpha)-Math.tan(tilt))*wS);
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        tCtx.lineTo(cx-lw, apexY-bodyH);
+        tCtx.lineTo(cx+rw, apexY-bodyH);
+      }); break;}
+
+    case 'double_tip':{
+      const alpha=(p.angle||15)*Math.PI/180;
+      const g_px=(p.gap||30)*wS/2;
+      const hw=Math.max(2, Math.min(bodyNm*Math.tan(alpha)*wS, g_px*0.88));
+      for(const off of [-g_px,g_px]){
+        solid(()=>{
+          tCtx.moveTo(cx+off, apexY);
+          tCtx.lineTo(cx+off-hw, apexY-bodyH);
+          tCtx.lineTo(cx+off+hw, apexY-bodyH);
+        });
+      }
+      [cx-g_px,cx+g_px].forEach(x=>{
+        tCtx.beginPath(); tCtx.arc(x,apexY,2.5,0,Math.PI*2);
+        tCtx.fillStyle=cv('--accent'); tCtx.fill();
+      }); break;}
+
+    case 'sphere_cone':{
+      const R=p.R||10, alpha=(p.angle||20)*Math.PI/180;
+      const sinA=Math.sin(alpha), cosA=Math.cos(alpha);
+      const r_t=R*sinA, z_t=R*(1-cosA);
+      const capPts=[];
+      for(let i=0;i<=60;i++){
+        const r=(i/60)*r_t, T=R-Math.sqrt(Math.max(0,R*R-r*r));
+        capPts.push([r,T]);
+      }
+      const coneTopR=Math.max(r_t+3, r_t+(bodyNm-z_t)*Math.tan(alpha));
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        capPts.forEach(([r,T])=>tCtx.lineTo(cx+r*wS, apexY-T*hS));
+        tCtx.lineTo(cx+coneTopR*wS, apexY-bodyH);
+        tCtx.lineTo(cx-coneTopR*wS, apexY-bodyH);
+        for(let i=capPts.length-1;i>=0;i--) tCtx.lineTo(cx-capPts[i][0]*wS, apexY-capPts[i][1]*hS);
+      }); break;}
+  }
+
+  tCtx.beginPath(); tCtx.arc(cx,apexY,5,0,Math.PI*2);
+  tCtx.fillStyle=dark?'rgba(0,229,176,0.22)':'rgba(0,158,122,0.18)'; tCtx.fill();
+  tCtx.beginPath(); tCtx.arc(cx,apexY,2.5,0,Math.PI*2);
+  tCtx.fillStyle=cv('--accent');
+  tCtx.shadowColor=cv('--accent'); tCtx.shadowBlur=8; tCtx.fill(); tCtx.shadowBlur=0;
+
+  tCtx.save();
+  tCtx.strokeStyle=dark?'rgba(255,107,53,0.55)':'rgba(200,60,20,0.55)';
+  tCtx.lineWidth=1; tCtx.setLineDash([3,4]);
+  tCtx.beginPath(); tCtx.moveTo(4,apexY); tCtx.lineTo(W-4,apexY); tCtx.stroke();
+  tCtx.setLineDash([]); tCtx.restore();
+
+  if(INV.invTip){
+    tCtx.fillStyle=cv('--accent3'); tCtx.font='7px Courier New'; tCtx.textAlign='left';
+    tCtx.fillText('INV',3,10);
+  }
+  const names={sharp_cone:'SHARP',blunt_cone:'BLUNT',sphere:'SPHERE',hyperboloid:'HYPER.',
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE'};
+  tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
+  tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
 }
+
+
 
 // ════════════════════════════════════════════
 //  RENDER LOOP

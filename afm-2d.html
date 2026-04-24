@@ -152,8 +152,8 @@ canvas.main-cv{display:block;width:100%;background:#040608;}
 // ═══════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════
-const NX=700, X_NM=240, Y_NM=80, DX=X_NM/NX;
-const CV0H=520;  // canvas 0 pixel height — doubled
+const NX=700, X_NM=240, Y_NM=100, DX=X_NM/NX;
+const CV0H=520;
 const ML=44,MR=8,MT=36,MB=20;
 const PW=NX-ML-MR, PH=CV0H-MT-MB;
 function xC(i){return ML+i/NX*PW;}
@@ -162,6 +162,13 @@ function yC(nm){
   const y=MT+PH-(nm/Y_NM)*PH;
   return Math.max(MT, Math.min(MT+PH, y));
 }
+
+// TIP_R: 30nm covers all tips without saturation
+// Sharp cone alpha=15: T(30nm)=112nm — large but most will be clamped gracefully
+// Blunt cone alpha=35: T(30nm)=43nm — good
+// Sphere R=20: only interacts within r<20nm anyway
+const TIP_R_NM = 30;
+const TIP_R    = Math.ceil(TIP_R_NM / DX);  // ~88 pixels
 
 // Error map
 const EML=44,EMR=8,EMT=12,EMB=10;
@@ -175,7 +182,6 @@ const FPW=NX-FML-FMR, FPH=120-FMT-FMB;
 const surface  = new Float32Array(NX);
 const measured = new Float32Array(NX);
 const rawSurf  = new Float32Array(NX);
-const TIP_R    = Math.ceil(50/DX);
 const tipProf  = new Float32Array(2*TIP_R+1);
 
 // ═══════════════════════════════════════════════════
@@ -261,35 +267,70 @@ function refreshSurfSliders(){
 }
 
 // ═══════════════════════════════════════════════════
-//  TIP PROFILE  T(r)
+//  TIP PROFILE  T(dc) — dc is SIGNED pixel offset from centre
 // ═══════════════════════════════════════════════════
-function tipT(r){
+// Returns the height (nm) the tip sits above its apex at signed lateral offset dc_nm.
+// For dilation: measured[i] = max_j[ surface[i+j] + T(j) ]
+// For erosion:  measured[i] = min_j[ surface[i+j] - T(j) ]
+// T must be >= 0. Infinity means the tip cannot reach that offset (blocked).
+
+function tipT(dc_nm){
+  // dc_nm: SIGNED lateral offset in nm (positive = right, negative = left)
+  const r = Math.abs(dc_nm);   // radial distance for symmetric tips
   const p = tipP[currentTip]||{};
   switch(currentTip){
-    case 'sharp_cone': case 'blunt_cone':
-      return r / Math.tan((p.angle||15)*Math.PI/180);
-    case 'sphere':{const R=p.R||20; return r<R ? R-Math.sqrt(R*R-r*r) : Infinity;}
-    case 'hyperboloid':{const a=p.a||7; return Math.sqrt(r*r+a*a)-a;}
-    case 'flat':{const R=p.R||18; return r<=R ? 0 : Infinity;}
-    case 'inv_sphere':{const R=p.R||20; return r<R ? Math.sqrt(R*R-r*r)-R : Infinity;}
+    case 'sharp_cone': case 'blunt_cone':{
+      const alpha=(p.angle||(currentTip==='sharp_cone'?15:35))*Math.PI/180;
+      return r/Math.tan(alpha);}
+    case 'sphere':{
+      const R=p.R||20;
+      return r<R ? R-Math.sqrt(R*R-r*r) : Infinity;}
+    case 'hyperboloid':{
+      const a=p.a||7;
+      return Math.sqrt(r*r+a*a)-a;}
+    case 'flat':{
+      const R=p.R||18;
+      return r<=R ? 0 : Infinity;}
+    case 'inv_sphere':{
+      // Concave sphere: T(r) = R - sqrt(R²-r²) — same as convex sphere formula.
+      // The concave tip contacts the surface at the RIM (r=R) not the centre.
+      // It acts via EROSION: measured = min[ surface[j] - T(j) ]
+      // which is handled in computeMeas by detecting inv_sphere.
+      const R=p.R||20;
+      return r<R ? R-Math.sqrt(R*R-r*r) : Infinity;}
     case 'asymmetric':{
-      const a=(p.angle||20)*Math.PI/180, tl=(p.tilt||15)*Math.PI/180;
-      return Math.max(0, r/Math.tan(a) + r*Math.tan(tl));}
+      // Tilt is along the signed dc direction — one side steeper, other shallower
+      const alpha=(p.angle||20)*Math.PI/180;
+      const tilt =(p.tilt ||15)*Math.PI/180;
+      // T(dc) = r/tan(alpha) + dc_nm*tan(tilt)
+      // Positive tilt: right side (dc>0) gets extra height → right artifacts pushed higher
+      return Math.max(0, r/Math.tan(alpha) + dc_nm*Math.tan(tilt));}
     case 'double_tip':{
-      const a=(p.angle||15)*Math.PI/180, g=(p.gap||30)/2;
-      return Math.min(Math.abs(r-g), Math.abs(r+g)) / Math.tan(a);}
+      // Two apexes at dc=-g and dc=+g
+      // T(dc) = min distance to either apex / tan(alpha)
+      const alpha=(p.angle||15)*Math.PI/180;
+      const g=(p.gap||30)/2;
+      const r1=Math.abs(dc_nm-g);   // distance to right apex
+      const r2=Math.abs(dc_nm+g);   // distance to left apex
+      return Math.min(r1,r2)/Math.tan(alpha);}
     case 'sphere_cone':{
       const R=p.R||10, a=(p.angle||20)*Math.PI/180;
-      const r_t=R*Math.sin(a), z_t=R*(1-Math.cos(a));
+      const sinA=Math.sin(a), cosA=Math.cos(a);
+      const r_t=R*sinA, z_t=R*(1-cosA);
       return r<=r_t ? R-Math.sqrt(Math.max(0,R*R-r*r)) : z_t+(r-r_t)/Math.tan(a);}
     default: return r;
   }
 }
 
 function buildTip(){
+  // Max meaningful T: surface peaks at ~base+max_amp ≈ 55nm.
+  // Artifact = T(dc), so T+surf_peak must be < Y_NM to be visible.
+  // Clip kernel at Y_NM - base (= 100-25 = 75nm) so only useful entries survive.
+  const T_MAX = Y_NM - 25;   // 75nm — any T larger can't produce visible artifact
   for(let j=0;j<=2*TIP_R;j++){
-    const r=Math.abs(j-TIP_R)*DX;
-    tipProf[j] = tipT(r);
+    const dc_nm=(j-TIP_R)*DX;
+    const t = tipT(dc_nm);
+    tipProf[j] = (isFinite(t) && t <= T_MAX) ? t : 1e9;
   }
 }
 
@@ -337,23 +378,40 @@ function applyTransforms(){
 // ═══════════════════════════════════════════════════
 //  MINKOWSKI DILATION / EROSION
 // ═══════════════════════════════════════════════════
+// CORRECT AFM contact-mode formula:
+//   Dilation:  M[i] = max_j { S[i+j] - T[j] }
+//   Erosion:   M[i] = min_j { S[i+j] + T[j] }
+//
+// Dilation gives PROBE-BROADENING artifact (measured >= true surface
+// only where tip can physically reach). On a flat surface, T[0]=0 wins
+// and M[i]=S[i] exactly — flat measures flat. ✓
+//
+// inv_sphere uses erosion because the concave tip contacts at the rim,
+// so it cannot reach INTO surface features (measures too narrow = erosion).
+
 function computeMeas(){
-  const doErosion = INV.erosion !== INV.invTip;
-  if(doErosion){
+  const tipIsErosion = (currentTip === 'inv_sphere');
+  const baseErosion  = tipIsErosion;
+  const userFlip     = INV.erosion !== INV.invTip;
+  const finalErosion = baseErosion !== userFlip;
+
+  if(finalErosion){
+    // EROSION: M[i] = min_j { S[i+j] + T[j] }
     for(let i=0;i<NX;i++){
       let best=Infinity;
       for(let j=Math.max(-TIP_R,-i);j<=Math.min(TIP_R,NX-1-i);j++){
         const d=tipProf[j+TIP_R]; if(d>1e6) continue;
-        const v=surface[i+j]-d; if(v<best) best=v;
+        const v=surface[i+j]+d; if(v<best) best=v;
       }
       measured[i]=Math.max(0, Math.min(Y_NM-2, best));
     }
   } else {
+    // DILATION: M[i] = max_j { S[i+j] - T[j] }
     for(let i=0;i<NX;i++){
       let best=-Infinity;
       for(let j=Math.max(-TIP_R,-i);j<=Math.min(TIP_R,NX-1-i);j++){
         const d=tipProf[j+TIP_R]; if(d>1e6) continue;
-        const v=surface[i+j]+d; if(v>best) best=v;
+        const v=surface[i+j]-d; if(v>best) best=v;
       }
       measured[i]=Math.max(0, Math.min(Y_NM-2, best));
     }
@@ -463,8 +521,10 @@ function drawTipShape(g2d, si){
   const wS   = PW/X_NM, hS = PH/Y_NM;
   const p    = tipP[currentTip]||{};
 
-  // Tip body extends 50nm above the TRUE surface contact point
-  const contactY = sy;             // tip visually touches the TRUE surface
+  // Tip apex sits at yC(measured[di]) — the height the tip physically rests at.
+  // measured[i] = max_j[surf[j]+T(j)], so the apex IS at measured height by definition.
+  // The tip body extends upward from the apex.
+  const contactY = ay;        // apex at MEASURED height (physically correct)
   const bodyNm   = Math.min(50, Math.max((contactY - MT)/hS, 4));
   const bodyPx   = bodyNm * hS;
   const tipTopY  = contactY - bodyPx;
@@ -610,12 +670,22 @@ function drawTipShape(g2d, si){
 
   g2d.restore();
 
-  // Apex glow dot at TRUE surface contact point
-  g2d.beginPath(); g2d.arc(ax, contactY, 4, 0, Math.PI*2);
-  g2d.fillStyle='rgba(0,229,176,0.15)'; g2d.fill();
-  g2d.beginPath(); g2d.arc(ax, contactY, 2.5, 0, Math.PI*2);
-  g2d.fillStyle='#00e5b0';
-  g2d.shadowColor='#00e5b0'; g2d.shadowBlur=10; g2d.fill(); g2d.shadowBlur=0;
+  // Dashed line from apex (measured) down to true surface — shows artifact gap
+  if(sy > ay + 2){  // only when there IS a gap (measured above surface)
+    g2d.save();
+    g2d.strokeStyle='rgba(255,107,53,0.5)';
+    g2d.lineWidth=1; g2d.setLineDash([2,3]);
+    g2d.beginPath(); g2d.moveTo(ax, ay); g2d.lineTo(ax, sy); g2d.stroke();
+    g2d.setLineDash([]); g2d.restore();
+  }
+
+  // Apex glow dot at MEASURED height (where tip physically sits)
+  g2d.beginPath(); g2d.arc(ax, ay, 3.5, 0, Math.PI*2);
+  g2d.fillStyle='rgba(255,255,255,0.15)'; g2d.fill();
+  g2d.beginPath(); g2d.arc(ax, ay, 2, 0, Math.PI*2);
+  g2d.fillStyle='#fff';
+  g2d.shadowColor=sy>ay+2?'#ff6b35':'#00e5b0';  // red=artifact, green=touching
+  g2d.shadowBlur=12; g2d.fill(); g2d.shadowBlur=0;
 }
 
 function drawError(){

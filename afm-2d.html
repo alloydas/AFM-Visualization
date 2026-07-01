@@ -1,1060 +1,2054 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>AFM 2D Simulator</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:#06080c;color:#6a8fa0;font-family:'Courier New',monospace;font-size:11px;}
-.topbar{display:flex;align-items:center;padding:6px 10px;gap:8px;border-bottom:1px solid #162230;}
-.topbar a{font-size:8px;color:#2ea8ff;text-decoration:none;border:1px solid rgba(46,168,255,0.3);padding:3px 8px;}
-.title{flex:1;text-align:center;font-size:12px;letter-spacing:4px;color:#00e5b0;text-transform:uppercase;}
-.wrap{display:flex;height:calc(100vh - 34px);overflow:hidden;}
-.sidebar{width:190px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;border-right:1px solid #162230;padding:7px;display:flex;flex-direction:column;gap:6px;}
-.sidebar::-webkit-scrollbar{width:3px;}
-.sidebar::-webkit-scrollbar-thumb{background:#162230;}
-.main{flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:20px 8px 10px 8px;gap:5px;}
-.panel{background:#0b1017;border:1px solid #162230;padding:6px;}
-.plabel{font-size:7px;letter-spacing:2px;color:#00e5b0;text-transform:uppercase;margin-bottom:5px;border-bottom:1px solid #162230;padding-bottom:2px;}
-.btn{display:block;width:100%;background:transparent;border:1px solid #162230;color:#6a8fa0;padding:3px 6px;font-family:inherit;font-size:9px;cursor:pointer;text-align:left;margin-bottom:2px;}
-.btn:hover{border-color:rgba(46,168,255,.4);color:#b0d0e0;}
-.btn.on{background:rgba(0,229,176,.08);border-color:#00e5b0;color:#00e5b0;}
-.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:4px;}
-.tgl{background:transparent;border:1px solid #162230;color:#6a8fa0;padding:4px 2px;font-family:inherit;font-size:8px;cursor:pointer;text-align:center;}
-.tgl:hover{border-color:#ff6b35;color:#b0d0e0;}
-.tgl.on{background:rgba(255,107,53,.12);border-color:#ff6b35;color:#ff6b35;}
-.srow{display:flex;flex-direction:column;gap:1px;margin-bottom:4px;}
-.shdr{display:flex;justify-content:space-between;font-size:7px;letter-spacing:1px;}
-.shdr span:first-child{color:#6a8fa0;opacity:.65;text-transform:uppercase;}
-.sval{color:#00e5b0;}
-input[type=range]{width:100%;accent-color:#00e5b0;height:12px;}
-.prow{display:flex;gap:3px;margin-bottom:4px;}
-.pbtn{flex:1;background:rgba(0,229,176,.08);border:1px solid #00e5b0;color:#00e5b0;padding:4px;font-family:inherit;font-size:9px;cursor:pointer;letter-spacing:1px;}
-.pbtn:hover{background:rgba(0,229,176,.2);}
-.ibtn{background:transparent;border:1px solid #162230;color:#6a8fa0;padding:4px 8px;font-family:inherit;font-size:9px;cursor:pointer;}
-.ibtn:hover{border-color:#2ea8ff;color:#2ea8ff;}
-.mrow{display:flex;gap:2px;margin-bottom:4px;}
-.mbtn{flex:1;background:transparent;border:1px solid #162230;color:#6a8fa0;padding:3px 2px;font-family:inherit;font-size:8px;cursor:pointer;text-align:center;}
-.mbtn.on{background:rgba(46,168,255,.1);border-color:#2ea8ff;color:#2ea8ff;}
-.rbtn{background:rgba(201,122,255,.1);border:1px solid #c97aff;color:#c97aff;padding:4px;font-family:inherit;font-size:9px;cursor:pointer;width:100%;letter-spacing:1px;}
-.rbtn:hover{background:rgba(201,122,255,.2);}
-#tipPrev{display:block;width:100%;height:70px;background:#040608;border:1px solid #162230;margin-top:4px;}
-.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:3px;}
-.sbox{background:#040608;border:1px solid #162230;padding:3px 5px;}
-.slbl{font-size:6px;letter-spacing:1px;color:#6a8fa0;text-transform:uppercase;opacity:.7;}
-.snum{font-size:11px;font-weight:bold;color:#00e5b0;}
-.snum.e{color:#ff6b35;}
-.snum.w{color:#f0c040;}
-canvas.main-cv{display:block;width:100%;background:#040608;}
-.ibar{font-size:7px;letter-spacing:1px;color:#6a8fa0;padding:2px 5px;background:#0b1017;border:1px solid #162230;flex-shrink:0;}
-</style>
-</head>
-<body>
-<div class="topbar">
-  <a href="index.html">← Home</a>
-  <div class="title">AFM 2D Simulator</div>
-</div>
-<div class="wrap">
-
-<!-- SIDEBAR -->
-<div class="sidebar">
-
-  <div class="panel">
-    <div class="plabel">Tip Geometry</div>
-    <div id="tipBtns">
-      <button class="btn on" data-tip="cone">▼ Cone</button>
-      <button class="btn" data-tip="sphere">● Spherical</button>
-      <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
-      <button class="btn" data-tip="flat">▬ Flat Punch</button>
-      <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
-      <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
-      <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
-      <button class="btn" data-tip="sphere_cone">◓ Cone+Sphere</button>
-    </div>
-    <div id="tipSliders"></div>
-    <canvas id="tipPrev" width="174" height="70"></canvas>
-  </div>
-
-  <div class="panel">
-    <div class="plabel">Sample Surface</div>
-    <div id="surfBtns">
-      <button class="btn on" data-surf="sine">~ Sinusoidal</button>
-      <button class="btn" data-surf="step">⌐ Step Edge</button>
-      <button class="btn" data-surf="spike">△ Sharp Spike</button>
-      <button class="btn" data-surf="hemisphere">● Nanoparticle</button>
-      <button class="btn" data-surf="pit">○ Nano-pit</button>
-      <button class="btn" data-surf="trench">⊓ Trenches</button>
-      <button class="btn" data-surf="rough">≈ Rough</button>
-      <button class="btn" data-surf="dna">⊛ DNA Ridges</button>
-      <button class="btn" data-surf="chirp">≋ Chirp</button>
-      <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
-    </div>
-    <div id="surfSliders"></div>
-    <div class="srow" style="margin-top:5px;">
-      <div class="shdr"><span>Noise</span><span class="sval" id="noiseVal">0 nm</span></div>
-      <input type="range" id="noiseSlider" min="0" max="10" step="0.5" value="0">
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="plabel">Invert &amp; Transform</div>
-    <div class="tgrid">
-      <button class="tgl" id="tg_invZ"    onclick="tog('invZ')">↕ Inv Z</button>
-      <button class="tgl" id="tg_mirrorX" onclick="tog('mirrorX')">↔ Mirror X</button>
-      <button class="tgl" id="tg_invTip"  onclick="tog('invTip')">⊙ Inv Tip</button>
-      <button class="tgl" id="tg_revScan" onclick="tog('revScan')">↩ Rev Scan</button>
-      <button class="tgl" id="tg_erosion" onclick="tog('erosion')">⊖ Erosion</button>
-      <button class="tgl" id="tg_invErr"  onclick="tog('invErr')">⊘ Inv Err</button>
-    </div>
-    <button class="rbtn" onclick="randomizeAll()">🎲 RANDOMIZE</button>
-  </div>
-
-  <div class="panel">
-    <div class="plabel">Scan Control</div>
-    <div class="prow">
-      <button class="pbtn" id="playBtn">▶ PLAY</button>
-      <button class="ibtn" onclick="doReset()">↺</button>
-    </div>
-    <div class="mrow">
-      <button class="mbtn" id="mSingle" onclick="setMode('single')">ONCE</button>
-      <button class="mbtn on" id="mLoop"   onclick="setMode('loop')">LOOP</button>
-      <button class="mbtn" id="mBounce" onclick="setMode('bounce')">BOUNCE</button>
-    </div>
-    <div class="srow">
-      <div class="shdr"><span>Speed</span><span class="sval" id="spdVal">3</span></div>
-      <input type="range" id="spdSlider" min="1" max="10" value="3">
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="plabel">Stats</div>
-    <div class="sgrid">
-      <div class="sbox"><div class="slbl">Max Artifact</div><div class="snum e" id="stArt">—</div></div>
-      <div class="sbox"><div class="slbl">RMS Error</div><div class="snum w" id="stRms">—</div></div>
-    </div>
-  </div>
-
-</div><!-- sidebar -->
-
-<!-- MAIN -->
-<div class="main">
-  <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
-  <canvas class="main-cv" id="cv1" width="700" height="70"></canvas>
-  <canvas class="main-cv" id="cv2" width="700" height="120"></canvas>
-  <div class="ibar" id="ibar">Ready — press PLAY</div>
-</div>
-
-</div><!-- wrap -->
-
-<script>
-// ═══════════════════════════════════════════════════
-//  CONSTANTS
-// ═══════════════════════════════════════════════════
-const NX=700, X_NM=240, Y_NM=100, DX=X_NM/NX;
-const CV0H=520;
-const ML=44,MR=8,MT=36,MB=20;
-const PW=NX-ML-MR, PH=CV0H-MT-MB;
-function xC(i){return ML+i/NX*PW;}
-// clamp yC so values never draw outside the plot
-function yC(nm){
-  const y=MT+PH-(nm/Y_NM)*PH;
-  return Math.max(MT, Math.min(MT+PH, y));
-}
-
-// TIP_R: 30nm covers all tips without saturation
-// Sharp cone alpha=15: T(30nm)=112nm — large but most will be clamped gracefully
-// Blunt cone alpha=35: T(30nm)=43nm — good
-// Sphere R=20: only interacts within r<20nm anyway
-const TIP_R_NM = 30;
-const TIP_R    = Math.ceil(TIP_R_NM / DX);  // ~88 pixels
-
-// Error map
-const EML=44,EMR=8,EMT=12,EMB=10;
-const EPW=NX-EML-EMR, EPH=70-EMT-EMB;
-function exC(i){return EML+i/NX*EPW;}
-
-// FD
-const FML=48,FMR=12,FMT=18,FMB=22;
-const FPW=NX-FML-FMR, FPH=120-FMT-FMB;
-
-const surface  = new Float32Array(NX);
-const measured = new Float32Array(NX);
-const rawSurf  = new Float32Array(NX);
-const tipProf  = new Float32Array(2*TIP_R+1);
-
-// ═══════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════
-let currentTip  = 'cone';
-let currentSurf = 'sine';
-let scanIdx = 0, playing = false, raf = null;
-let bounceDir = 1, scanMode = 'loop';
-let noiseSeed = 42;
-const INV = {invZ:false,mirrorX:false,invTip:false,revScan:false,erosion:false,invErr:false};
-
-// ═══════════════════════════════════════════════════
-//  TIP PARAMETER DEFINITIONS
-// ═══════════════════════════════════════════════════
-const TIP_DEFS = {
-  cone:        [{id:'angle', label:'Half-angle α', min:3,  max:80, step:1,  val:15, unit:'°'}],
-  sphere:      [{id:'R',     label:'Radius R',     min:3,  max:50, step:1,  val:20, unit:'nm'}],
-  hyperboloid: [{id:'a',     label:'Sharpness a',  min:2,  max:30, step:1,  val:7,  unit:'nm'}],
-  flat:        [{id:'R',     label:'Radius R',     min:3,  max:50, step:1,  val:18, unit:'nm'}],
-  inv_sphere:  [{id:'R',     label:'Bowl Radius',  min:3,  max:50, step:1,  val:20, unit:'nm'}],
-  asymmetric:  [{id:'angle', label:'Half-angle α', min:3,  max:60, step:1,  val:20, unit:'°'},
-                {id:'tilt',  label:'Tilt φ',       min:-40,max:40, step:1,  val:15, unit:'°'}],
-  double_tip:  [{id:'angle', label:'Half-angle α', min:3,  max:60, step:1,  val:15, unit:'°'},
-                {id:'gap',   label:'Tip gap',      min:5,  max:80, step:1,  val:30, unit:'nm'}],
-  sphere_cone: [{id:'R',     label:'Arc Radius R', min:5,  max:60, step:1,  val:30, unit:'nm'},
-                {id:'angle', label:'Tangent halfW', min:3,  max:55, step:1,  val:15, unit:'nm'}],
-};
-const SURF_DEFS = {
-  sine:      [{id:'amp',   label:'Amplitude', min:2,  max:45, step:1, val:18, unit:'nm'},
-              {id:'period',label:'Period',    min:10, max:120,step:5, val:55, unit:'nm'}],
-  step:      [{id:'height',label:'Height',   min:5,  max:60, step:1, val:28, unit:'nm'}],
-  spike:     [{id:'height',label:'Height',   min:5,  max:70, step:1, val:38, unit:'nm'},
-              {id:'width', label:'Width',    min:5,  max:60, step:1, val:20, unit:'nm'}],
-  hemisphere:[{id:'R',     label:'Radius R', min:5,  max:60, step:1, val:28, unit:'nm'}],
-  pit:       [{id:'R',     label:'Radius R', min:5,  max:60, step:1, val:28, unit:'nm'}],
-  trench:    [{id:'period',label:'Period',   min:15, max:120,step:5, val:65, unit:'nm'},
-              {id:'depth', label:'Depth',   min:5,  max:75, step:1, val:30, unit:'nm'}],
-  rough:     [{id:'scale', label:'Scale',   min:1,  max:45, step:1, val:10, unit:''}],
-  dna:       [{id:'amp',   label:'Amplitude',min:5,max:50,  step:1, val:22, unit:'nm'},
-              {id:'period',label:'Period',  min:20, max:100,step:5, val:50, unit:'nm'}],
-  chirp:     [{id:'amp',   label:'Amplitude',min:2,max:40,  step:1, val:18, unit:'nm'},
-              {id:'rate',  label:'Rate',    min:1,  max:20, step:1, val:8,  unit:'×'}],
-  lattice:   [{id:'amp',   label:'Height',  min:2,  max:30, step:1, val:10, unit:'nm'},
-              {id:'spacing',label:'Spacing',min:8,  max:60, step:2, val:20, unit:'nm'}],
-};
-
-// Initialise param stores from defaults
-const tipP={}, surfP={};
-for(const [k,defs] of Object.entries(TIP_DEFS))
-  tipP[k] = Object.fromEntries(defs.map(d=>[d.id,d.val]));
-for(const [k,defs] of Object.entries(SURF_DEFS))
-  surfP[k] = Object.fromEntries(defs.map(d=>[d.id,d.val]));
-
-// ═══════════════════════════════════════════════════
-//  SLIDER UI
-// ═══════════════════════════════════════════════════
-function makeSliders(containerId, defs, store, onChange){
-  const el = document.getElementById(containerId);
-  el.innerHTML = '';
-  (defs||[]).forEach(d=>{
-    const row = document.createElement('div');
-    row.className = 'srow';
-    row.innerHTML = `<div class="shdr"><span>${d.label}</span><span class="sval" id="sv_${d.id}">${store[d.id]}${d.unit}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
-    el.appendChild(row);
-    row.querySelector('input').addEventListener('input', function(){
-      store[d.id] = parseFloat(this.value);
-      document.getElementById('sv_'+d.id).textContent = store[d.id]+d.unit;
-      onChange();
-    });
-  });
-}
-function refreshTipSliders(){
-  makeSliders('tipSliders', TIP_DEFS[currentTip], tipP[currentTip]||{}, ()=>{
-    buildTip(); computeMeas(); drawPreview(); if(!playing) render();
-  });
-}
-function refreshSurfSliders(){
-  makeSliders('surfSliders', SURF_DEFS[currentSurf], surfP[currentSurf]||{}, ()=>{
-    buildSurf(); applyTransforms(); computeMeas(); if(!playing) render();
-  });
-}
-
-// ═══════════════════════════════════════════════════
-//  TIP PROFILE  T(dc) — dc is SIGNED pixel offset from centre
-// ═══════════════════════════════════════════════════
-// Returns the height (nm) the tip sits above its apex at signed lateral offset dc_nm.
-// For dilation: measured[i] = max_j[ surface[i+j] + T(j) ]
-// For erosion:  measured[i] = min_j[ surface[i+j] - T(j) ]
-// T must be >= 0. Infinity means the tip cannot reach that offset (blocked).
-
-function tipT(dc_nm){
-  // dc_nm: SIGNED lateral offset in nm (positive = right, negative = left)
-  const r = Math.abs(dc_nm);   // radial distance for symmetric tips
-  const p = tipP[currentTip]||{};
-  switch(currentTip){
-    case 'cone':{
-      const alpha=(p.angle||15)*Math.PI/180;
-      return r/Math.tan(alpha);}
-    case 'sphere':{
-      const R=p.R||20;
-      return r<R ? R-Math.sqrt(R*R-r*r) : Infinity;}
-    case 'hyperboloid':{
-      const a=p.a||7;
-      return Math.sqrt(r*r+a*a)-a;}
-    case 'flat':{
-      const R=p.R||18;
-      return r<=R ? 0 : Infinity;}
-    case 'inv_sphere':{
-      // Concave sphere: T(r) = R - sqrt(R²-r²) — same as convex sphere formula.
-      // The concave tip contacts the surface at the RIM (r=R) not the centre.
-      // It acts via EROSION: measured = min[ surface[j] - T(j) ]
-      // which is handled in computeMeas by detecting inv_sphere.
-      const R=p.R||20;
-      return r<R ? R-Math.sqrt(R*R-r*r) : Infinity;}
-    case 'asymmetric':{
-      // Tilt is along the signed dc direction — one side steeper, other shallower
-      const alpha=(p.angle||20)*Math.PI/180;
-      const tilt =(p.tilt ||15)*Math.PI/180;
-      // T(dc) = r/tan(alpha) + dc_nm*tan(tilt)
-      // Positive tilt: right side (dc>0) gets extra height → right artifacts pushed higher
-      return Math.max(0, r/Math.tan(alpha) + dc_nm*Math.tan(tilt));}
-    case 'double_tip':{
-      // Two apexes at dc=-g and dc=+g
-      // T(dc) = min distance to either apex / tan(alpha)
-      const alpha=(p.angle||15)*Math.PI/180;
-      const g=(p.gap||30)/2;
-      const r1=Math.abs(dc_nm-g);   // distance to right apex
-      const r2=Math.abs(dc_nm+g);   // distance to left apex
-      return Math.min(r1,r2)/Math.tan(alpha);}
-    case 'sphere_cone':{
-      // U-shape: arc for r≤halfW, straight side for r>halfW
-      // T(r) = R - sqrt(R²-r²)                  [arc, C0+C1 at halfW]
-      // T(r) = yTang + (r-halfW)*halfW/sv        [straight side]
-      const R=p.R||30, halfW=p.angle||15;
-      const sv=Math.sqrt(Math.max(1e-6,R*R-halfW*halfW));
-      const yTang=R-sv;
-      return r<=halfW ? R-Math.sqrt(Math.max(0,R*R-r*r)) : yTang+(r-halfW)*halfW/sv;}
-    default: return r;
-  }
-}
-
-function buildTip(){
-  // Max meaningful T: surface peaks at ~base+max_amp ≈ 55nm.
-  // Artifact = T(dc), so T+surf_peak must be < Y_NM to be visible.
-  // Clip kernel at Y_NM - base (= 100-25 = 75nm) so only useful entries survive.
-  const T_MAX = Y_NM - 25;   // 75nm — any T larger can't produce visible artifact
-  for(let j=0;j<=2*TIP_R;j++){
-    const dc_nm=(j-TIP_R)*DX;
-    const t = tipT(dc_nm);
-    tipProf[j] = (isFinite(t) && t <= T_MAX) ? t : 1e9;
-  }
-}
-
-// ═══════════════════════════════════════════════════
-//  SURFACE BUILD
-// ═══════════════════════════════════════════════════
-function rand(i){let x=Math.sin(i*127.1+noiseSeed*311.7)*43758.5453;return x-Math.floor(x);}
-
-function buildSurf(){
-  const p=surfP[currentSurf]||{}, base=25;
-  for(let i=0;i<NX;i++){
-    const x=i*DX, cx=X_NM/2, dx=x-cx;
-    switch(currentSurf){
-      case 'sine':    rawSurf[i]=base+(p.amp||15)*Math.sin(2*Math.PI*x/(p.period||55)); break;
-      case 'step':    rawSurf[i]=i<NX*0.48 ? base : base+(p.height||22); break;
-      case 'spike':{  const h=p.height||30, w=(p.width||20)/DX;
-                      rawSurf[i]=Math.abs(i-NX/2)<w ? base+h*(1-Math.abs(i-NX/2)/w) : base; break;}
-      case 'hemisphere':{const R=p.R||22; rawSurf[i]=Math.abs(dx)<R ? base+Math.sqrt(R*R-dx*dx) : base; break;}
-      case 'pit':{    const R=p.R||22; rawSurf[i]=Math.abs(dx)<R ? (base+R)-Math.sqrt(R*R-dx*dx) : base+R; break;}
-      case 'trench':  rawSurf[i]=(x%(p.period||65))/(p.period||65)<0.45 ? base : base+(p.depth||22); break;
-      case 'rough':{  const s=(p.scale||10)*0.25;
-                      rawSurf[i]=base+s*4+s*3*Math.sin(2*Math.PI*x/48+.9)+s*2*Math.sin(2*Math.PI*x/22+2.1)+s*Math.sin(2*Math.PI*x/11+1.4); break;}
-      case 'dna':     rawSurf[i]=base+(p.amp||18)*Math.abs(Math.sin(Math.PI*x/(p.period||50))); break;
-      case 'chirp':   rawSurf[i]=base+(p.amp||15)*Math.sin(2*Math.PI*x*(0.015+(p.rate||8)*0.0002*x)); break;
-      case 'lattice':{const sp=p.spacing||20; rawSurf[i]=base+(p.amp||10)*(0.5+0.5*Math.cos(2*Math.PI*x/sp))*(0.5+0.5*Math.cos(2*Math.PI*x/(sp*1.15))); break;}
-      default: rawSurf[i]=base;
-    }
-  }
-}
-
-function applyTransforms(){
-  const noise=parseFloat(document.getElementById('noiseSlider').value)||0;
-  for(let i=0;i<NX;i++) surface[i]=rawSurf[i]+(noise>0?(rand(i)-.5)*2*noise:0);
-  if(INV.invZ){
-    let mn=Infinity,mx=-Infinity;
-    for(let i=0;i<NX;i++){mn=Math.min(mn,surface[i]);mx=Math.max(mx,surface[i]);}
-    for(let i=0;i<NX;i++) surface[i]=mn+mx-surface[i];
-  }
-  if(INV.mirrorX){
-    const tmp=surface.slice();
-    for(let i=0;i<NX;i++) surface[i]=tmp[NX-1-i];
-  }
-}
-
-// ═══════════════════════════════════════════════════
-//  MINKOWSKI DILATION / EROSION
-// ═══════════════════════════════════════════════════
-// CORRECT AFM contact-mode formula:
-//   Dilation:  M[i] = max_j { S[i+j] - T[j] }
-//   Erosion:   M[i] = min_j { S[i+j] + T[j] }
-//
-// Dilation gives PROBE-BROADENING artifact (measured >= true surface
-// only where tip can physically reach). On a flat surface, T[0]=0 wins
-// and M[i]=S[i] exactly — flat measures flat. ✓
-//
-// inv_sphere uses erosion because the concave tip contacts at the rim,
-// so it cannot reach INTO surface features (measures too narrow = erosion).
-
-function computeMeas(){
-  const tipIsErosion = (currentTip === 'inv_sphere');
-  const baseErosion  = tipIsErosion;
-  const userFlip     = INV.erosion !== INV.invTip;
-  const finalErosion = baseErosion !== userFlip;
-
-  if(finalErosion){
-    // EROSION: M[i] = min_j { S[i+j] + T[j] }
-    for(let i=0;i<NX;i++){
-      let best=Infinity;
-      for(let j=Math.max(-TIP_R,-i);j<=Math.min(TIP_R,NX-1-i);j++){
-        const d=tipProf[j+TIP_R]; if(d>1e6) continue;
-        const v=surface[i+j]+d; if(v<best) best=v;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>AFM 2D Simulator</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
-      measured[i]=Math.max(0, Math.min(Y_NM-2, best));
-    }
-  } else {
-    // DILATION: M[i] = max_j { S[i+j] - T[j] }
-    for(let i=0;i<NX;i++){
-      let best=-Infinity;
-      for(let j=Math.max(-TIP_R,-i);j<=Math.min(TIP_R,NX-1-i);j++){
-        const d=tipProf[j+TIP_R]; if(d>1e6) continue;
-        const v=surface[i+j]-d; if(v>best) best=v;
+      body {
+        background: #06080c;
+        color: #6a8fa0;
+        font-family: "Courier New", monospace;
+        font-size: 11px;
       }
-      measured[i]=Math.max(0, Math.min(Y_NM-2, best));
-    }
-  }
-}
+      .topbar {
+        display: flex;
+        align-items: center;
+        padding: 6px 10px;
+        gap: 8px;
+        border-bottom: 1px solid #162230;
+      }
+      .topbar a {
+        font-size: 8px;
+        color: #2ea8ff;
+        text-decoration: none;
+        border: 1px solid rgba(46, 168, 255, 0.3);
+        padding: 3px 8px;
+      }
+      .title {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 4px;
+        color: #00e5b0;
+        text-transform: uppercase;
+      }
+      .wrap {
+        display: flex;
+        height: calc(100vh - 34px);
+        overflow: hidden;
+      }
+      .sidebar {
+        width: 190px;
+        flex-shrink: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        border-right: 1px solid #162230;
+        padding: 7px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .sidebar::-webkit-scrollbar {
+        width: 3px;
+      }
+      .sidebar::-webkit-scrollbar-thumb {
+        background: #162230;
+      }
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 20px 8px 10px 8px;
+        gap: 5px;
+      }
+      .panel {
+        background: #0b1017;
+        border: 1px solid #162230;
+        padding: 6px;
+      }
+      .plabel {
+        font-size: 7px;
+        letter-spacing: 2px;
+        color: #00e5b0;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        border-bottom: 1px solid #162230;
+        padding-bottom: 2px;
+      }
+      .btn {
+        display: block;
+        width: 100%;
+        background: transparent;
+        border: 1px solid #162230;
+        color: #6a8fa0;
+        padding: 3px 6px;
+        font-family: inherit;
+        font-size: 9px;
+        cursor: pointer;
+        text-align: left;
+        margin-bottom: 2px;
+      }
+      .btn:hover {
+        border-color: rgba(46, 168, 255, 0.4);
+        color: #b0d0e0;
+      }
+      .btn.on {
+        background: rgba(0, 229, 176, 0.08);
+        border-color: #00e5b0;
+        color: #00e5b0;
+      }
+      .tgrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2px;
+        margin-bottom: 4px;
+      }
+      .tgl {
+        background: transparent;
+        border: 1px solid #162230;
+        color: #6a8fa0;
+        padding: 4px 2px;
+        font-family: inherit;
+        font-size: 8px;
+        cursor: pointer;
+        text-align: center;
+      }
+      .tgl:hover {
+        border-color: #ff6b35;
+        color: #b0d0e0;
+      }
+      .tgl.on {
+        background: rgba(255, 107, 53, 0.12);
+        border-color: #ff6b35;
+        color: #ff6b35;
+      }
+      .srow {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        margin-bottom: 4px;
+      }
+      .shdr {
+        display: flex;
+        justify-content: space-between;
+        font-size: 7px;
+        letter-spacing: 1px;
+      }
+      .shdr span:first-child {
+        color: #6a8fa0;
+        opacity: 0.65;
+        text-transform: uppercase;
+      }
+      .sval {
+        color: #00e5b0;
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: #00e5b0;
+        height: 12px;
+      }
+      .prow {
+        display: flex;
+        gap: 3px;
+        margin-bottom: 4px;
+      }
+      .pbtn {
+        flex: 1;
+        background: rgba(0, 229, 176, 0.08);
+        border: 1px solid #00e5b0;
+        color: #00e5b0;
+        padding: 4px;
+        font-family: inherit;
+        font-size: 9px;
+        cursor: pointer;
+        letter-spacing: 1px;
+      }
+      .pbtn:hover {
+        background: rgba(0, 229, 176, 0.2);
+      }
+      .ibtn {
+        background: transparent;
+        border: 1px solid #162230;
+        color: #6a8fa0;
+        padding: 4px 8px;
+        font-family: inherit;
+        font-size: 9px;
+        cursor: pointer;
+      }
+      .ibtn:hover {
+        border-color: #2ea8ff;
+        color: #2ea8ff;
+      }
+      .mrow {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 4px;
+      }
+      .mbtn {
+        flex: 1;
+        background: transparent;
+        border: 1px solid #162230;
+        color: #6a8fa0;
+        padding: 3px 2px;
+        font-family: inherit;
+        font-size: 8px;
+        cursor: pointer;
+        text-align: center;
+      }
+      .mbtn.on {
+        background: rgba(46, 168, 255, 0.1);
+        border-color: #2ea8ff;
+        color: #2ea8ff;
+      }
+      .rbtn {
+        background: rgba(201, 122, 255, 0.1);
+        border: 1px solid #c97aff;
+        color: #c97aff;
+        padding: 4px;
+        font-family: inherit;
+        font-size: 9px;
+        cursor: pointer;
+        width: 100%;
+        letter-spacing: 1px;
+      }
+      .rbtn:hover {
+        background: rgba(201, 122, 255, 0.2);
+      }
+      #tipPrev {
+        display: block;
+        width: 100%;
+        height: 70px;
+        background: #040608;
+        border: 1px solid #162230;
+        margin-top: 4px;
+      }
+      .sgrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px;
+      }
+      .sbox {
+        background: #040608;
+        border: 1px solid #162230;
+        padding: 3px 5px;
+      }
+      .slbl {
+        font-size: 6px;
+        letter-spacing: 1px;
+        color: #6a8fa0;
+        text-transform: uppercase;
+        opacity: 0.7;
+      }
+      .snum {
+        font-size: 11px;
+        font-weight: bold;
+        color: #00e5b0;
+      }
+      .snum.e {
+        color: #ff6b35;
+      }
+      .snum.w {
+        color: #f0c040;
+      }
+      canvas.main-cv {
+        display: block;
+        width: 100%;
+        background: #040608;
+      }
+      .ibar {
+        font-size: 7px;
+        letter-spacing: 1px;
+        color: #6a8fa0;
+        padding: 2px 5px;
+        background: #0b1017;
+        border: 1px solid #162230;
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <a href="index.html">← Home</a>
+      <div class="title">AFM 2D Simulator</div>
+    </div>
+    <div class="wrap">
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+        <div class="panel">
+          <div class="plabel">Tip Geometry</div>
+          <div id="tipBtns">
+            <button class="btn on" data-tip="cone">▼ Cone</button>
+            <button class="btn" data-tip="sphere">● Spherical</button>
+            <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
+            <button class="btn" data-tip="flat">▬ Flat Punch</button>
+            <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
+            <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
+            <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
+            <button class="btn" data-tip="sphere_cone">◓ Cone+Sphere</button>
+          </div>
+          <div id="tipSliders"></div>
+          <canvas id="tipPrev" width="174" height="70"></canvas>
+        </div>
 
-// ═══════════════════════════════════════════════════
-//  DRAWING
-// ═══════════════════════════════════════════════════
-const cv0=document.getElementById('cv0');
-const cx0=cv0.getContext('2d');
-const cv1=document.getElementById('cv1');
-const cx1=cv1.getContext('2d');
-const cv2=document.getElementById('cv2');
-const cx2=cv2.getContext('2d');
+        <div class="panel">
+          <div class="plabel">Sample Surface</div>
+          <div id="surfBtns">
+            <button class="btn on" data-surf="sine">~ Sinusoidal</button>
+            <button class="btn" data-surf="step">⌐ Step Edge</button>
+            <button class="btn" data-surf="spike">△ Sharp Spike</button>
+            <button class="btn" data-surf="hemisphere">● Nanoparticle</button>
+            <button class="btn" data-surf="pit">○ Nano-pit</button>
+            <button class="btn" data-surf="trench">⊓ Trenches</button>
+            <button class="btn" data-surf="rough">≈ Rough</button>
+            <button class="btn" data-surf="dna">⊛ DNA Ridges</button>
+            <button class="btn" data-surf="chirp">≋ Chirp</button>
+            <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
+          </div>
+          <div id="surfSliders"></div>
+          <div class="srow" style="margin-top: 5px">
+            <div class="shdr">
+              <span>Noise</span><span class="sval" id="noiseVal">0 nm</span>
+            </div>
+            <input
+              type="range"
+              id="noiseSlider"
+              min="0"
+              max="10"
+              step="0.5"
+              value="0"
+            />
+          </div>
+        </div>
 
-function getIdx(raw){ return INV.revScan ? NX-1-raw : raw; }
+        <div class="panel">
+          <div class="plabel">Invert &amp; Transform</div>
+          <div class="tgrid">
+            <button class="tgl" id="tg_invZ" onclick="tog('invZ')">
+              ↕ Inv Z
+            </button>
+            <button class="tgl" id="tg_mirrorX" onclick="tog('mirrorX')">
+              ↔ Mirror X
+            </button>
+            <button class="tgl" id="tg_invTip" onclick="tog('invTip')">
+              ⊙ Inv Tip
+            </button>
+            <button class="tgl" id="tg_revScan" onclick="tog('revScan')">
+              ↩ Rev Scan
+            </button>
+            <button class="tgl" id="tg_erosion" onclick="tog('erosion')">
+              ⊖ Erosion
+            </button>
+            <button class="tgl" id="tg_invErr" onclick="tog('invErr')">
+              ⊘ Inv Err
+            </button>
+          </div>
+          <button class="rbtn" onclick="randomizeAll()">🎲 RANDOMIZE</button>
+        </div>
 
-// ── Main scan panel ──────────────────────────────
-function drawMain(){
-  cx0.clearRect(0,0,NX,CV0H);
-  cx0.fillStyle='#040608';
-  cx0.fillRect(0,0,NX,CV0H);
+        <div class="panel">
+          <div class="plabel">Scan Control</div>
+          <div class="prow">
+            <button class="pbtn" id="playBtn">▶ PLAY</button>
+            <button class="ibtn" onclick="doReset()">↺</button>
+          </div>
+          <div class="mrow">
+            <button class="mbtn" id="mSingle" onclick="setMode('single')">
+              ONCE
+            </button>
+            <button class="mbtn on" id="mLoop" onclick="setMode('loop')">
+              LOOP
+            </button>
+            <button class="mbtn" id="mBounce" onclick="setMode('bounce')">
+              BOUNCE
+            </button>
+          </div>
+          <div class="srow">
+            <div class="shdr">
+              <span>Speed</span><span class="sval" id="spdVal">3</span>
+            </div>
+            <input type="range" id="spdSlider" min="1" max="10" value="3" />
+          </div>
+        </div>
 
-  // Grid
-  for(let y=0;y<=Y_NM;y+=10){
-    cx0.strokeStyle=y===0?'#182434':'#0c1820';
-    cx0.lineWidth=1;
-    cx0.beginPath();cx0.moveTo(ML,yC(y));cx0.lineTo(NX-MR,yC(y));cx0.stroke();
-  }
-  for(let x=0;x<=X_NM;x+=40){
-    cx0.strokeStyle='#0c1820'; cx0.lineWidth=1;
-    const px=xC(x/DX);
-    cx0.beginPath();cx0.moveTo(px,MT);cx0.lineTo(px,MT+PH);cx0.stroke();
-  }
-  cx0.strokeStyle='#1a2e3e';cx0.lineWidth=1;
-  cx0.strokeRect(ML,MT,PW,PH);
+        <div class="panel">
+          <div class="plabel">Stats</div>
+          <div class="sgrid">
+            <div class="sbox">
+              <div class="slbl">Max Artifact</div>
+              <div class="snum e" id="stArt">—</div>
+            </div>
+            <div class="sbox">
+              <div class="slbl">RMS Error</div>
+              <div class="snum w" id="stRms">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- sidebar -->
 
-  // Axis labels
-  cx0.fillStyle='#304a58';cx0.font='8px Courier New';cx0.textAlign='right';
-  for(let y=0;y<=Y_NM;y+=10) cx0.fillText(y,ML-3,yC(y)+3);
-  cx0.textAlign='center';
-  for(let x=0;x<=X_NM;x+=40) cx0.fillText(x+'nm',xC(x/DX),MT+PH+14);
-  cx0.save();cx0.translate(12,MT+PH/2);cx0.rotate(-Math.PI/2);
-  cx0.fillStyle='#304a58';cx0.font='8px Courier New';cx0.textAlign='center';
-  cx0.fillText('Height (nm)',0,0);cx0.restore();
+      <!-- MAIN -->
+      <div class="main">
+        <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
+        <canvas class="main-cv" id="cv1" width="700" height="70"></canvas>
+        <canvas class="main-cv" id="cv2" width="700" height="120"></canvas>
+        <div class="ibar" id="ibar">Ready — press PLAY</div>
+      </div>
+    </div>
+    <!-- wrap -->
 
-  // Mode badge
-  cx0.fillStyle='#00e5b0';cx0.font='7px Courier New';cx0.textAlign='left';
-  cx0.fillText(INV.erosion?'EROSION':'DILATION',ML+4,MT-6);
-  if(INV.invTip){cx0.fillStyle='#c97aff';cx0.fillText('TIP⁻¹',ML+90,MT-6);}
-  if(INV.revScan){cx0.fillStyle='#2ea8ff';cx0.fillText('←SCAN',ML+140,MT-6);}
+    <script>
+      // ═══════════════════════════════════════════════════
+      //  CONSTANTS
+      // ═══════════════════════════════════════════════════
+      const NX = 700,
+        X_NM = 240,
+        Y_NM = 100,
+        DX = X_NM / NX;
+      const CV0H = 520;
+      const ML = 44,
+        MR = 8,
+        MT = 36,
+        MB = 20;
+      const PW = NX - ML - MR,
+        PH = CV0H - MT - MB;
+      function xC(i) {
+        return ML + (i / NX) * PW;
+      }
+      // clamp yC so values never draw outside the plot
+      function yC(nm) {
+        const y = MT + PH - (nm / Y_NM) * PH;
+        return Math.max(MT, Math.min(MT + PH, y));
+      }
 
-  cx0.save();cx0.beginPath();cx0.rect(ML,MT,PW,PH);cx0.clip();
+      // TIP_R: 30nm covers all tips without saturation
+      // Sharp cone alpha=15: T(30nm)=112nm — large but most will be clamped gracefully
+      // Blunt cone alpha=35: T(30nm)=43nm — good
+      // Sphere R=20: only interacts within r<20nm anyway
+      const TIP_R_NM = 30;
+      const TIP_R = Math.ceil(TIP_R_NM / DX); // ~88 pixels
 
-  // True surface fill
-  cx0.beginPath();
-  cx0.moveTo(xC(0),yC(surface[0]));
-  for(let i=1;i<NX;i++) cx0.lineTo(xC(i),yC(surface[i]));
-  cx0.lineTo(NX-MR,MT+PH);cx0.lineTo(ML,MT+PH);cx0.closePath();
-  cx0.fillStyle='rgba(0,229,176,0.08)';cx0.fill();
+      // Error map
+      const EML = 44,
+        EMR = 8,
+        EMT = 12,
+        EMB = 10;
+      const EPW = NX - EML - EMR,
+        EPH = 70 - EMT - EMB;
+      function exC(i) {
+        return EML + (i / NX) * EPW;
+      }
 
-  // True surface line
-  cx0.beginPath();cx0.strokeStyle='#00e5b0';cx0.lineWidth=1.8;
-  cx0.moveTo(xC(0),yC(surface[0]));
-  for(let i=1;i<NX;i++) cx0.lineTo(xC(i),yC(surface[i]));
-  cx0.stroke();
+      // FD
+      const FML = 48,
+        FMR = 12,
+        FMT = 18,
+        FMB = 22;
+      const FPW = NX - FML - FMR,
+        FPH = 120 - FMT - FMB;
 
-  // Measured surface (up to scanIdx)
-  if(scanIdx>1){
-    // Artifact fill
-    cx0.beginPath();
-    for(let i=0;i<scanIdx;i++){
-      const ri=getIdx(i);
-      i===0 ? cx0.moveTo(xC(getIdx(0)),yC(measured[getIdx(0)])) : cx0.lineTo(xC(ri),yC(measured[ri]));
-    }
-    for(let i=scanIdx-1;i>=0;i--) cx0.lineTo(xC(getIdx(i)),yC(surface[getIdx(i)]));
-    cx0.closePath();
-    const artG=cx0.createLinearGradient(ML,MT,ML,MT+PH);
-    artG.addColorStop(0,'rgba(255,107,53,0.18)');artG.addColorStop(1,'rgba(255,107,53,0.02)');
-    cx0.fillStyle=artG;cx0.fill();
+      const surface = new Float32Array(NX);
+      const measured = new Float32Array(NX);
+      const rawSurf = new Float32Array(NX);
+      const tipProf = new Float32Array(2 * TIP_R + 1);
 
-    // Measured line (glow)
-    cx0.beginPath();cx0.strokeStyle='rgba(255,107,53,0.18)';cx0.lineWidth=6;
-    cx0.moveTo(xC(getIdx(0)),yC(measured[getIdx(0)]));
-    for(let i=1;i<scanIdx;i++) cx0.lineTo(xC(getIdx(i)),yC(measured[getIdx(i)]));
-    cx0.stroke();
-    cx0.beginPath();cx0.strokeStyle='#ff7043';cx0.lineWidth=1.8;
-    cx0.moveTo(xC(getIdx(0)),yC(measured[getIdx(0)]));
-    for(let i=1;i<scanIdx;i++) cx0.lineTo(xC(getIdx(i)),yC(measured[getIdx(i)]));
-    cx0.stroke();
-  }
+      // ═══════════════════════════════════════════════════
+      //  STATE
+      // ═══════════════════════════════════════════════════
+      let currentTip = "cone";
+      let currentSurf = "sine";
+      let scanIdx = 0,
+        playing = false,
+        raf = null;
+      let bounceDir = 1,
+        scanMode = "loop";
+      let noiseSeed = 42;
+      const INV = {
+        invZ: false,
+        mirrorX: false,
+        invTip: false,
+        revScan: false,
+        erosion: false,
+        invErr: false,
+      };
 
-  cx0.restore();  // remove clip
+      // ═══════════════════════════════════════════════════
+      //  TIP PARAMETER DEFINITIONS
+      // ═══════════════════════════════════════════════════
+      const TIP_DEFS = {
+        cone: [
+          {
+            id: "angle",
+            label: "Half-angle α",
+            min: 3,
+            max: 80,
+            step: 1,
+            val: 15,
+            unit: "°",
+          },
+        ],
+        sphere: [
+          {
+            id: "R",
+            label: "Radius R",
+            min: 3,
+            max: 50,
+            step: 1,
+            val: 20,
+            unit: "nm",
+          },
+        ],
+        hyperboloid: [
+          {
+            id: "a",
+            label: "Sharpness a",
+            min: 2,
+            max: 30,
+            step: 1,
+            val: 7,
+            unit: "nm",
+          },
+        ],
+        flat: [
+          {
+            id: "R",
+            label: "Radius R",
+            min: 3,
+            max: 50,
+            step: 1,
+            val: 18,
+            unit: "nm",
+          },
+        ],
+        inv_sphere: [
+          {
+            id: "R",
+            label: "Bowl Radius",
+            min: 3,
+            max: 50,
+            step: 1,
+            val: 20,
+            unit: "nm",
+          },
+        ],
+        asymmetric: [
+          {
+            id: "angle",
+            label: "Half-angle α",
+            min: 3,
+            max: 60,
+            step: 1,
+            val: 20,
+            unit: "°",
+          },
+          {
+            id: "tilt",
+            label: "Tilt φ",
+            min: -40,
+            max: 40,
+            step: 1,
+            val: 15,
+            unit: "°",
+          },
+        ],
+        double_tip: [
+          {
+            id: "angle",
+            label: "Half-angle α",
+            min: 3,
+            max: 60,
+            step: 1,
+            val: 15,
+            unit: "°",
+          },
+          {
+            id: "gap",
+            label: "Tip gap",
+            min: 5,
+            max: 80,
+            step: 1,
+            val: 30,
+            unit: "nm",
+          },
+        ],
+        sphere_cone: [
+          {
+            id: "R",
+            label: "Arc Radius R",
+            min: 5,
+            max: 60,
+            step: 1,
+            val: 30,
+            unit: "nm",
+          },
+          {
+            id: "angle",
+            label: "Tangent halfW",
+            min: 3,
+            max: 55,
+            step: 1,
+            val: 15,
+            unit: "nm",
+          },
+        ],
+      };
+      const SURF_DEFS = {
+        sine: [
+          {
+            id: "amp",
+            label: "Amplitude",
+            min: 2,
+            max: 45,
+            step: 1,
+            val: 18,
+            unit: "nm",
+          },
+          {
+            id: "period",
+            label: "Period",
+            min: 10,
+            max: 120,
+            step: 5,
+            val: 55,
+            unit: "nm",
+          },
+        ],
+        step: [
+          {
+            id: "height",
+            label: "Height",
+            min: 5,
+            max: 60,
+            step: 1,
+            val: 28,
+            unit: "nm",
+          },
+        ],
+        spike: [
+          {
+            id: "height",
+            label: "Height",
+            min: 5,
+            max: 70,
+            step: 1,
+            val: 38,
+            unit: "nm",
+          },
+          {
+            id: "width",
+            label: "Width",
+            min: 5,
+            max: 60,
+            step: 1,
+            val: 20,
+            unit: "nm",
+          },
+        ],
+        hemisphere: [
+          {
+            id: "R",
+            label: "Radius R",
+            min: 5,
+            max: 60,
+            step: 1,
+            val: 28,
+            unit: "nm",
+          },
+        ],
+        pit: [
+          {
+            id: "R",
+            label: "Radius R",
+            min: 5,
+            max: 60,
+            step: 1,
+            val: 28,
+            unit: "nm",
+          },
+        ],
+        trench: [
+          {
+            id: "period",
+            label: "Period",
+            min: 15,
+            max: 120,
+            step: 5,
+            val: 65,
+            unit: "nm",
+          },
+          {
+            id: "depth",
+            label: "Depth",
+            min: 5,
+            max: 75,
+            step: 1,
+            val: 30,
+            unit: "nm",
+          },
+        ],
+        rough: [
+          {
+            id: "scale",
+            label: "Scale",
+            min: 1,
+            max: 45,
+            step: 1,
+            val: 10,
+            unit: "",
+          },
+        ],
+        dna: [
+          {
+            id: "amp",
+            label: "Amplitude",
+            min: 5,
+            max: 50,
+            step: 1,
+            val: 22,
+            unit: "nm",
+          },
+          {
+            id: "period",
+            label: "Period",
+            min: 20,
+            max: 100,
+            step: 5,
+            val: 50,
+            unit: "nm",
+          },
+        ],
+        chirp: [
+          {
+            id: "amp",
+            label: "Amplitude",
+            min: 2,
+            max: 40,
+            step: 1,
+            val: 18,
+            unit: "nm",
+          },
+          {
+            id: "rate",
+            label: "Rate",
+            min: 1,
+            max: 20,
+            step: 1,
+            val: 8,
+            unit: "×",
+          },
+        ],
+        lattice: [
+          {
+            id: "amp",
+            label: "Height",
+            min: 2,
+            max: 30,
+            step: 1,
+            val: 10,
+            unit: "nm",
+          },
+          {
+            id: "spacing",
+            label: "Spacing",
+            min: 8,
+            max: 60,
+            step: 2,
+            val: 20,
+            unit: "nm",
+          },
+        ],
+      };
 
-  // Tip body — drawn AFTER restore so no clip issues, own save/clip inside
-  if(scanIdx>0) drawTipShape(cx0, Math.min(scanIdx-1, NX-1));
-}
+      // Initialise param stores from defaults
+      const tipP = {},
+        surfP = {};
+      for (const [k, defs] of Object.entries(TIP_DEFS))
+        tipP[k] = Object.fromEntries(defs.map((d) => [d.id, d.val]));
+      for (const [k, defs] of Object.entries(SURF_DEFS))
+        surfP[k] = Object.fromEntries(defs.map((d) => [d.id, d.val]));
 
-// ── Tip silhouette ───────────────────────────────
-function drawTipShape(g2d, si){
-  const rawI = Math.min(si, NX-1);
-  const di   = getIdx(rawI);
-  const ax   = xC(di);
-  const ay   = yC(measured[di]);   // measured surface (where tip math apex is)
-  const sy   = yC(surface[di]);    // true surface (visual contact point)
-  const wS   = PW/X_NM, hS = PH/Y_NM;
-  const p    = tipP[currentTip]||{};
+      // ═══════════════════════════════════════════════════
+      //  SLIDER UI
+      // ═══════════════════════════════════════════════════
+      function makeSliders(containerId, defs, store, onChange) {
+        const el = document.getElementById(containerId);
+        el.innerHTML = "";
+        (defs || []).forEach((d) => {
+          const row = document.createElement("div");
+          row.className = "srow";
+          row.innerHTML = `<div class="shdr"><span>${d.label}</span><span class="sval" id="sv_${d.id}">${store[d.id]}${d.unit}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
+          el.appendChild(row);
+          row.querySelector("input").addEventListener("input", function () {
+            store[d.id] = parseFloat(this.value);
+            document.getElementById("sv_" + d.id).textContent =
+              store[d.id] + d.unit;
+            onChange();
+          });
+        });
+      }
+      function refreshTipSliders() {
+        makeSliders(
+          "tipSliders",
+          TIP_DEFS[currentTip],
+          tipP[currentTip] || {},
+          () => {
+            buildTip();
+            computeMeas();
+            drawPreview();
+            if (!playing) render();
+          },
+        );
+      }
+      function refreshSurfSliders() {
+        makeSliders(
+          "surfSliders",
+          SURF_DEFS[currentSurf],
+          surfP[currentSurf] || {},
+          () => {
+            buildSurf();
+            applyTransforms();
+            computeMeas();
+            if (!playing) render();
+          },
+        );
+      }
 
-  // Tip apex sits at yC(measured[di]) — the height the tip physically rests at.
-  // measured[i] = max_j[surf[j]+T(j)], so the apex IS at measured height by definition.
-  // The tip body extends upward from the apex.
-  const contactY = ay;        // apex at MEASURED height (physically correct)
-  const bodyNm   = Math.min(50, Math.max((contactY - MT)/hS, 4));
-  const bodyPx   = bodyNm * hS;
-  const tipTopY  = contactY - bodyPx;
+      // ═══════════════════════════════════════════════════
+      //  TIP PROFILE  T(dc) — dc is SIGNED pixel offset from centre
+      // ═══════════════════════════════════════════════════
+      // Returns the height (nm) the tip sits above its apex at signed lateral offset dc_nm.
+      // For dilation: measured[i] = max_j[ surface[i+j] + T(j) ]
+      // For erosion:  measured[i] = min_j[ surface[i+j] - T(j) ]
+      // T must be >= 0. Infinity means the tip cannot reach that offset (blocked).
 
-  g2d.save();
-  g2d.beginPath(); g2d.rect(ML, MT, PW, PH); g2d.clip();
+      function tipT(dc_nm) {
+        // dc_nm: SIGNED lateral offset in nm (positive = right, negative = left)
+        const r = Math.abs(dc_nm); // radial distance for symmetric tips
+        const p = tipP[currentTip] || {};
+        switch (currentTip) {
+          case "cone": {
+            const alpha = ((p.angle || 15) * Math.PI) / 180;
+            return r / Math.tan(alpha);
+          }
+          case "sphere": {
+            const R = p.R || 20;
+            return r < R ? R - Math.sqrt(R * R - r * r) : Infinity;
+          }
+          case "hyperboloid": {
+            const a = p.a || 7;
+            return Math.sqrt(r * r + a * a) - a;
+          }
+          case "flat": {
+            const R = p.R || 18;
+            return r <= R ? 0 : Infinity;
+          }
+          case "inv_sphere": {
+            // Concave sphere: T(r) = R - sqrt(R²-r²) — same as convex sphere formula.
+            // The concave tip contacts the surface at the RIM (r=R) not the centre.
+            // It acts via EROSION: measured = min[ surface[j] - T(j) ]
+            // which is handled in computeMeas by detecting inv_sphere.
+            const R = p.R || 20;
+            return r < R ? R - Math.sqrt(R * R - r * r) : Infinity;
+          }
+          case "asymmetric": {
+            // Tilt is along the signed dc direction — one side steeper, other shallower
+            const alpha = ((p.angle || 20) * Math.PI) / 180;
+            const tilt = ((p.tilt || 15) * Math.PI) / 180;
+            // T(dc) = r/tan(alpha) + dc_nm*tan(tilt)
+            // Positive tilt: right side (dc>0) gets extra height → right artifacts pushed higher
+            return Math.max(0, r / Math.tan(alpha) + dc_nm * Math.tan(tilt));
+          }
+          case "double_tip": {
+            // Two apexes at dc=-g and dc=+g
+            // T(dc) = min distance to either apex / tan(alpha)
+            const alpha = ((p.angle || 15) * Math.PI) / 180;
+            const g = (p.gap || 30) / 2;
+            const r1 = Math.abs(dc_nm - g); // distance to right apex
+            const r2 = Math.abs(dc_nm + g); // distance to left apex
+            return Math.min(r1, r2) / Math.tan(alpha);
+          }
+          case "sphere_cone": {
+            // U-shape: arc for r≤halfW, straight side for r>halfW
+            // T(r) = R - sqrt(R²-r²)                  [arc, C0+C1 at halfW]
+            // T(r) = yTang + (r-halfW)*halfW/sv        [straight side]
+            const R = p.R || 30,
+              halfW = p.angle || 15;
+            const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
+            const yTang = R - sv;
+            return r <= halfW
+              ? R - Math.sqrt(Math.max(0, R * R - r * r))
+              : yTang + ((r - halfW) * halfW) / sv;
+          }
+          default:
+            return r;
+        }
+      }
 
-  const tG = g2d.createLinearGradient(ax, contactY, ax, tipTopY);
-  tG.addColorStop(0, 'rgba(180,215,240,0.65)');
-  tG.addColorStop(1, 'rgba(160,195,220,0.12)');
-  g2d.fillStyle  = tG;
-  g2d.strokeStyle = 'rgba(210,235,255,0.95)';
-  g2d.lineWidth  = 2;
+      function buildTip() {
+        // Max meaningful T: surface peaks at ~base+max_amp ≈ 55nm.
+        // Artifact = T(dc), so T+surf_peak must be < Y_NM to be visible.
+        // Clip kernel at Y_NM - base (= 100-25 = 75nm) so only useful entries survive.
+        const T_MAX = Y_NM - 25; // 75nm — any T larger can't produce visible artifact
+        for (let j = 0; j <= 2 * TIP_R; j++) {
+          const dc_nm = (j - TIP_R) * DX;
+          const t = tipT(dc_nm);
+          tipProf[j] = isFinite(t) && t <= T_MAX ? t : 1e9;
+        }
+      }
 
-  function sh(fn){ g2d.beginPath(); fn(); g2d.closePath(); g2d.fill(); g2d.stroke(); }
+      // ═══════════════════════════════════════════════════
+      //  SURFACE BUILD
+      // ═══════════════════════════════════════════════════
+      function rand(i) {
+        let x = Math.sin(i * 127.1 + noiseSeed * 311.7) * 43758.5453;
+        return x - Math.floor(x);
+      }
 
-  if(currentTip === 'double_tip'){
-    const a=(p.angle||15)*Math.PI/180, gp=(p.gap||30)*wS/2;
-    const hw = bodyNm * Math.tan(a) * wS;
-    for(const off of [-gp, gp]){
-      sh(()=>{
-        g2d.moveTo(ax+off, contactY);          // apex at TRUE surface
-        g2d.lineTo(ax+off-hw, tipTopY);
-        g2d.lineTo(ax+off+hw, tipTopY);
+      function buildSurf() {
+        const p = surfP[currentSurf] || {},
+          base = 25;
+        for (let i = 0; i < NX; i++) {
+          const x = i * DX,
+            cx = X_NM / 2,
+            dx = x - cx;
+          switch (currentSurf) {
+            case "sine":
+              rawSurf[i] =
+                base +
+                (p.amp || 15) * Math.sin((2 * Math.PI * x) / (p.period || 55));
+              break;
+            case "step":
+              rawSurf[i] = i < NX * 0.48 ? base : base + (p.height || 22);
+              break;
+            case "spike": {
+              const h = p.height || 30,
+                w = (p.width || 20) / DX;
+              rawSurf[i] =
+                Math.abs(i - NX / 2) < w
+                  ? base + h * (1 - Math.abs(i - NX / 2) / w)
+                  : base;
+              break;
+            }
+            case "hemisphere": {
+              const R = p.R || 22;
+              rawSurf[i] =
+                Math.abs(dx) < R ? base + Math.sqrt(R * R - dx * dx) : base;
+              break;
+            }
+            case "pit": {
+              const R = p.R || 22;
+              rawSurf[i] =
+                Math.abs(dx) < R
+                  ? base + R - Math.sqrt(R * R - dx * dx)
+                  : base + R;
+              break;
+            }
+            case "trench":
+              rawSurf[i] =
+                (x % (p.period || 65)) / (p.period || 65) < 0.45
+                  ? base
+                  : base + (p.depth || 22);
+              break;
+            case "rough": {
+              const s = (p.scale || 10) * 0.25;
+              rawSurf[i] =
+                base +
+                s * 4 +
+                s * 3 * Math.sin((2 * Math.PI * x) / 48 + 0.9) +
+                s * 2 * Math.sin((2 * Math.PI * x) / 22 + 2.1) +
+                s * Math.sin((2 * Math.PI * x) / 11 + 1.4);
+              break;
+            }
+            case "dna":
+              rawSurf[i] =
+                base +
+                (p.amp || 18) *
+                  Math.abs(Math.sin((Math.PI * x) / (p.period || 50)));
+              break;
+            case "chirp":
+              rawSurf[i] =
+                base +
+                (p.amp || 15) *
+                  Math.sin(
+                    2 * Math.PI * x * (0.015 + (p.rate || 8) * 0.0002 * x),
+                  );
+              break;
+            case "lattice": {
+              const sp = p.spacing || 20;
+              rawSurf[i] =
+                base +
+                (p.amp || 10) *
+                  (0.5 + 0.5 * Math.cos((2 * Math.PI * x) / sp)) *
+                  (0.5 + 0.5 * Math.cos((2 * Math.PI * x) / (sp * 1.15)));
+              break;
+            }
+            default:
+              rawSurf[i] = base;
+          }
+        }
+      }
+
+      function applyTransforms() {
+        const noise =
+          parseFloat(document.getElementById("noiseSlider").value) || 0;
+        for (let i = 0; i < NX; i++)
+          surface[i] =
+            rawSurf[i] + (noise > 0 ? (rand(i) - 0.5) * 2 * noise : 0);
+        if (INV.invZ) {
+          let mn = Infinity,
+            mx = -Infinity;
+          for (let i = 0; i < NX; i++) {
+            mn = Math.min(mn, surface[i]);
+            mx = Math.max(mx, surface[i]);
+          }
+          for (let i = 0; i < NX; i++) surface[i] = mn + mx - surface[i];
+        }
+        if (INV.mirrorX) {
+          const tmp = surface.slice();
+          for (let i = 0; i < NX; i++) surface[i] = tmp[NX - 1 - i];
+        }
+      }
+
+      // ═══════════════════════════════════════════════════
+      //  MINKOWSKI DILATION / EROSION
+      // ═══════════════════════════════════════════════════
+      // CORRECT AFM contact-mode formula:
+      //   Dilation:  M[i] = max_j { S[i+j] - T[j] }
+      //   Erosion:   M[i] = min_j { S[i+j] + T[j] }
+      //
+      // Dilation gives PROBE-BROADENING artifact (measured >= true surface
+      // only where tip can physically reach). On a flat surface, T[0]=0 wins
+      // and M[i]=S[i] exactly — flat measures flat. ✓
+      //
+      // inv_sphere uses erosion because the concave tip contacts at the rim,
+      // so it cannot reach INTO surface features (measures too narrow = erosion).
+
+      function computeMeas() {
+        const tipIsErosion = currentTip === "inv_sphere";
+        const baseErosion = tipIsErosion;
+        const userFlip = INV.erosion !== INV.invTip;
+        const finalErosion = baseErosion !== userFlip;
+
+        if (finalErosion) {
+          // EROSION: M[i] = min_j { S[i+j] + T[j] }
+          for (let i = 0; i < NX; i++) {
+            let best = Infinity;
+            for (
+              let j = Math.max(-TIP_R, -i);
+              j <= Math.min(TIP_R, NX - 1 - i);
+              j++
+            ) {
+              const d = tipProf[j + TIP_R];
+              if (d > 1e6) continue;
+              const v = surface[i + j] + d;
+              if (v < best) best = v;
+            }
+            measured[i] = Math.max(0, Math.min(Y_NM - 2, best));
+          }
+        } else {
+          // DILATION: M[i] = max_j { S[i+j] - T[j] }
+          for (let i = 0; i < NX; i++) {
+            let best = -Infinity;
+            for (
+              let j = Math.max(-TIP_R, -i);
+              j <= Math.min(TIP_R, NX - 1 - i);
+              j++
+            ) {
+              const d = tipProf[j + TIP_R];
+              if (d > 1e6) continue;
+              const v = surface[i + j] - d;
+              if (v > best) best = v;
+            }
+            measured[i] = Math.max(0, Math.min(Y_NM - 2, best));
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════
+      //  DRAWING
+      // ═══════════════════════════════════════════════════
+      const cv0 = document.getElementById("cv0");
+      const cx0 = cv0.getContext("2d");
+      const cv1 = document.getElementById("cv1");
+      const cx1 = cv1.getContext("2d");
+      const cv2 = document.getElementById("cv2");
+      const cx2 = cv2.getContext("2d");
+
+      function getIdx(raw) {
+        return INV.revScan ? NX - 1 - raw : raw;
+      }
+
+      // ── Main scan panel ──────────────────────────────
+      function drawMain() {
+        cx0.clearRect(0, 0, NX, CV0H);
+        cx0.fillStyle = "#040608";
+        cx0.fillRect(0, 0, NX, CV0H);
+
+        // Grid
+        for (let y = 0; y <= Y_NM; y += 10) {
+          cx0.strokeStyle = y === 0 ? "#182434" : "#0c1820";
+          cx0.lineWidth = 1;
+          cx0.beginPath();
+          cx0.moveTo(ML, yC(y));
+          cx0.lineTo(NX - MR, yC(y));
+          cx0.stroke();
+        }
+        for (let x = 0; x <= X_NM; x += 40) {
+          cx0.strokeStyle = "#0c1820";
+          cx0.lineWidth = 1;
+          const px = xC(x / DX);
+          cx0.beginPath();
+          cx0.moveTo(px, MT);
+          cx0.lineTo(px, MT + PH);
+          cx0.stroke();
+        }
+        cx0.strokeStyle = "#1a2e3e";
+        cx0.lineWidth = 1;
+        cx0.strokeRect(ML, MT, PW, PH);
+
+        // Axis labels
+        cx0.fillStyle = "#304a58";
+        cx0.font = "8px Courier New";
+        cx0.textAlign = "right";
+        for (let y = 0; y <= Y_NM; y += 10) cx0.fillText(y, ML - 3, yC(y) + 3);
+        cx0.textAlign = "center";
+        for (let x = 0; x <= X_NM; x += 40)
+          cx0.fillText(x + "nm", xC(x / DX), MT + PH + 14);
+        cx0.save();
+        cx0.translate(12, MT + PH / 2);
+        cx0.rotate(-Math.PI / 2);
+        cx0.fillStyle = "#304a58";
+        cx0.font = "8px Courier New";
+        cx0.textAlign = "center";
+        cx0.fillText("Height (nm)", 0, 0);
+        cx0.restore();
+
+        // Mode badge
+        cx0.fillStyle = "#00e5b0";
+        cx0.font = "7px Courier New";
+        cx0.textAlign = "left";
+        cx0.fillText(INV.erosion ? "EROSION" : "DILATION", ML + 4, MT - 6);
+        if (INV.invTip) {
+          cx0.fillStyle = "#c97aff";
+          cx0.fillText("TIP⁻¹", ML + 90, MT - 6);
+        }
+        if (INV.revScan) {
+          cx0.fillStyle = "#2ea8ff";
+          cx0.fillText("←SCAN", ML + 140, MT - 6);
+        }
+
+        cx0.save();
+        cx0.beginPath();
+        cx0.rect(ML, MT, PW, PH);
+        cx0.clip();
+
+        // True surface fill
+        cx0.beginPath();
+        cx0.moveTo(xC(0), yC(surface[0]));
+        for (let i = 1; i < NX; i++) cx0.lineTo(xC(i), yC(surface[i]));
+        cx0.lineTo(NX - MR, MT + PH);
+        cx0.lineTo(ML, MT + PH);
+        cx0.closePath();
+        cx0.fillStyle = "rgba(0,229,176,0.08)";
+        cx0.fill();
+
+        // True surface line
+        cx0.beginPath();
+        cx0.strokeStyle = "#00e5b0";
+        cx0.lineWidth = 1.8;
+        cx0.moveTo(xC(0), yC(surface[0]));
+        for (let i = 1; i < NX; i++) cx0.lineTo(xC(i), yC(surface[i]));
+        cx0.stroke();
+
+        // Measured surface (up to scanIdx)
+        if (scanIdx > 1) {
+          // Artifact fill
+          cx0.beginPath();
+          for (let i = 0; i < scanIdx; i++) {
+            const ri = getIdx(i);
+            i === 0
+              ? cx0.moveTo(xC(getIdx(0)), yC(measured[getIdx(0)]))
+              : cx0.lineTo(xC(ri), yC(measured[ri]));
+          }
+          for (let i = scanIdx - 1; i >= 0; i--)
+            cx0.lineTo(xC(getIdx(i)), yC(surface[getIdx(i)]));
+          cx0.closePath();
+          const artG = cx0.createLinearGradient(ML, MT, ML, MT + PH);
+          artG.addColorStop(0, "rgba(255,107,53,0.18)");
+          artG.addColorStop(1, "rgba(255,107,53,0.02)");
+          cx0.fillStyle = artG;
+          cx0.fill();
+
+          // Measured line (glow)
+          cx0.beginPath();
+          cx0.strokeStyle = "rgba(255,107,53,0.18)";
+          cx0.lineWidth = 6;
+          cx0.moveTo(xC(getIdx(0)), yC(measured[getIdx(0)]));
+          for (let i = 1; i < scanIdx; i++)
+            cx0.lineTo(xC(getIdx(i)), yC(measured[getIdx(i)]));
+          cx0.stroke();
+          cx0.beginPath();
+          cx0.strokeStyle = "#ff7043";
+          cx0.lineWidth = 1.8;
+          cx0.moveTo(xC(getIdx(0)), yC(measured[getIdx(0)]));
+          for (let i = 1; i < scanIdx; i++)
+            cx0.lineTo(xC(getIdx(i)), yC(measured[getIdx(i)]));
+          cx0.stroke();
+        }
+
+        cx0.restore(); // remove clip
+
+        // Tip body — drawn AFTER restore so no clip issues, own save/clip inside
+        if (scanIdx > 0) drawTipShape(cx0, Math.min(scanIdx - 1, NX - 1));
+      }
+
+      // ── Tip silhouette ───────────────────────────────
+      function drawTipShape(g2d, si) {
+        const rawI = Math.min(si, NX - 1);
+        const di = getIdx(rawI);
+        const ax = xC(di);
+        const ay = yC(measured[di]); // measured surface (where tip math apex is)
+        const sy = yC(surface[di]); // true surface (visual contact point)
+        const wS = PW / X_NM,
+          hS = PH / Y_NM;
+        const p = tipP[currentTip] || {};
+
+        // Tip apex sits at yC(measured[di]) — the height the tip physically rests at.
+        // measured[i] = max_j[surf[j]+T(j)], so the apex IS at measured height by definition.
+        // The tip body extends upward from the apex.
+        const contactY = ay; // apex at MEASURED height (physically correct)
+        const bodyNm = Math.min(50, Math.max((contactY - MT) / hS, 4));
+        const bodyPx = bodyNm * hS;
+        const tipTopY = contactY - bodyPx;
+
+        g2d.save();
+        g2d.beginPath();
+        g2d.rect(ML, MT, PW, PH);
+        g2d.clip();
+
+        const tG = g2d.createLinearGradient(ax, contactY, ax, tipTopY);
+        tG.addColorStop(0, "rgba(180,215,240,0.65)");
+        tG.addColorStop(1, "rgba(160,195,220,0.12)");
+        g2d.fillStyle = tG;
+        g2d.strokeStyle = "rgba(210,235,255,0.95)";
+        g2d.lineWidth = 2;
+
+        function sh(fn) {
+          g2d.beginPath();
+          fn();
+          g2d.closePath();
+          g2d.fill();
+          g2d.stroke();
+        }
+
+        if (currentTip === "double_tip") {
+          const a = ((p.angle || 15) * Math.PI) / 180,
+            gp = ((p.gap || 30) * wS) / 2;
+          const hw = bodyNm * Math.tan(a) * wS;
+          for (const off of [-gp, gp]) {
+            sh(() => {
+              g2d.moveTo(ax + off, contactY); // apex at TRUE surface
+              g2d.lineTo(ax + off - hw, tipTopY);
+              g2d.lineTo(ax + off + hw, tipTopY);
+            });
+          }
+        } else if (currentTip === "sphere") {
+          const R = p.R || 20,
+            pts = [];
+          for (let k = 0; k <= 80; k++) {
+            const r = (k / 80) * R,
+              T = R - Math.sqrt(R * R - r * r);
+            if (T <= bodyNm) pts.push([r, T]);
+          }
+          if (pts.length < 2) pts.push([R, bodyNm]);
+          // Sphere apex is at ay (measured), body drawn from ay upward
+          const tG2 = g2d.createLinearGradient(ax, ay, ax, ay - bodyPx);
+          tG2.addColorStop(0, "rgba(180,215,240,0.65)");
+          tG2.addColorStop(1, "rgba(160,195,220,0.12)");
+          g2d.fillStyle = tG2;
+          const sTopY = ay - bodyPx;
+          sh(() => {
+            g2d.moveTo(ax, ay);
+            pts.forEach(([r, T]) => g2d.lineTo(ax + r * wS, ay - T * hS));
+            g2d.lineTo(ax + pts[pts.length - 1][0] * wS, sTopY);
+            g2d.lineTo(ax - pts[pts.length - 1][0] * wS, sTopY);
+            for (let k = pts.length - 1; k >= 0; k--)
+              g2d.lineTo(ax - pts[k][0] * wS, ay - pts[k][1] * hS);
+          });
+        } else if (currentTip === "hyperboloid") {
+          const a = p.a || 7,
+            pts = [];
+          // Hyperboloid apex at ay (measured), body upward
+          const tG2 = g2d.createLinearGradient(ax, ay, ax, ay - bodyPx);
+          tG2.addColorStop(0, "rgba(180,215,240,0.65)");
+          tG2.addColorStop(1, "rgba(160,195,220,0.12)");
+          g2d.fillStyle = tG2;
+          for (let k = 0; k <= 100; k++) {
+            const h = (k / 100) * bodyNm,
+              r = Math.sqrt((h + a) * (h + a) - a * a);
+            pts.push([r, h]);
+          }
+          sh(() => {
+            g2d.moveTo(ax, ay);
+            pts.forEach(([r, h]) => g2d.lineTo(ax + r * wS, ay - h * hS));
+            for (let k = pts.length - 1; k >= 0; k--)
+              g2d.lineTo(ax - pts[k][0] * wS, ay - pts[k][1] * hS);
+          });
+        } else if (currentTip === "flat") {
+          // Flat: face at measured line ay
+          const tG2 = g2d.createLinearGradient(ax, ay, ax, ay - bodyPx);
+          tG2.addColorStop(0, "rgba(180,215,240,0.65)");
+          tG2.addColorStop(1, "rgba(160,195,220,0.12)");
+          g2d.fillStyle = tG2;
+          const rp = (p.R || 18) * wS;
+          const fTopY = ay - bodyPx;
+          sh(() => {
+            g2d.moveTo(ax - rp, ay);
+            g2d.lineTo(ax + rp, ay);
+            g2d.lineTo(ax + rp, fTopY);
+            g2d.lineTo(ax - rp, fTopY);
+          });
+          g2d.save();
+          g2d.strokeStyle = "rgba(220,248,255,0.95)";
+          g2d.lineWidth = 2.5;
+          g2d.beginPath();
+          g2d.moveTo(ax - rp, ay);
+          g2d.lineTo(ax + rp, ay);
+          g2d.stroke();
+          g2d.restore();
+        } else if (currentTip === "inv_sphere") {
+          const R = p.R || 20;
+          // Half-width of cylinder walls
+          const hw = Math.min(R * wS + 10, PW / 4);
+          // Bowl radius must fit inside the walls: Rp <= hw
+          const Rp = Math.min(R * hS, hw * 0.9);
+          const iTopY = ay - bodyPx;
+          const tG2 = g2d.createLinearGradient(ax, iTopY, ax, ay);
+          tG2.addColorStop(0, "rgba(160,195,220,0.12)");
+          tG2.addColorStop(1, "rgba(180,215,240,0.65)");
+          g2d.fillStyle = tG2;
+          // Bowl arc: center at (ax, ay-Rp) with radius Rp
+          // arc(0→π, anticlockwise=true) = TOP half = curves upward = CONCAVE bowl ✓
+          // This arc starts at (ax+Rp, ay-Rp) and ends at (ax-Rp, ay-Rp)
+          // The rim of the bowl sits at y = ay-Rp ± 0, lowest point at y = ay-2*Rp (top of bowl)
+          // Wait — center at (ax, ay-Rp), angle π/2 in canvas = DOWN → point = (ax, ay-Rp+Rp) = (ax,ay) ✓
+          // angle -π/2 (top) → (ax, ay-Rp-Rp) = (ax, ay-2Rp) — deepest point of bowl
+          // So arc(ax, ay-Rp, Rp, 0, π, true) goes from (ax+Rp, ay-Rp) UP through (ax, ay-2Rp) to (ax-Rp, ay-Rp)
+          // The bowl OPENS at y=ay-Rp (rim level) and curves UP — CONCAVE ✓
+          sh(() => {
+            g2d.moveTo(ax - hw, iTopY);
+            g2d.lineTo(ax + hw, iTopY); // top edge
+            g2d.lineTo(ax + hw, ay - Rp); // right wall down to rim
+            g2d.arc(ax, ay - Rp, Rp, 0, Math.PI, true); // concave bowl (top half, curves up)
+            g2d.lineTo(ax - hw, ay - Rp); // left wall bottom to rim
+          });
+          g2d.save();
+          g2d.strokeStyle = "rgba(100,200,240,0.95)";
+          g2d.lineWidth = 2.5;
+          g2d.beginPath();
+          g2d.arc(ax, ay - Rp, Rp, 0, Math.PI, true);
+          g2d.stroke();
+          g2d.restore();
+        } else if (currentTip === "sphere_cone") {
+          // ── U-SHAPE (SolidWorks geometry, exact) ──────────────────────────────
+          // Apex at (0,0) in nm, y upward.
+          // Arc: centre (0, R), radius R  → passes through apex ✓
+          // Tangent points: (±halfW,  R - sqrt(R²-halfW²))
+          // Top corners:    (±2·halfW, yTang + halfW²/sqrt(R²-halfW²))
+          //
+          // NOTE: wS ≠ hS so we CANNOT use canvas.arc() — it would draw an ellipse.
+          // Instead sample in nm space and convert to pixels individually.
+          // ─────────────────────────────────────────────────────────────────────
+          const R = p.R || 30;
+          const halfW = p.angle || 15;
+          const topW = halfW * 2;
+
+          const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
+          const yTang = R - sv;
+          const yTop = yTang + (halfW * halfW) / sv;
+
+          // Scale factor: map yTop nm → bodyNm so shape fills tip body
+          const scaleNm = bodyNm / yTop;
+          // Scaled nm values
+          const R_s = R * scaleNm;
+          const halfW_s = halfW * scaleNm;
+          const topW_s = topW * scaleNm;
+          const sv_s = sv * scaleNm;
+          const yTang_s = yTang * scaleNm;
+
+          // nm → canvas pixel helpers (apex at contactY)
+          const nmX = (x) => ax + x * wS;
+          const nmY = (y) => contactY - y * hS;
+
+          // Sample arc in nm space: centre (0, R_s), radius R_s
+          // From apex angle (-π/2) going right to tangent angle
+          // theta_apex = -π/2, theta_right = atan2(-sv_s, halfW_s) [Q4, negative]
+          const tApex = -Math.PI / 2;
+          const tR = Math.atan2(-sv_s, halfW_s); // ≈ -60° (Q4)
+          const tL = Math.atan2(-sv_s, -halfW_s); // ≈ -120° (Q3)
+          const N = 80;
+
+          sh(() => {
+            // Right arc: apex → right tangent (counterclockwise: -90° → -60°, increasing)
+            g2d.moveTo(nmX(0), nmY(0));
+            for (let k = 0; k <= N; k++) {
+              const t = tApex + ((tR - tApex) * k) / N;
+              g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+            }
+            // Right slanted side to top-right corner
+            g2d.lineTo(nmX(topW_s), nmY(yTop * scaleNm));
+            // Flat top
+            g2d.lineTo(nmX(-topW_s), nmY(yTop * scaleNm));
+            // Left slanted side to left tangent
+            g2d.lineTo(nmX(-halfW_s), nmY(yTang_s));
+            // Left arc: left tangent → apex (counterclockwise: -120° → -90°... wait)
+            // Left side goes from tL(-120°) back to tApex(-90°), increasing angle ✓
+            for (let k = 0; k <= N; k++) {
+              const t = tL + ((tApex - tL) * k) / N;
+              g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+            }
+          });
+
+          // Arc centre marker
+          const cxY = nmY(R_s);
+          if (cxY > tipTopY && cxY < contactY) {
+            g2d.save();
+            g2d.beginPath();
+            g2d.arc(ax, cxY, 6, 0, Math.PI * 2);
+            g2d.strokeStyle = "rgba(201,122,255,0.35)";
+            g2d.lineWidth = 4;
+            g2d.stroke();
+            g2d.strokeStyle = "rgba(201,122,255,0.7)";
+            g2d.lineWidth = 1;
+            g2d.setLineDash([2, 2]);
+            g2d.beginPath();
+            g2d.moveTo(ax - 10, cxY);
+            g2d.lineTo(ax + 10, cxY);
+            g2d.stroke();
+            g2d.beginPath();
+            g2d.moveTo(ax, cxY - 10);
+            g2d.lineTo(ax, cxY + 10);
+            g2d.stroke();
+            g2d.setLineDash([]);
+            g2d.beginPath();
+            g2d.arc(ax, cxY, 2.5, 0, Math.PI * 2);
+            g2d.fillStyle = "#c97aff";
+            g2d.shadowColor = "#c97aff";
+            g2d.shadowBlur = 8;
+            g2d.fill();
+            g2d.shadowBlur = 0;
+            g2d.restore();
+          }
+        } else {
+          // cone, asymmetric — apex at TRUE surface
+          const a = ((p.angle || 15) * Math.PI) / 180;
+          const tilt = ((p.tilt || 0) * Math.PI) / 180;
+          const lw = Math.max(3, bodyNm * (Math.tan(a) + Math.tan(tilt)) * wS);
+          const rw = Math.max(3, bodyNm * (Math.tan(a) - Math.tan(tilt)) * wS);
+          sh(() => {
+            g2d.moveTo(ax, contactY); // apex at TRUE surface
+            g2d.lineTo(ax - lw, tipTopY);
+            g2d.lineTo(ax + rw, tipTopY);
+          });
+        }
+
+        g2d.restore();
+
+        // Dashed line from apex (measured) down to true surface — shows artifact gap
+        if (sy > ay + 2) {
+          // only when there IS a gap (measured above surface)
+          g2d.save();
+          g2d.strokeStyle = "rgba(255,107,53,0.5)";
+          g2d.lineWidth = 1;
+          g2d.setLineDash([2, 3]);
+          g2d.beginPath();
+          g2d.moveTo(ax, ay);
+          g2d.lineTo(ax, sy);
+          g2d.stroke();
+          g2d.setLineDash([]);
+          g2d.restore();
+        }
+
+        // Apex glow dot at MEASURED height (where tip physically sits)
+        g2d.beginPath();
+        g2d.arc(ax, ay, 3.5, 0, Math.PI * 2);
+        g2d.fillStyle = "rgba(255,255,255,0.15)";
+        g2d.fill();
+        g2d.beginPath();
+        g2d.arc(ax, ay, 2, 0, Math.PI * 2);
+        g2d.fillStyle = "#fff";
+        g2d.shadowColor = sy > ay + 2 ? "#ff6b35" : "#00e5b0"; // red=artifact, green=touching
+        g2d.shadowBlur = 12;
+        g2d.fill();
+        g2d.shadowBlur = 0;
+      }
+
+      function drawError() {
+        cx1.clearRect(0, 0, NX, 70);
+        cx1.fillStyle = "#040608";
+        cx1.fillRect(0, 0, NX, 70);
+        cx1.strokeStyle = "#1a2e3e";
+        cx1.lineWidth = 1;
+        cx1.strokeRect(EML, EMT, EPW, EPH);
+        cx1.fillStyle = "#304a58";
+        cx1.font = "7px Courier New";
+        cx1.textAlign = "left";
+        cx1.fillText("ARTIFACT ERROR MAP", EML + 4, EMT - 4);
+        if (scanIdx < 2) return;
+
+        let mx = 0;
+        for (let i = 0; i < scanIdx; i++) {
+          const e = Math.abs(measured[getIdx(i)] - surface[getIdx(i)]);
+          if (e > mx) mx = e;
+        }
+        if (mx < 0.01) mx = 0.01;
+        const bw = EPW / NX;
+        for (let i = 0; i < scanIdx; i++) {
+          const ri = getIdx(i);
+          let t = Math.abs(measured[ri] - surface[ri]) / mx;
+          if (INV.invErr) t = 1 - t;
+          let r, g, b;
+          if (t < 0.5) {
+            r = Math.round(t * 2 * 255);
+            g = Math.round(170 + t * 50);
+            b = Math.round(160 * (1 - t * 2));
+          } else {
+            r = 255;
+            g = Math.round(220 * (1 - (t - 0.5) * 2));
+            b = 0;
+          }
+          const px = EML + i * bw;
+          cx1.fillStyle = `rgb(${r},${g},${b})`;
+          cx1.globalAlpha = 0.85;
+          cx1.fillRect(px, EMT + EPH - t * EPH, Math.max(1, bw + 0.5), t * EPH);
+        }
+        cx1.globalAlpha = 1;
+        cx1.fillStyle = "#c97aff";
+        cx1.font = "7px Courier New";
+        cx1.textAlign = "right";
+        cx1.fillText(
+          `max ${mx.toFixed(2)} nm${INV.invErr ? " [INV]" : ""}`,
+          NX - EML,
+          EMT + 12,
+        );
+      }
+
+      // ── Force-distance ───────────────────────────────
+      function fdF(d) {
+        if (d < 0) return 10 * ((-d + 1) ** 2 - 1);
+        const s = 0.3 / (d + 0.3);
+        return -4 * (s ** 6 - s ** 3);
+      }
+      function drawFD() {
+        cx2.clearRect(0, 0, NX, 120);
+        cx2.fillStyle = "#040608";
+        cx2.fillRect(0, 0, NX, 120);
+        cx2.strokeStyle = "#1a2e3e";
+        cx2.lineWidth = 1;
+        cx2.strokeRect(FML, FMT, FPW, FPH);
+        cx2.fillStyle = "#304a58";
+        cx2.font = "7px Courier New";
+        cx2.textAlign = "center";
+        cx2.fillText("Tip–Surface Separation (nm)", FML + FPW / 2, 120 - 6);
+
+        const maxD = 8,
+          zY = FMT + FPH * 0.35,
+          sF = FPH * 0.28;
+        cx2.strokeStyle = "#162230";
+        cx2.lineWidth = 1;
+        cx2.setLineDash([4, 4]);
+        cx2.beginPath();
+        cx2.moveTo(FML, zY);
+        cx2.lineTo(FML + FPW, zY);
+        cx2.stroke();
+        cx2.setLineDash([]);
+
+        const g = cx2.createLinearGradient(FML, FMT, FML + FPW, FMT);
+        g.addColorStop(0, "#c97aff");
+        g.addColorStop(0.4, "#2ea8ff");
+        g.addColorStop(1, "#ff6b35");
+        cx2.strokeStyle = g;
+        cx2.lineWidth = 2;
+        cx2.beginPath();
+        for (let k = 0; k <= 300; k++) {
+          const d = (k / 300) * maxD,
+            py = zY - fdF(d) * sF,
+            px = FML + (k / 300) * FPW;
+          k === 0
+            ? cx2.moveTo(px, Math.max(FMT, Math.min(FMT + FPH, py)))
+            : cx2.lineTo(px, Math.max(FMT, Math.min(FMT + FPH, py)));
+        }
+        cx2.stroke();
+
+        if (scanIdx > 0) {
+          const di = getIdx(Math.min(scanIdx - 1, NX - 1));
+          const sep = Math.max(0, measured[di] - surface[di]);
+          const f = fdF(sep > 0 ? -sep : sep);
+          const px = FML + (Math.min(sep, maxD) / maxD) * FPW,
+            py = Math.max(FMT + 4, Math.min(FMT + FPH - 4, zY - f * sF));
+          cx2.beginPath();
+          cx2.arc(px, py, 5, 0, Math.PI * 2);
+          cx2.fillStyle = "#00e5b0";
+          cx2.shadowColor = "#00e5b0";
+          cx2.shadowBlur = 10;
+          cx2.fill();
+          cx2.shadowBlur = 0;
+          const reg =
+            sep < 0.1 ? "CONTACT" : sep < 1.5 ? "NEAR-CONTACT" : "NON-CONTACT";
+          const rc = sep < 0.1 ? "#ff6b35" : sep < 1.5 ? "#2ea8ff" : "#c97aff";
+          cx2.fillStyle = rc;
+          cx2.font = "7px Courier New";
+          cx2.textAlign = "right";
+          cx2.fillText(`${reg}  d=${sep.toFixed(2)}nm`, NX - FML, FMT + 12);
+        }
+        for (let d = 0; d <= maxD; d += 2) {
+          cx2.fillStyle = "#304a58";
+          cx2.font = "7px Courier New";
+          cx2.textAlign = "center";
+          cx2.fillText(d, FML + (d / maxD) * FPW, FMT + FPH + 12);
+        }
+      }
+
+      // ── Tip preview ──────────────────────────────────
+      const pvCv = document.getElementById("tipPrev");
+      const pvCtx = pvCv.getContext("2d");
+
+      function drawPreview() {
+        const W = 174,
+          H = 70;
+        pvCtx.clearRect(0, 0, W, H);
+        pvCtx.fillStyle = "#040608";
+        pvCtx.fillRect(0, 0, W, H);
+        const cx = W / 2,
+          apexY = H - 6,
+          bodyH = H - 12;
+        const NM = 50,
+          wS = W / 60,
+          hS = bodyH / NM;
+        const p = tipP[currentTip] || {};
+
+        const pg = pvCtx.createLinearGradient(cx, apexY, cx, apexY - bodyH);
+        pg.addColorStop(0, "rgba(180,215,235,0.38)");
+        pg.addColorStop(1, "rgba(144,180,200,0.06)");
+        pvCtx.fillStyle = pg;
+        pvCtx.strokeStyle = "rgba(200,228,248,0.88)";
+        pvCtx.lineWidth = 1.6;
+
+        function sh(fn) {
+          pvCtx.beginPath();
+          fn();
+          pvCtx.closePath();
+          pvCtx.fill();
+          pvCtx.stroke();
+        }
+
+        if (currentTip === "double_tip") {
+          const a = ((p.angle || 15) * Math.PI) / 180,
+            gp = ((p.gap || 30) * wS) / 2;
+          const hw = NM * Math.tan(a) * wS;
+          for (const off of [-gp, gp]) {
+            sh(() => {
+              pvCtx.moveTo(cx + off, apexY);
+              pvCtx.lineTo(cx + off - hw, apexY - bodyH);
+              pvCtx.lineTo(cx + off + hw, apexY - bodyH);
+            });
+          }
+        } else if (currentTip === "sphere") {
+          const R = p.R || 20,
+            pts = [];
+          for (let k = 0; k <= 80; k++) {
+            const r = (k / 80) * R,
+              T = R - Math.sqrt(R * R - r * r);
+            if (T <= NM) pts.push([r, T]);
+          }
+          sh(() => {
+            pvCtx.moveTo(cx, apexY);
+            pts.forEach(([r, T]) => pvCtx.lineTo(cx + r * wS, apexY - T * hS));
+            pvCtx.lineTo(
+              cx + (pts[pts.length - 1] || [R])[0] * wS,
+              apexY - bodyH,
+            );
+            pvCtx.lineTo(
+              cx - (pts[pts.length - 1] || [R])[0] * wS,
+              apexY - bodyH,
+            );
+            for (let k = pts.length - 1; k >= 0; k--)
+              pvCtx.lineTo(cx - pts[k][0] * wS, apexY - pts[k][1] * hS);
+          });
+        } else if (currentTip === "hyperboloid") {
+          const a = p.a || 7,
+            pts = [];
+          for (let k = 0; k <= 100; k++) {
+            const h = (k / 100) * NM,
+              r = Math.sqrt((h + a) * (h + a) - a * a);
+            pts.push([r, h]);
+          }
+          sh(() => {
+            pvCtx.moveTo(cx, apexY);
+            pts.forEach(([r, h]) => pvCtx.lineTo(cx + r * wS, apexY - h * hS));
+            for (let k = pts.length - 1; k >= 0; k--)
+              pvCtx.lineTo(cx - pts[k][0] * wS, apexY - pts[k][1] * hS);
+          });
+        } else if (currentTip === "flat") {
+          const rp = (p.R || 18) * wS;
+          sh(() => {
+            pvCtx.moveTo(cx - rp, apexY);
+            pvCtx.lineTo(cx + rp, apexY);
+            pvCtx.lineTo(cx + rp, apexY - bodyH);
+            pvCtx.lineTo(cx - rp, apexY - bodyH);
+          });
+          pvCtx.save();
+          pvCtx.strokeStyle = "rgba(220,248,255,0.95)";
+          pvCtx.lineWidth = 2.5;
+          pvCtx.beginPath();
+          pvCtx.moveTo(cx - (p.R || 18) * wS, apexY);
+          pvCtx.lineTo(cx + (p.R || 18) * wS, apexY);
+          pvCtx.stroke();
+          pvCtx.restore();
+        } else if (currentTip === "inv_sphere") {
+          const R = p.R || 20;
+          const hw = Math.min(R * wS + 8, W / 2 - 3);
+          const Rp = Math.min(R * hS, hw * 0.9); // bowl radius always fits inside walls
+          // Arc center at (cx, apexY-Rp): arc(0→π, anticlockwise=true) = top half = curves upward = CONCAVE ✓
+          sh(() => {
+            pvCtx.moveTo(cx - hw, apexY - bodyH);
+            pvCtx.lineTo(cx + hw, apexY - bodyH); // top
+            pvCtx.lineTo(cx + hw, apexY - Rp); // right wall down to rim
+            pvCtx.arc(cx, apexY - Rp, Rp, 0, Math.PI, true); // concave bowl
+            pvCtx.lineTo(cx - hw, apexY - Rp); // left rim
+          });
+          pvCtx.save();
+          pvCtx.strokeStyle = "rgba(100,200,240,0.95)";
+          pvCtx.lineWidth = 2.5;
+          pvCtx.beginPath();
+          pvCtx.arc(cx, apexY - Rp, Rp, 0, Math.PI, true);
+          pvCtx.stroke();
+          pvCtx.restore();
+        } else if (currentTip === "sphere_cone") {
+          const R = p.R || 30,
+            halfW = p.angle || 15,
+            topW = halfW * 2;
+          const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
+          const yTang = R - sv,
+            yTop = yTang + (halfW * halfW) / sv;
+          const scNm = NM / yTop;
+          const R_s = R * scNm,
+            hw_s = halfW * scNm,
+            top_s = topW * scNm,
+            yt_s = yTang * scNm;
+          const pX = (x) => cx + x * wS,
+            pY = (y) => apexY - y * hS;
+          const tA = -Math.PI / 2,
+            tR = Math.atan2(
+              -(R_s - (R_s - Math.sqrt(Math.max(0, R_s * R_s - hw_s * hw_s)))),
+              hw_s,
+            );
+          // Simpler: angles in nm space
+          const sv_s = sv * scNm;
+          const tRn = Math.atan2(-sv_s, hw_s),
+            tLn = Math.atan2(-sv_s, -hw_s);
+          const N = 60;
+          sh(() => {
+            pvCtx.moveTo(pX(0), pY(0));
+            for (let k = 0; k <= N; k++) {
+              const t = -Math.PI / 2 + ((tRn - -Math.PI / 2) * k) / N;
+              pvCtx.lineTo(pX(R_s * Math.cos(t)), pY(R_s + R_s * Math.sin(t)));
+            }
+            pvCtx.lineTo(pX(top_s), pY(yTop * scNm));
+            pvCtx.lineTo(pX(-top_s), pY(yTop * scNm));
+            pvCtx.lineTo(pX(-hw_s), pY(yt_s));
+            for (let k = 0; k <= N; k++) {
+              const t = tLn + ((-Math.PI / 2 - tLn) * k) / N;
+              pvCtx.lineTo(pX(R_s * Math.cos(t)), pY(R_s + R_s * Math.sin(t)));
+            }
+          });
+          const pcY = pY(R_s);
+          if (pcY > apexY - bodyH && pcY < apexY) {
+            pvCtx.save();
+            pvCtx.beginPath();
+            pvCtx.arc(cx, pcY, 3, 0, Math.PI * 2);
+            pvCtx.strokeStyle = "rgba(201,122,255,0.6)";
+            pvCtx.lineWidth = 2;
+            pvCtx.stroke();
+            pvCtx.beginPath();
+            pvCtx.arc(cx, pcY, 1.5, 0, Math.PI * 2);
+            pvCtx.fillStyle = "#c97aff";
+            pvCtx.fill();
+            pvCtx.restore();
+          }
+        } else {
+          const a = ((p.angle || 15) * Math.PI) / 180;
+          const tilt = ((p.tilt || 0) * Math.PI) / 180;
+          const lw = Math.max(2, NM * (Math.tan(a) + Math.tan(tilt)) * wS);
+          const rw = Math.max(2, NM * (Math.tan(a) - Math.tan(tilt)) * wS);
+          sh(() => {
+            pvCtx.moveTo(cx, apexY);
+            pvCtx.lineTo(cx - lw, apexY - bodyH);
+            pvCtx.lineTo(cx + rw, apexY - bodyH);
+          });
+        }
+
+        // Apex dot
+        pvCtx.beginPath();
+        pvCtx.arc(cx, apexY, 2.5, 0, Math.PI * 2);
+        pvCtx.fillStyle = "#00e5b0";
+        pvCtx.shadowColor = "#00e5b0";
+        pvCtx.shadowBlur = 8;
+        pvCtx.fill();
+        pvCtx.shadowBlur = 0;
+
+        // Sample surface line
+        pvCtx.save();
+        pvCtx.strokeStyle = "rgba(255,107,53,0.5)";
+        pvCtx.lineWidth = 1;
+        pvCtx.setLineDash([3, 4]);
+        pvCtx.beginPath();
+        pvCtx.moveTo(4, apexY);
+        pvCtx.lineTo(W - 4, apexY);
+        pvCtx.stroke();
+        pvCtx.setLineDash([]);
+        pvCtx.restore();
+
+        // Label
+        if (INV.invTip) {
+          pvCtx.fillStyle = "#c97aff";
+          pvCtx.font = "7px Courier New";
+          pvCtx.textAlign = "left";
+          pvCtx.fillText("INV", 3, 10);
+        }
+        const names = {
+          cone: "CONE",
+          sphere: "SPHERE",
+          hyperboloid: "HYPER",
+          flat: "FLAT",
+          inv_sphere: "CONCAVE",
+          asymmetric: "ASYM",
+          double_tip: "DOUBLE",
+          sphere_cone: "CONE+SPH",
+        };
+        pvCtx.fillStyle = "rgba(48,74,88,0.9)";
+        pvCtx.font = "7px Courier New";
+        pvCtx.textAlign = "right";
+        pvCtx.fillText(names[currentTip] || currentTip, W - 3, 10);
+      }
+
+      // ── Stats ────────────────────────────────────────
+      function updateStats() {
+        if (scanIdx < 2) {
+          document.getElementById("stArt").textContent = "—";
+          document.getElementById("stRms").textContent = "—";
+          return;
+        }
+        let mx = 0,
+          rms = 0;
+        for (let i = 0; i < scanIdx; i++) {
+          const e = Math.abs(measured[getIdx(i)] - surface[getIdx(i)]);
+          if (e > mx) mx = e;
+          rms += e * e;
+        }
+        document.getElementById("stArt").textContent = mx.toFixed(2) + " nm";
+        document.getElementById("stRms").textContent =
+          Math.sqrt(rms / scanIdx).toFixed(2) + " nm";
+      }
+
+      // ── Master render ────────────────────────────────
+      function render() {
+        drawMain();
+        drawError();
+        drawFD();
+        updateStats();
+      }
+
+      // ═══════════════════════════════════════════════════
+      //  ANIMATION
+      // ═══════════════════════════════════════════════════
+      function step() {
+        const spd = parseInt(document.getElementById("spdSlider").value) || 3;
+        if (scanMode === "bounce") {
+          scanIdx += spd * bounceDir;
+          if (scanIdx >= NX) {
+            scanIdx = NX - 1;
+            bounceDir = -1;
+          }
+          if (scanIdx <= 0) {
+            scanIdx = 0;
+            bounceDir = 1;
+          }
+        } else {
+          scanIdx = Math.min(scanIdx + spd, NX);
+          if (scanIdx >= NX) {
+            if (scanMode === "loop") scanIdx = 0;
+            else {
+              playing = false;
+              document.getElementById("playBtn").textContent = "▶ PLAY";
+              render();
+              return;
+            }
+          }
+        }
+        render();
+        document.getElementById("ibar").textContent =
+          `Scan: ${(scanIdx * DX).toFixed(1)}/${X_NM}nm  ·  ${currentTip.replace(/_/g, " ")}  ·  ${currentSurf}  ·  ${INV.erosion ? "EROSION" : "DILATION"}`;
+        if (playing) raf = requestAnimationFrame(step);
+      }
+
+      function doReset() {
+        cancelAnimationFrame(raf);
+        scanIdx = 0;
+        playing = false;
+        bounceDir = 1;
+        document.getElementById("playBtn").textContent = "▶ PLAY";
+        render();
+        document.getElementById("ibar").textContent = "Ready — press PLAY";
+      }
+
+      // ═══════════════════════════════════════════════════
+      //  CONTROLS
+      // ═══════════════════════════════════════════════════
+      document.getElementById("playBtn").addEventListener("click", () => {
+        playing = !playing;
+        document.getElementById("playBtn").textContent = playing
+          ? "⏸ PAUSE"
+          : "▶ PLAY";
+        if (playing) step();
+        else cancelAnimationFrame(raf);
       });
-    }
 
-  } else if(currentTip === 'sphere'){
-    const R = p.R||20, pts = [];
-    for(let k=0; k<=80; k++){
-      const r = (k/80)*R, T = R - Math.sqrt(R*R - r*r);
-      if(T <= bodyNm) pts.push([r, T]);
-    }
-    if(pts.length < 2) pts.push([R, bodyNm]);
-    // Sphere apex is at ay (measured), body drawn from ay upward
-    const tG2 = g2d.createLinearGradient(ax, ay, ax, ay-bodyPx);
-    tG2.addColorStop(0,'rgba(180,215,240,0.65)');tG2.addColorStop(1,'rgba(160,195,220,0.12)');
-    g2d.fillStyle = tG2;
-    const sTopY = ay - bodyPx;
-    sh(()=>{
-      g2d.moveTo(ax, ay);
-      pts.forEach(([r,T]) => g2d.lineTo(ax+r*wS, ay-T*hS));
-      g2d.lineTo(ax + pts[pts.length-1][0]*wS, sTopY);
-      g2d.lineTo(ax - pts[pts.length-1][0]*wS, sTopY);
-      for(let k=pts.length-1; k>=0; k--) g2d.lineTo(ax-pts[k][0]*wS, ay-pts[k][1]*hS);
-    });
+      document
+        .getElementById("spdSlider")
+        .addEventListener("input", function () {
+          document.getElementById("spdVal").textContent = this.value;
+        });
 
-  } else if(currentTip === 'hyperboloid'){
-    const a = p.a||7, pts = [];
-    // Hyperboloid apex at ay (measured), body upward
-    const tG2 = g2d.createLinearGradient(ax, ay, ax, ay-bodyPx);
-    tG2.addColorStop(0,'rgba(180,215,240,0.65)');tG2.addColorStop(1,'rgba(160,195,220,0.12)');
-    g2d.fillStyle = tG2;
-    for(let k=0; k<=100; k++){
-      const h = (k/100)*bodyNm, r = Math.sqrt((h+a)*(h+a) - a*a);
-      pts.push([r, h]);
-    }
-    sh(()=>{
-      g2d.moveTo(ax, ay);
-      pts.forEach(([r,h]) => g2d.lineTo(ax+r*wS, ay-h*hS));
-      for(let k=pts.length-1; k>=0; k--) g2d.lineTo(ax-pts[k][0]*wS, ay-pts[k][1]*hS);
-    });
+      document
+        .getElementById("noiseSlider")
+        .addEventListener("input", function () {
+          document.getElementById("noiseVal").textContent =
+            (+this.value).toFixed(1) + " nm";
+          noiseSeed = Math.floor(Math.random() * 1000);
+          applyTransforms();
+          computeMeas();
+          if (!playing) render();
+        });
 
-  } else if(currentTip === 'flat'){
-    // Flat: face at measured line ay
-    const tG2 = g2d.createLinearGradient(ax, ay, ax, ay-bodyPx);
-    tG2.addColorStop(0,'rgba(180,215,240,0.65)');tG2.addColorStop(1,'rgba(160,195,220,0.12)');
-    g2d.fillStyle = tG2;
-    const rp = (p.R||18)*wS;
-    const fTopY = ay - bodyPx;
-    sh(()=>{
-      g2d.moveTo(ax-rp, ay); g2d.lineTo(ax+rp, ay);
-      g2d.lineTo(ax+rp, fTopY); g2d.lineTo(ax-rp, fTopY);
-    });
-    g2d.save();
-    g2d.strokeStyle='rgba(220,248,255,0.95)'; g2d.lineWidth=2.5;
-    g2d.beginPath(); g2d.moveTo(ax-rp,ay); g2d.lineTo(ax+rp,ay); g2d.stroke();
-    g2d.restore();
+      document.getElementById("tipBtns").addEventListener("click", (e) => {
+        const t = e.target.closest("[data-tip]");
+        if (!t) return;
+        currentTip = t.dataset.tip;
+        document
+          .querySelectorAll("#tipBtns .btn")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.tip === currentTip),
+          );
+        refreshTipSliders();
+        buildTip();
+        computeMeas();
+        drawPreview();
+        if (!playing) render();
+      });
 
-  } else if(currentTip === 'inv_sphere'){
-    const R = p.R||20;
-    // Half-width of cylinder walls
-    const hw = Math.min(R*wS + 10, PW/4);
-    // Bowl radius must fit inside the walls: Rp <= hw
-    const Rp = Math.min(R*hS, hw * 0.9);
-    const iTopY = ay - bodyPx;
-    const tG2 = g2d.createLinearGradient(ax, iTopY, ax, ay);
-    tG2.addColorStop(0,'rgba(160,195,220,0.12)'); tG2.addColorStop(1,'rgba(180,215,240,0.65)');
-    g2d.fillStyle = tG2;
-    // Bowl arc: center at (ax, ay-Rp) with radius Rp
-    // arc(0→π, anticlockwise=true) = TOP half = curves upward = CONCAVE bowl ✓
-    // This arc starts at (ax+Rp, ay-Rp) and ends at (ax-Rp, ay-Rp)
-    // The rim of the bowl sits at y = ay-Rp ± 0, lowest point at y = ay-2*Rp (top of bowl)
-    // Wait — center at (ax, ay-Rp), angle π/2 in canvas = DOWN → point = (ax, ay-Rp+Rp) = (ax,ay) ✓
-    // angle -π/2 (top) → (ax, ay-Rp-Rp) = (ax, ay-2Rp) — deepest point of bowl
-    // So arc(ax, ay-Rp, Rp, 0, π, true) goes from (ax+Rp, ay-Rp) UP through (ax, ay-2Rp) to (ax-Rp, ay-Rp)
-    // The bowl OPENS at y=ay-Rp (rim level) and curves UP — CONCAVE ✓
-    sh(()=>{
-      g2d.moveTo(ax-hw, iTopY);
-      g2d.lineTo(ax+hw, iTopY);         // top edge
-      g2d.lineTo(ax+hw, ay-Rp);         // right wall down to rim
-      g2d.arc(ax, ay-Rp, Rp, 0, Math.PI, true); // concave bowl (top half, curves up)
-      g2d.lineTo(ax-hw, ay-Rp);         // left wall bottom to rim
-    });
-    g2d.save();
-    g2d.strokeStyle='rgba(100,200,240,0.95)'; g2d.lineWidth=2.5;
-    g2d.beginPath(); g2d.arc(ax, ay-Rp, Rp, 0, Math.PI, true); g2d.stroke();
-    g2d.restore();
+      document.getElementById("surfBtns").addEventListener("click", (e) => {
+        const t = e.target.closest("[data-surf]");
+        if (!t) return;
+        currentSurf = t.dataset.surf;
+        document
+          .querySelectorAll("#surfBtns .btn")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.surf === currentSurf),
+          );
+        refreshSurfSliders();
+        buildSurf();
+        applyTransforms();
+        computeMeas();
+        doReset();
+      });
 
-  } else if(currentTip === 'sphere_cone'){
-    // ── U-SHAPE (SolidWorks geometry, exact) ──────────────────────────────
-    // Apex at (0,0) in nm, y upward.
-    // Arc: centre (0, R), radius R  → passes through apex ✓
-    // Tangent points: (±halfW,  R - sqrt(R²-halfW²))
-    // Top corners:    (±2·halfW, yTang + halfW²/sqrt(R²-halfW²))
-    //
-    // NOTE: wS ≠ hS so we CANNOT use canvas.arc() — it would draw an ellipse.
-    // Instead sample in nm space and convert to pixels individually.
-    // ─────────────────────────────────────────────────────────────────────
-    const R      = p.R     || 30;
-    const halfW  = p.angle || 15;
-    const topW   = halfW * 2;
-
-    const sv      = Math.sqrt(Math.max(1e-6, R*R - halfW*halfW));
-    const yTang   = R - sv;
-    const yTop    = yTang + (halfW * halfW) / sv;
-
-    // Scale factor: map yTop nm → bodyNm so shape fills tip body
-    const scaleNm = bodyNm / yTop;
-    // Scaled nm values
-    const R_s     = R     * scaleNm;
-    const halfW_s = halfW * scaleNm;
-    const topW_s  = topW  * scaleNm;
-    const sv_s    = sv    * scaleNm;
-    const yTang_s = yTang * scaleNm;
-
-    // nm → canvas pixel helpers (apex at contactY)
-    const nmX = (x) => ax + x * wS;
-    const nmY = (y) => contactY - y * hS;
-
-    // Sample arc in nm space: centre (0, R_s), radius R_s
-    // From apex angle (-π/2) going right to tangent angle
-    // theta_apex = -π/2, theta_right = atan2(-sv_s, halfW_s) [Q4, negative]
-    const tApex = -Math.PI / 2;
-    const tR    = Math.atan2(-sv_s, halfW_s);   // ≈ -60° (Q4)
-    const tL    = Math.atan2(-sv_s, -halfW_s);  // ≈ -120° (Q3)
-    const N = 80;
-
-    sh(()=>{
-      // Right arc: apex → right tangent (counterclockwise: -90° → -60°, increasing)
-      g2d.moveTo(nmX(0), nmY(0));
-      for(let k=0; k<=N; k++){
-        const t = tApex + (tR - tApex) * k/N;
-        g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+      function tog(k) {
+        INV[k] = !INV[k];
+        document.getElementById("tg_" + k).classList.toggle("on", INV[k]);
+        buildTip();
+        applyTransforms();
+        computeMeas();
+        drawPreview();
+        doReset();
       }
-      // Right slanted side to top-right corner
-      g2d.lineTo(nmX(topW_s), nmY(yTop * scaleNm));
-      // Flat top
-      g2d.lineTo(nmX(-topW_s), nmY(yTop * scaleNm));
-      // Left slanted side to left tangent
-      g2d.lineTo(nmX(-halfW_s), nmY(yTang_s));
-      // Left arc: left tangent → apex (counterclockwise: -120° → -90°... wait)
-      // Left side goes from tL(-120°) back to tApex(-90°), increasing angle ✓
-      for(let k=0; k<=N; k++){
-        const t = tL + (tApex - tL) * k/N;
-        g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+
+      function setMode(m) {
+        scanMode = m;
+        ["Single", "Loop", "Bounce"].forEach((x) =>
+          document
+            .getElementById("m" + x)
+            .classList.toggle("on", x.toLowerCase() === m),
+        );
       }
-    });
 
-    // Arc centre marker
-    const cxY = nmY(R_s);
-    if(cxY > tipTopY && cxY < contactY){
-      g2d.save();
-      g2d.beginPath(); g2d.arc(ax, cxY, 6, 0, Math.PI*2);
-      g2d.strokeStyle='rgba(201,122,255,0.35)'; g2d.lineWidth=4; g2d.stroke();
-      g2d.strokeStyle='rgba(201,122,255,0.7)'; g2d.lineWidth=1; g2d.setLineDash([2,2]);
-      g2d.beginPath(); g2d.moveTo(ax-10,cxY); g2d.lineTo(ax+10,cxY); g2d.stroke();
-      g2d.beginPath(); g2d.moveTo(ax,cxY-10); g2d.lineTo(ax,cxY+10); g2d.stroke();
-      g2d.setLineDash([]);
-      g2d.beginPath(); g2d.arc(ax, cxY, 2.5, 0, Math.PI*2);
-      g2d.fillStyle='#c97aff'; g2d.shadowColor='#c97aff'; g2d.shadowBlur=8;
-      g2d.fill(); g2d.shadowBlur=0;
-      g2d.restore();
-    }
+      // ═══════════════════════════════════════════════════
+      //  RANDOMIZE
+      // ═══════════════════════════════════════════════════
+      function randomizeAll() {
+        const tips = Object.keys(TIP_DEFS),
+          surfs = Object.keys(SURF_DEFS);
+        currentTip = tips[Math.floor(Math.random() * tips.length)];
+        currentSurf = surfs[Math.floor(Math.random() * surfs.length)];
+        for (const d of TIP_DEFS[currentTip] || []) {
+          tipP[currentTip][d.id] =
+            Math.round((d.min + Math.random() * (d.max - d.min)) / d.step) *
+            d.step;
+        }
+        for (const d of SURF_DEFS[currentSurf] || []) {
+          surfP[currentSurf][d.id] =
+            Math.round((d.min + Math.random() * (d.max - d.min)) / d.step) *
+            d.step;
+        }
+        document.getElementById("noiseSlider").value = Math.random() * 6;
+        document.getElementById("noiseVal").textContent =
+          (+document.getElementById("noiseSlider").value).toFixed(1) + " nm";
+        noiseSeed = Math.floor(Math.random() * 1000);
+        ["invZ", "mirrorX", "invTip", "revScan", "erosion", "invErr"].forEach(
+          (k) => {
+            INV[k] = Math.random() < 0.2;
+            document.getElementById("tg_" + k).classList.toggle("on", INV[k]);
+          },
+        );
+        document
+          .querySelectorAll("#tipBtns .btn")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.tip === currentTip),
+          );
+        document
+          .querySelectorAll("#surfBtns .btn")
+          .forEach((b) =>
+            b.classList.toggle("on", b.dataset.surf === currentSurf),
+          );
+        refreshTipSliders();
+        refreshSurfSliders();
+        buildTip();
+        buildSurf();
+        applyTransforms();
+        computeMeas();
+        drawPreview();
+        doReset();
+      }
 
-  } else {
-    // cone, asymmetric — apex at TRUE surface
-    const a    = (p.angle||15) * Math.PI/180;
-    const tilt = (p.tilt||0) * Math.PI/180;
-    const lw   = Math.max(3, bodyNm*(Math.tan(a)+Math.tan(tilt))*wS);
-    const rw   = Math.max(3, bodyNm*(Math.tan(a)-Math.tan(tilt))*wS);
-    sh(()=>{
-      g2d.moveTo(ax,    contactY);       // apex at TRUE surface
-      g2d.lineTo(ax-lw, tipTopY);
-      g2d.lineTo(ax+rw, tipTopY);
-    });
-  }
-
-  g2d.restore();
-
-  // Dashed line from apex (measured) down to true surface — shows artifact gap
-  if(sy > ay + 2){  // only when there IS a gap (measured above surface)
-    g2d.save();
-    g2d.strokeStyle='rgba(255,107,53,0.5)';
-    g2d.lineWidth=1; g2d.setLineDash([2,3]);
-    g2d.beginPath(); g2d.moveTo(ax, ay); g2d.lineTo(ax, sy); g2d.stroke();
-    g2d.setLineDash([]); g2d.restore();
-  }
-
-  // Apex glow dot at MEASURED height (where tip physically sits)
-  g2d.beginPath(); g2d.arc(ax, ay, 3.5, 0, Math.PI*2);
-  g2d.fillStyle='rgba(255,255,255,0.15)'; g2d.fill();
-  g2d.beginPath(); g2d.arc(ax, ay, 2, 0, Math.PI*2);
-  g2d.fillStyle='#fff';
-  g2d.shadowColor=sy>ay+2?'#ff6b35':'#00e5b0';  // red=artifact, green=touching
-  g2d.shadowBlur=12; g2d.fill(); g2d.shadowBlur=0;
-}
-
-function drawError(){
-  cx1.clearRect(0,0,NX,70);
-  cx1.fillStyle='#040608';cx1.fillRect(0,0,NX,70);
-  cx1.strokeStyle='#1a2e3e';cx1.lineWidth=1;cx1.strokeRect(EML,EMT,EPW,EPH);
-  cx1.fillStyle='#304a58';cx1.font='7px Courier New';cx1.textAlign='left';
-  cx1.fillText('ARTIFACT ERROR MAP',EML+4,EMT-4);
-  if(scanIdx<2)return;
-
-  let mx=0;
-  for(let i=0;i<scanIdx;i++){const e=Math.abs(measured[getIdx(i)]-surface[getIdx(i)]);if(e>mx)mx=e;}
-  if(mx<0.01)mx=0.01;
-  const bw=EPW/NX;
-  for(let i=0;i<scanIdx;i++){
-    const ri=getIdx(i);
-    let t=(Math.abs(measured[ri]-surface[ri])/mx);
-    if(INV.invErr) t=1-t;
-    let r,g,b;
-    if(t<0.5){r=Math.round(t*2*255);g=Math.round(170+t*50);b=Math.round(160*(1-t*2));}
-    else{r=255;g=Math.round(220*(1-(t-.5)*2));b=0;}
-    const px=EML+i*bw;
-    cx1.fillStyle=`rgb(${r},${g},${b})`;
-    cx1.globalAlpha=0.85;
-    cx1.fillRect(px,EMT+EPH-(t*EPH),Math.max(1,bw+0.5),t*EPH);
-  }
-  cx1.globalAlpha=1;
-  cx1.fillStyle='#c97aff';cx1.font='7px Courier New';cx1.textAlign='right';
-  cx1.fillText(`max ${mx.toFixed(2)} nm${INV.invErr?' [INV]':''}`,NX-EML,EMT+12);
-}
-
-// ── Force-distance ───────────────────────────────
-function fdF(d){if(d<0)return 10*((-d+1)**2-1);const s=0.3/(d+0.3);return-4*(s**6-s**3);}
-function drawFD(){
-  cx2.clearRect(0,0,NX,120);
-  cx2.fillStyle='#040608';cx2.fillRect(0,0,NX,120);
-  cx2.strokeStyle='#1a2e3e';cx2.lineWidth=1;cx2.strokeRect(FML,FMT,FPW,FPH);
-  cx2.fillStyle='#304a58';cx2.font='7px Courier New';cx2.textAlign='center';
-  cx2.fillText('Tip–Surface Separation (nm)',FML+FPW/2,120-6);
-
-  const maxD=8, zY=FMT+FPH*0.35, sF=FPH*0.28;
-  cx2.strokeStyle='#162230';cx2.lineWidth=1;cx2.setLineDash([4,4]);
-  cx2.beginPath();cx2.moveTo(FML,zY);cx2.lineTo(FML+FPW,zY);cx2.stroke();cx2.setLineDash([]);
-
-  const g=cx2.createLinearGradient(FML,FMT,FML+FPW,FMT);
-  g.addColorStop(0,'#c97aff');g.addColorStop(0.4,'#2ea8ff');g.addColorStop(1,'#ff6b35');
-  cx2.strokeStyle=g;cx2.lineWidth=2;cx2.beginPath();
-  for(let k=0;k<=300;k++){
-    const d=(k/300)*maxD, py=zY-fdF(d)*sF, px=FML+(k/300)*FPW;
-    k===0?cx2.moveTo(px,Math.max(FMT,Math.min(FMT+FPH,py))):cx2.lineTo(px,Math.max(FMT,Math.min(FMT+FPH,py)));
-  }
-  cx2.stroke();
-
-  if(scanIdx>0){
-    const di=getIdx(Math.min(scanIdx-1,NX-1));
-    const sep=Math.max(0,measured[di]-surface[di]);
-    const f=fdF(sep>0?-sep:sep);
-    const px=FML+(Math.min(sep,maxD)/maxD)*FPW, py=Math.max(FMT+4,Math.min(FMT+FPH-4,zY-f*sF));
-    cx2.beginPath();cx2.arc(px,py,5,0,Math.PI*2);
-    cx2.fillStyle='#00e5b0';cx2.shadowColor='#00e5b0';cx2.shadowBlur=10;cx2.fill();cx2.shadowBlur=0;
-    const reg=sep<0.1?'CONTACT':sep<1.5?'NEAR-CONTACT':'NON-CONTACT';
-    const rc=sep<0.1?'#ff6b35':sep<1.5?'#2ea8ff':'#c97aff';
-    cx2.fillStyle=rc;cx2.font='7px Courier New';cx2.textAlign='right';
-    cx2.fillText(`${reg}  d=${sep.toFixed(2)}nm`,NX-FML,FMT+12);
-  }
-  for(let d=0;d<=maxD;d+=2){
-    cx2.fillStyle='#304a58';cx2.font='7px Courier New';cx2.textAlign='center';
-    cx2.fillText(d,FML+(d/maxD)*FPW,FMT+FPH+12);
-  }
-}
-
-// ── Tip preview ──────────────────────────────────
-const pvCv=document.getElementById('tipPrev');
-const pvCtx=pvCv.getContext('2d');
-
-function drawPreview(){
-  const W=174,H=70;
-  pvCtx.clearRect(0,0,W,H);
-  pvCtx.fillStyle='#040608';pvCtx.fillRect(0,0,W,H);
-  const cx=W/2, apexY=H-6, bodyH=H-12;
-  const NM=50, wS=W/60, hS=bodyH/NM;
-  const p=tipP[currentTip]||{};
-
-  const pg=pvCtx.createLinearGradient(cx,apexY,cx,apexY-bodyH);
-  pg.addColorStop(0,'rgba(180,215,235,0.38)');
-  pg.addColorStop(1,'rgba(144,180,200,0.06)');
-  pvCtx.fillStyle=pg;
-  pvCtx.strokeStyle='rgba(200,228,248,0.88)';
-  pvCtx.lineWidth=1.6;
-
-  function sh(fn){pvCtx.beginPath();fn();pvCtx.closePath();pvCtx.fill();pvCtx.stroke();}
-
-  if(currentTip==='double_tip'){
-    const a=(p.angle||15)*Math.PI/180, gp=(p.gap||30)*wS/2;
-    const hw=NM*Math.tan(a)*wS;
-    for(const off of [-gp,gp]){
-      sh(()=>{pvCtx.moveTo(cx+off,apexY);pvCtx.lineTo(cx+off-hw,apexY-bodyH);pvCtx.lineTo(cx+off+hw,apexY-bodyH);});
-    }
-  } else if(currentTip==='sphere'){
-    const R=p.R||20, pts=[];
-    for(let k=0;k<=80;k++){const r=(k/80)*R,T=R-Math.sqrt(R*R-r*r);if(T<=NM)pts.push([r,T]);}
-    sh(()=>{
-      pvCtx.moveTo(cx,apexY);
-      pts.forEach(([r,T])=>pvCtx.lineTo(cx+r*wS,apexY-T*hS));
-      pvCtx.lineTo(cx+(pts[pts.length-1]||[R])[0]*wS,apexY-bodyH);
-      pvCtx.lineTo(cx-(pts[pts.length-1]||[R])[0]*wS,apexY-bodyH);
-      for(let k=pts.length-1;k>=0;k--) pvCtx.lineTo(cx-pts[k][0]*wS,apexY-pts[k][1]*hS);
-    });
-  } else if(currentTip==='hyperboloid'){
-    const a=p.a||7, pts=[];
-    for(let k=0;k<=100;k++){const h=(k/100)*NM,r=Math.sqrt((h+a)*(h+a)-a*a);pts.push([r,h]);}
-    sh(()=>{
-      pvCtx.moveTo(cx,apexY);
-      pts.forEach(([r,h])=>pvCtx.lineTo(cx+r*wS,apexY-h*hS));
-      for(let k=pts.length-1;k>=0;k--) pvCtx.lineTo(cx-pts[k][0]*wS,apexY-pts[k][1]*hS);
-    });
-  } else if(currentTip==='flat'){
-    const rp=(p.R||18)*wS;
-    sh(()=>{pvCtx.moveTo(cx-rp,apexY);pvCtx.lineTo(cx+rp,apexY);pvCtx.lineTo(cx+rp,apexY-bodyH);pvCtx.lineTo(cx-rp,apexY-bodyH);});
-    pvCtx.save();pvCtx.strokeStyle='rgba(220,248,255,0.95)';pvCtx.lineWidth=2.5;
-    pvCtx.beginPath();pvCtx.moveTo(cx-(p.R||18)*wS,apexY);pvCtx.lineTo(cx+(p.R||18)*wS,apexY);pvCtx.stroke();pvCtx.restore();
-  } else if(currentTip==='inv_sphere'){
-    const R=p.R||20;
-    const hw=Math.min(R*wS+8, W/2-3);
-    const Rp=Math.min(R*hS, hw*0.9);  // bowl radius always fits inside walls
-    // Arc center at (cx, apexY-Rp): arc(0→π, anticlockwise=true) = top half = curves upward = CONCAVE ✓
-    sh(()=>{
-      pvCtx.moveTo(cx-hw,apexY-bodyH); pvCtx.lineTo(cx+hw,apexY-bodyH);  // top
-      pvCtx.lineTo(cx+hw,apexY-Rp);    // right wall down to rim
-      pvCtx.arc(cx,apexY-Rp,Rp,0,Math.PI,true);  // concave bowl
-      pvCtx.lineTo(cx-hw,apexY-Rp);    // left rim
-    });
-    pvCtx.save();pvCtx.strokeStyle='rgba(100,200,240,0.95)';pvCtx.lineWidth=2.5;
-    pvCtx.beginPath();pvCtx.arc(cx,apexY-Rp,Rp,0,Math.PI,true);pvCtx.stroke();pvCtx.restore();
-   } else if(currentTip==='sphere_cone'){
-    const R=p.R||30, halfW=p.angle||15, topW=halfW*2;
-    const sv=Math.sqrt(Math.max(1e-6,R*R-halfW*halfW));
-    const yTang=R-sv, yTop=yTang+(halfW*halfW)/sv;
-    const scNm=NM/yTop;
-    const R_s=R*scNm, hw_s=halfW*scNm, top_s=topW*scNm, yt_s=yTang*scNm;
-    const pX=(x)=>cx+x*wS, pY=(y)=>apexY-y*hS;
-    const tA=-Math.PI/2, tR=Math.atan2(-(R_s-(R_s-Math.sqrt(Math.max(0,R_s*R_s-hw_s*hw_s)))),hw_s);
-    // Simpler: angles in nm space
-    const sv_s=sv*scNm;
-    const tRn=Math.atan2(-sv_s,hw_s), tLn=Math.atan2(-sv_s,-hw_s);
-    const N=60;
-    sh(()=>{
-      pvCtx.moveTo(pX(0),pY(0));
-      for(let k=0;k<=N;k++){const t=(-Math.PI/2)+(tRn-(-Math.PI/2))*k/N; pvCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
-      pvCtx.lineTo(pX(top_s),pY(yTop*scNm));
-      pvCtx.lineTo(pX(-top_s),pY(yTop*scNm));
-      pvCtx.lineTo(pX(-hw_s),pY(yt_s));
-      for(let k=0;k<=N;k++){const t=tLn+((-Math.PI/2)-tLn)*k/N; pvCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
-    });
-    const pcY=pY(R_s);
-    if(pcY>apexY-bodyH && pcY<apexY){
-      pvCtx.save();pvCtx.beginPath();pvCtx.arc(cx,pcY,3,0,Math.PI*2);
-      pvCtx.strokeStyle='rgba(201,122,255,0.6)';pvCtx.lineWidth=2;pvCtx.stroke();
-      pvCtx.beginPath();pvCtx.arc(cx,pcY,1.5,0,Math.PI*2);
-      pvCtx.fillStyle='#c97aff';pvCtx.fill();pvCtx.restore();
-    }
-  } else {
-    const a=(p.angle||15)*Math.PI/180;
-    const tilt=(p.tilt||0)*Math.PI/180;
-    const lw=Math.max(2,NM*(Math.tan(a)+Math.tan(tilt))*wS);
-    const rw=Math.max(2,NM*(Math.tan(a)-Math.tan(tilt))*wS);
-    sh(()=>{pvCtx.moveTo(cx,apexY);pvCtx.lineTo(cx-lw,apexY-bodyH);pvCtx.lineTo(cx+rw,apexY-bodyH);});
-  }
-
-  // Apex dot
-  pvCtx.beginPath();pvCtx.arc(cx,apexY,2.5,0,Math.PI*2);
-  pvCtx.fillStyle='#00e5b0';pvCtx.shadowColor='#00e5b0';pvCtx.shadowBlur=8;pvCtx.fill();pvCtx.shadowBlur=0;
-
-  // Sample surface line
-  pvCtx.save();pvCtx.strokeStyle='rgba(255,107,53,0.5)';pvCtx.lineWidth=1;pvCtx.setLineDash([3,4]);
-  pvCtx.beginPath();pvCtx.moveTo(4,apexY);pvCtx.lineTo(W-4,apexY);pvCtx.stroke();
-  pvCtx.setLineDash([]);pvCtx.restore();
-
-  // Label
-  if(INV.invTip){pvCtx.fillStyle='#c97aff';pvCtx.font='7px Courier New';pvCtx.textAlign='left';pvCtx.fillText('INV',3,10);}
-  const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER',
-    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM',double_tip:'DOUBLE',sphere_cone:'CONE+SPH'};
-  pvCtx.fillStyle='rgba(48,74,88,0.9)';pvCtx.font='7px Courier New';pvCtx.textAlign='right';
-  pvCtx.fillText(names[currentTip]||currentTip,W-3,10);
-}
-
-// ── Stats ────────────────────────────────────────
-function updateStats(){
-  if(scanIdx<2){document.getElementById('stArt').textContent='—';document.getElementById('stRms').textContent='—';return;}
-  let mx=0,rms=0;
-  for(let i=0;i<scanIdx;i++){
-    const e=Math.abs(measured[getIdx(i)]-surface[getIdx(i)]);
-    if(e>mx)mx=e; rms+=e*e;
-  }
-  document.getElementById('stArt').textContent=mx.toFixed(2)+' nm';
-  document.getElementById('stRms').textContent=Math.sqrt(rms/scanIdx).toFixed(2)+' nm';
-}
-
-// ── Master render ────────────────────────────────
-function render(){drawMain();drawError();drawFD();updateStats();}
-
-// ═══════════════════════════════════════════════════
-//  ANIMATION
-// ═══════════════════════════════════════════════════
-function step(){
-  const spd=parseInt(document.getElementById('spdSlider').value)||3;
-  if(scanMode==='bounce'){
-    scanIdx+=spd*bounceDir;
-    if(scanIdx>=NX){scanIdx=NX-1;bounceDir=-1;}
-    if(scanIdx<=0){scanIdx=0;bounceDir=1;}
-  } else {
-    scanIdx=Math.min(scanIdx+spd,NX);
-    if(scanIdx>=NX){
-      if(scanMode==='loop') scanIdx=0;
-      else{playing=false;document.getElementById('playBtn').textContent='▶ PLAY';render();return;}
-    }
-  }
-  render();
-  document.getElementById('ibar').textContent=
-    `Scan: ${(scanIdx*DX).toFixed(1)}/${X_NM}nm  ·  ${currentTip.replace(/_/g,' ')}  ·  ${currentSurf}  ·  ${INV.erosion?'EROSION':'DILATION'}`;
-  if(playing) raf=requestAnimationFrame(step);
-}
-
-function doReset(){
-  cancelAnimationFrame(raf);
-  scanIdx=0;playing=false;bounceDir=1;
-  document.getElementById('playBtn').textContent='▶ PLAY';
-  render();
-  document.getElementById('ibar').textContent='Ready — press PLAY';
-}
-
-// ═══════════════════════════════════════════════════
-//  CONTROLS
-// ═══════════════════════════════════════════════════
-document.getElementById('playBtn').addEventListener('click',()=>{
-  playing=!playing;
-  document.getElementById('playBtn').textContent=playing?'⏸ PAUSE':'▶ PLAY';
-  if(playing) step(); else cancelAnimationFrame(raf);
-});
-
-document.getElementById('spdSlider').addEventListener('input',function(){
-  document.getElementById('spdVal').textContent=this.value;
-});
-
-document.getElementById('noiseSlider').addEventListener('input',function(){
-  document.getElementById('noiseVal').textContent=(+this.value).toFixed(1)+' nm';
-  noiseSeed=Math.floor(Math.random()*1000);
-  applyTransforms(); computeMeas(); if(!playing) render();
-});
-
-document.getElementById('tipBtns').addEventListener('click',e=>{
-  const t=e.target.closest('[data-tip]');if(!t)return;
-  currentTip=t.dataset.tip;
-  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.tip===currentTip));
-  refreshTipSliders(); buildTip(); computeMeas(); drawPreview(); if(!playing) render();
-});
-
-document.getElementById('surfBtns').addEventListener('click',e=>{
-  const t=e.target.closest('[data-surf]');if(!t)return;
-  currentSurf=t.dataset.surf;
-  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.surf===currentSurf));
-  refreshSurfSliders(); buildSurf(); applyTransforms(); computeMeas(); doReset();
-});
-
-function tog(k){
-  INV[k]=!INV[k];
-  document.getElementById('tg_'+k).classList.toggle('on',INV[k]);
-  buildTip(); applyTransforms(); computeMeas(); drawPreview(); doReset();
-}
-
-function setMode(m){
-  scanMode=m;
-  ['Single','Loop','Bounce'].forEach(x=>document.getElementById('m'+x).classList.toggle('on',x.toLowerCase()===m));
-}
-
-// ═══════════════════════════════════════════════════
-//  RANDOMIZE
-// ═══════════════════════════════════════════════════
-function randomizeAll(){
-  const tips=Object.keys(TIP_DEFS), surfs=Object.keys(SURF_DEFS);
-  currentTip=tips[Math.floor(Math.random()*tips.length)];
-  currentSurf=surfs[Math.floor(Math.random()*surfs.length)];
-  for(const d of TIP_DEFS[currentTip]||[]){
-    tipP[currentTip][d.id]=Math.round((d.min+Math.random()*(d.max-d.min))/d.step)*d.step;
-  }
-  for(const d of SURF_DEFS[currentSurf]||[]){
-    surfP[currentSurf][d.id]=Math.round((d.min+Math.random()*(d.max-d.min))/d.step)*d.step;
-  }
-  document.getElementById('noiseSlider').value=Math.random()*6;
-  document.getElementById('noiseVal').textContent=(+document.getElementById('noiseSlider').value).toFixed(1)+' nm';
-  noiseSeed=Math.floor(Math.random()*1000);
-  ['invZ','mirrorX','invTip','revScan','erosion','invErr'].forEach(k=>{
-    INV[k]=Math.random()<0.2;
-    document.getElementById('tg_'+k).classList.toggle('on',INV[k]);
-  });
-  document.querySelectorAll('#tipBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.tip===currentTip));
-  document.querySelectorAll('#surfBtns .btn').forEach(b=>b.classList.toggle('on',b.dataset.surf===currentSurf));
-  refreshTipSliders(); refreshSurfSliders();
-  buildTip(); buildSurf(); applyTransforms(); computeMeas(); drawPreview(); doReset();
-}
-
-// ═══════════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════════
-refreshTipSliders();
-refreshSurfSliders();
-buildTip();
-buildSurf();
-applyTransforms();
-computeMeas();
-drawPreview();
-render();
-setMode('loop');
-</script>
-</body>
+      // ═══════════════════════════════════════════════════
+      //  INIT
+      // ═══════════════════════════════════════════════════
+      refreshTipSliders();
+      refreshSurfSliders();
+      buildTip();
+      buildSurf();
+      applyTransforms();
+      computeMeas();
+      drawPreview();
+      render();
+      setMode("loop");
+    </script>
+  </body>
 </html>

@@ -1,109 +1,201 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>AFM 2D Simulator</title>
     <style>
+      :root,
+      [data-theme="dark"] {
+        --bg: #06080c;
+        --panel: #0b1017;
+        --border: #162230;
+        --accent: #00e5b0;
+        --accent2: #2ea8ff;
+        --accent3: #ff7043;
+        --accent4: #c97aff;
+        --text: #6a8fa0;
+        --text-hi: #b0d0e0;
+        --canvas-bg: #040608;
+        --grid1: #182434;
+        --grid2: #0c1820;
+        --axis: #9ab4c4;
+        --border2: #1a2e3e;
+      }
+      [data-theme="light"] {
+        --bg: #eef2f7;
+        --panel: #ffffff;
+        --border: #c5d5e5;
+        --accent: #009e7a;
+        --accent2: #1a7acc;
+        --accent3: #d94f1e;
+        --accent4: #8844cc;
+        --text: #4a6070;
+        --text-hi: #1a2838;
+        --canvas-bg: #f8fafc;
+        --grid1: #d0dce8;
+        --grid2: #e4edf5;
+        --axis: #456070;
+        --border2: #c0d0e0;
+      }
       * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
       }
+      html,
       body {
-        background: #06080c;
-        color: #6a8fa0;
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
         font-family: "Courier New", monospace;
         font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        transition: background 0.2s, color 0.2s;
       }
       .topbar {
         display: flex;
         align-items: center;
         padding: 6px 10px;
         gap: 8px;
-        border-bottom: 1px solid #162230;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        background: var(--bg);
       }
       .topbar a {
-        font-size: 8px;
-        color: #2ea8ff;
+        font-size: 9px;
+        color: var(--accent2);
         text-decoration: none;
         border: 1px solid rgba(46, 168, 255, 0.3);
-        padding: 3px 8px;
+        padding: 4px 10px;
+      }
+      .topbar a:hover {
+        background: rgba(46, 168, 255, 0.08);
       }
       .title {
         flex: 1;
         text-align: center;
         font-size: 12px;
         letter-spacing: 4px;
-        color: #00e5b0;
+        color: var(--accent);
         text-transform: uppercase;
+      }
+      .theme-toggle {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: var(--accent);
+        font-family: inherit;
+        font-size: 9px;
+        letter-spacing: 1px;
+        padding: 4px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .theme-toggle:hover {
+        background: var(--accent);
+        color: var(--bg);
       }
       .wrap {
         display: flex;
-        height: calc(100vh - 34px);
+        flex: 1;
+        min-height: 0;
         overflow: hidden;
       }
       .sidebar {
-        width: 190px;
+        width: 268px;
         flex-shrink: 0;
         overflow-y: auto;
         overflow-x: hidden;
-        border-right: 1px solid #162230;
-        padding: 7px;
+        border-right: 1px solid var(--border);
+        padding: 10px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
       }
       .sidebar::-webkit-scrollbar {
         width: 3px;
       }
       .sidebar::-webkit-scrollbar-thumb {
-        background: #162230;
+        background: var(--border);
       }
       .main {
         flex: 1;
+        min-width: 0;
+        min-height: 0;
         display: flex;
         flex-direction: column;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding: 20px 8px 10px 8px;
-        gap: 5px;
+        overflow: hidden;
+        padding: 8px;
+        gap: 4px;
+      }
+      .cv-wrap {
+        width: 100%;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--canvas-bg);
+        border: 1px solid var(--border);
+      }
+      .cv-wrap.cv-main {
+        flex: 1 1 200px;
+      }
+      .cv-wrap.cv-err {
+        flex: 0 1 72px;
+        min-height: 48px;
+        max-height: 72px;
+      }
+      .cv-wrap.cv-fd {
+        flex: 0 1 110px;
+        min-height: 64px;
+        max-height: 110px;
+      }
+      canvas.main-cv {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
       }
       .panel {
-        background: #0b1017;
-        border: 1px solid #162230;
-        padding: 6px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 8px;
       }
       .plabel {
-        font-size: 7px;
+        font-size: 8px;
         letter-spacing: 2px;
-        color: #00e5b0;
+        color: var(--accent);
         text-transform: uppercase;
-        margin-bottom: 5px;
-        border-bottom: 1px solid #162230;
-        padding-bottom: 2px;
+        margin-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 3px;
       }
       .btn {
         display: block;
         width: 100%;
         background: transparent;
-        border: 1px solid #162230;
-        color: #6a8fa0;
-        padding: 3px 6px;
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 4px 8px;
         font-family: inherit;
-        font-size: 9px;
+        font-size: 10px;
         cursor: pointer;
         text-align: left;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
       }
       .btn:hover {
         border-color: rgba(46, 168, 255, 0.4);
-        color: #b0d0e0;
+        color: var(--text-hi);
       }
       .btn.on {
         background: rgba(0, 229, 176, 0.08);
-        border-color: #00e5b0;
-        color: #00e5b0;
+        border-color: var(--accent);
+        color: var(--accent);
       }
       .tgrid {
         display: grid;
@@ -113,8 +205,8 @@
       }
       .tgl {
         background: transparent;
-        border: 1px solid #162230;
-        color: #6a8fa0;
+        border: 1px solid var(--border);
+        color: var(--text);
         padding: 4px 2px;
         font-family: inherit;
         font-size: 8px;
@@ -123,12 +215,12 @@
       }
       .tgl:hover {
         border-color: #ff6b35;
-        color: #b0d0e0;
+        color: var(--text-hi);
       }
       .tgl.on {
         background: rgba(255, 107, 53, 0.12);
-        border-color: #ff6b35;
-        color: #ff6b35;
+        border-color: var(--accent3);
+        color: var(--accent3);
       }
       .srow {
         display: flex;
@@ -143,16 +235,16 @@
         letter-spacing: 1px;
       }
       .shdr span:first-child {
-        color: #6a8fa0;
+        color: var(--text);
         opacity: 0.65;
         text-transform: uppercase;
       }
       .sval {
-        color: #00e5b0;
+        color: var(--accent);
       }
       input[type="range"] {
         width: 100%;
-        accent-color: #00e5b0;
+        accent-color: var(--accent);
         height: 12px;
       }
       .prow {
@@ -163,8 +255,8 @@
       .pbtn {
         flex: 1;
         background: rgba(0, 229, 176, 0.08);
-        border: 1px solid #00e5b0;
-        color: #00e5b0;
+        border: 1px solid var(--accent);
+        color: var(--accent);
         padding: 4px;
         font-family: inherit;
         font-size: 9px;
@@ -176,16 +268,16 @@
       }
       .ibtn {
         background: transparent;
-        border: 1px solid #162230;
-        color: #6a8fa0;
+        border: 1px solid var(--border);
+        color: var(--text);
         padding: 4px 8px;
         font-family: inherit;
         font-size: 9px;
         cursor: pointer;
       }
       .ibtn:hover {
-        border-color: #2ea8ff;
-        color: #2ea8ff;
+        border-color: var(--accent2);
+        color: var(--accent2);
       }
       .mrow {
         display: flex;
@@ -195,8 +287,8 @@
       .mbtn {
         flex: 1;
         background: transparent;
-        border: 1px solid #162230;
-        color: #6a8fa0;
+        border: 1px solid var(--border);
+        color: var(--text);
         padding: 3px 2px;
         font-family: inherit;
         font-size: 8px;
@@ -205,13 +297,13 @@
       }
       .mbtn.on {
         background: rgba(46, 168, 255, 0.1);
-        border-color: #2ea8ff;
-        color: #2ea8ff;
+        border-color: var(--accent2);
+        color: var(--accent2);
       }
       .rbtn {
         background: rgba(201, 122, 255, 0.1);
-        border: 1px solid #c97aff;
-        color: #c97aff;
+        border: 1px solid var(--accent4);
+        color: var(--accent4);
         padding: 4px;
         font-family: inherit;
         font-size: 9px;
@@ -226,8 +318,8 @@
         display: block;
         width: 100%;
         height: 70px;
-        background: #040608;
-        border: 1px solid #162230;
+        background: var(--canvas-bg);
+        border: 1px solid var(--border);
         margin-top: 4px;
       }
       .sgrid {
@@ -236,40 +328,35 @@
         gap: 3px;
       }
       .sbox {
-        background: #040608;
-        border: 1px solid #162230;
+        background: var(--canvas-bg);
+        border: 1px solid var(--border);
         padding: 3px 5px;
       }
       .slbl {
-        font-size: 6px;
+        font-size: 7px;
         letter-spacing: 1px;
-        color: #6a8fa0;
+        color: var(--text);
         text-transform: uppercase;
         opacity: 0.7;
       }
       .snum {
         font-size: 11px;
         font-weight: bold;
-        color: #00e5b0;
+        color: var(--accent);
       }
       .snum.e {
-        color: #ff6b35;
+        color: var(--accent3);
       }
       .snum.w {
         color: #f0c040;
       }
-      canvas.main-cv {
-        display: block;
-        width: 100%;
-        background: #040608;
-      }
       .ibar {
-        font-size: 7px;
+        font-size: 9px;
         letter-spacing: 1px;
-        color: #6a8fa0;
-        padding: 2px 5px;
-        background: #0b1017;
-        border: 1px solid #162230;
+        color: var(--text);
+        padding: 4px 8px;
+        background: var(--panel);
+        border: 1px solid var(--border);
         flex-shrink: 0;
       }
     </style>
@@ -278,6 +365,7 @@
     <div class="topbar">
       <a href="index.html">← Home</a>
       <div class="title">AFM 2D Simulator</div>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◑ LIGHT</button>
     </div>
     <div class="wrap">
       <!-- SIDEBAR -->
@@ -295,7 +383,7 @@
             <button class="btn" data-tip="sphere_cone">◓ Cone+Sphere</button>
           </div>
           <div id="tipSliders"></div>
-          <canvas id="tipPrev" width="174" height="70"></canvas>
+          <canvas id="tipPrev" width="248" height="70"></canvas>
         </div>
 
         <div class="panel">
@@ -376,6 +464,33 @@
             </div>
             <input type="range" id="spdSlider" min="1" max="10" value="3" />
           </div>
+          <div class="plabel" style="margin-top: 8px; margin-bottom: 4px">
+            Height Map Export
+          </div>
+          <div class="mrow">
+            <button class="ibtn export-hm-btn" id="exportTrueCsvBtn" style="flex: 1; font-size: 8px">
+              ⬇ TRUE CSV
+            </button>
+            <button class="ibtn export-hm-btn" id="exportMeasCsvBtn" style="flex: 1; font-size: 8px">
+              ⬇ MEAS CSV
+            </button>
+          </div>
+          <div class="mrow">
+            <button class="ibtn export-hm-btn" id="exportTruePngBtn" style="flex: 1; font-size: 8px">
+              ⬇ TRUE PNG
+            </button>
+            <button class="ibtn export-hm-btn" id="exportMeasPngBtn" style="flex: 1; font-size: 8px">
+              ⬇ MEAS PNG
+            </button>
+          </div>
+          <div class="mrow">
+            <button class="ibtn export-hm-btn" id="exportParamsBtn" style="flex: 1; font-size: 8px">
+              ⬇ PARAMS
+            </button>
+            <button class="ibtn export-hm-btn" id="exportAllBtn" style="flex: 1; font-size: 8px">
+              ⬇ ALL
+            </button>
+          </div>
         </div>
 
         <div class="panel">
@@ -396,15 +511,80 @@
 
       <!-- MAIN -->
       <div class="main">
-        <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
-        <canvas class="main-cv" id="cv1" width="700" height="70"></canvas>
-        <canvas class="main-cv" id="cv2" width="700" height="120"></canvas>
+        <div class="cv-wrap cv-main">
+          <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
+        </div>
+        <div class="cv-wrap cv-err">
+          <canvas class="main-cv" id="cv1" width="700" height="70"></canvas>
+        </div>
+        <div class="cv-wrap cv-fd">
+          <canvas class="main-cv" id="cv2" width="700" height="120"></canvas>
+        </div>
         <div class="ibar" id="ibar">Ready — press PLAY</div>
       </div>
     </div>
     <!-- wrap -->
 
     <script>
+      // ═══════════════════════════════════════════════════
+      //  THEME (shared with index.html / afm-3d.html)
+      // ═══════════════════════════════════════════════════
+      (function () {
+        const s = localStorage.getItem("afm-theme") || "dark";
+        document.documentElement.setAttribute("data-theme", s);
+        document.addEventListener("DOMContentLoaded", () => {
+          const b = document.getElementById("themeToggle");
+          if (b) b.textContent = s === "dark" ? "◑ LIGHT" : "◑ DARK";
+        });
+      })();
+      function toggleTheme() {
+        const c = document.documentElement.getAttribute("data-theme") || "dark";
+        const n = c === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", n);
+        localStorage.setItem("afm-theme", n);
+        document.getElementById("themeToggle").textContent =
+          n === "dark" ? "◑ LIGHT" : "◑ DARK";
+        drawPreview();
+        if (!playing) render();
+      }
+      function cv(v) {
+        return getComputedStyle(document.documentElement)
+          .getPropertyValue(v)
+          .trim();
+      }
+      function isLightTheme() {
+        return document.documentElement.getAttribute("data-theme") === "light";
+      }
+      function chartFonts() {
+        return {
+          axis: "13px 'Courier New', monospace",
+          title: "12px 'Courier New', monospace",
+          badge: "11px 'Courier New', monospace",
+          small: "11px 'Courier New', monospace",
+        };
+      }
+      function chartColors() {
+        return {
+          bg: cv("--canvas-bg"),
+          grid1: cv("--grid1"),
+          grid2: cv("--grid2"),
+          axis: cv("--axis"),
+          border: cv("--border2"),
+          accent: cv("--accent"),
+          accent2: cv("--accent2"),
+          accent3: cv("--accent3"),
+          accent4: cv("--accent4"),
+        };
+      }
+      function tipDrawColors() {
+        const light = isLightTheme();
+        return {
+          fill0: light ? "rgba(0,130,105,0.30)" : "rgba(180,215,240,0.65)",
+          fill1: light ? "rgba(0,130,105,0.05)" : "rgba(160,195,220,0.12)",
+          stroke: light ? "rgba(0,110,90,0.90)" : "rgba(210,235,255,0.95)",
+        };
+      }
+
       // ═══════════════════════════════════════════════════
       //  CONSTANTS
       // ═══════════════════════════════════════════════════
@@ -413,10 +593,10 @@
         Y_NM = 100,
         DX = X_NM / NX;
       const CV0H = 520;
-      const ML = 44,
+      const ML = 54,
         MR = 8,
-        MT = 36,
-        MB = 20;
+        MT = 42,
+        MB = 24;
       const PW = NX - ML - MR,
         PH = CV0H - MT - MB;
       function xC(i) {
@@ -436,9 +616,9 @@
       const TIP_R = Math.ceil(TIP_R_NM / DX); // ~88 pixels
 
       // Error map
-      const EML = 44,
+      const EML = 54,
         EMR = 8,
-        EMT = 12,
+        EMT = 14,
         EMB = 10;
       const EPW = NX - EML - EMR,
         EPH = 70 - EMT - EMB;
@@ -447,7 +627,7 @@
       }
 
       // FD
-      const FML = 48,
+      const FML = 58,
         FMR = 12,
         FMT = 18,
         FMB = 22;
@@ -1087,13 +1267,15 @@
 
       // ── Main scan panel ──────────────────────────────
       function drawMain() {
+        const C = chartColors();
+        const F = chartFonts();
         cx0.clearRect(0, 0, NX, CV0H);
-        cx0.fillStyle = "#040608";
+        cx0.fillStyle = C.bg;
         cx0.fillRect(0, 0, NX, CV0H);
 
         // Grid
         for (let y = 0; y <= Y_NM; y += 10) {
-          cx0.strokeStyle = y === 0 ? "#182434" : "#0c1820";
+          cx0.strokeStyle = y === 0 ? C.grid1 : C.grid2;
           cx0.lineWidth = 1;
           cx0.beginPath();
           cx0.moveTo(ML, yC(y));
@@ -1101,7 +1283,7 @@
           cx0.stroke();
         }
         for (let x = 0; x <= X_NM; x += 40) {
-          cx0.strokeStyle = "#0c1820";
+          cx0.strokeStyle = C.grid2;
           cx0.lineWidth = 1;
           const px = xC(x / DX);
           cx0.beginPath();
@@ -1109,39 +1291,39 @@
           cx0.lineTo(px, MT + PH);
           cx0.stroke();
         }
-        cx0.strokeStyle = "#1a2e3e";
+        cx0.strokeStyle = C.border;
         cx0.lineWidth = 1;
         cx0.strokeRect(ML, MT, PW, PH);
 
         // Axis labels
-        cx0.fillStyle = "#304a58";
-        cx0.font = "8px Courier New";
+        cx0.fillStyle = C.axis;
+        cx0.font = F.axis;
         cx0.textAlign = "right";
-        for (let y = 0; y <= Y_NM; y += 10) cx0.fillText(y, ML - 3, yC(y) + 3);
+        for (let y = 0; y <= Y_NM; y += 10) cx0.fillText(y, ML - 4, yC(y) + 4);
         cx0.textAlign = "center";
         for (let x = 0; x <= X_NM; x += 40)
-          cx0.fillText(x + "nm", xC(x / DX), MT + PH + 14);
+          cx0.fillText(x + "nm", xC(x / DX), MT + PH + 18);
         cx0.save();
-        cx0.translate(12, MT + PH / 2);
+        cx0.translate(14, MT + PH / 2);
         cx0.rotate(-Math.PI / 2);
-        cx0.fillStyle = "#304a58";
-        cx0.font = "8px Courier New";
+        cx0.fillStyle = C.axis;
+        cx0.font = F.axis;
         cx0.textAlign = "center";
         cx0.fillText("Height (nm)", 0, 0);
         cx0.restore();
 
         // Mode badge
-        cx0.fillStyle = "#00e5b0";
-        cx0.font = "7px Courier New";
+        cx0.fillStyle = C.accent;
+        cx0.font = F.badge;
         cx0.textAlign = "left";
-        cx0.fillText(INV.erosion ? "EROSION" : "DILATION", ML + 4, MT - 6);
+        cx0.fillText(INV.erosion ? "EROSION" : "DILATION", ML + 4, MT - 8);
         if (INV.invTip) {
-          cx0.fillStyle = "#c97aff";
-          cx0.fillText("TIP⁻¹", ML + 90, MT - 6);
+          cx0.fillStyle = C.accent4;
+          cx0.fillText("TIP⁻¹", ML + 100, MT - 8);
         }
         if (INV.revScan) {
-          cx0.fillStyle = "#2ea8ff";
-          cx0.fillText("←SCAN", ML + 140, MT - 6);
+          cx0.fillStyle = C.accent2;
+          cx0.fillText("←SCAN", ML + 160, MT - 8);
         }
 
         cx0.save();
@@ -1156,13 +1338,15 @@
         cx0.lineTo(NX - MR, MT + PH);
         cx0.lineTo(ML, MT + PH);
         cx0.closePath();
-        cx0.fillStyle = "rgba(0,229,176,0.08)";
+        cx0.fillStyle = isLightTheme()
+          ? "rgba(0,158,122,0.12)"
+          : "rgba(0,229,176,0.08)";
         cx0.fill();
 
         // True surface line
         cx0.beginPath();
-        cx0.strokeStyle = "#00e5b0";
-        cx0.lineWidth = 1.8;
+        cx0.strokeStyle = C.accent;
+        cx0.lineWidth = 2;
         cx0.moveTo(xC(0), yC(surface[0]));
         for (let i = 1; i < NX; i++) cx0.lineTo(xC(i), yC(surface[i]));
         cx0.stroke();
@@ -1195,8 +1379,8 @@
             cx0.lineTo(xC(getIdx(i)), yC(measured[getIdx(i)]));
           cx0.stroke();
           cx0.beginPath();
-          cx0.strokeStyle = "#ff7043";
-          cx0.lineWidth = 1.8;
+          cx0.strokeStyle = C.accent3;
+          cx0.lineWidth = 2;
           cx0.moveTo(xC(getIdx(0)), yC(measured[getIdx(0)]));
           for (let i = 1; i < scanIdx; i++)
             cx0.lineTo(xC(getIdx(i)), yC(measured[getIdx(i)]));
@@ -1209,13 +1393,52 @@
         if (scanIdx > 0) drawTipShape(cx0, Math.min(scanIdx - 1, NX - 1));
       }
 
+      function getTipDrawPlacement(di) {
+        if (currentTip !== "inv_sphere") {
+          return { baseNm: measured[di], contactIdx: di };
+        }
+
+        const R = tipP.inv_sphere?.R || 20;
+        const wS = PW / X_NM;
+        const rimHalfNm = Math.min(R * wS + 10, PW / 4) / wS;
+        let bestBase = -Infinity;
+        let contactIdx = di;
+
+        for (
+          let j = Math.max(-TIP_R, -di);
+          j <= Math.min(TIP_R, NX - 1 - di);
+          j++
+        ) {
+          const r = Math.abs(j * DX);
+          if (r > rimHalfNm) continue;
+
+          // Drawn bowl profile: rim at 0, center recessed upward by R.
+          // base + profile must stay at or above the sample everywhere.
+          const profile = r <= R ? Math.sqrt(Math.max(0, R * R - r * r)) : 0;
+          const base = surface[di + j] - profile;
+          if (base > bestBase) {
+            bestBase = base;
+            contactIdx = di + j;
+          }
+        }
+
+        if (!isFinite(bestBase)) bestBase = measured[di];
+        return {
+          baseNm: Math.max(0, Math.min(Y_NM - 2, bestBase)),
+          contactIdx,
+        };
+      }
+
       // ── Tip silhouette ───────────────────────────────
       function drawTipShape(g2d, si) {
+        const CC = chartColors();
+        const TD = tipDrawColors();
         const rawI = Math.min(si, NX - 1);
         const di = getIdx(rawI);
+        const placement = getTipDrawPlacement(di);
         const ax = xC(di);
-        const ay = yC(measured[di]); // measured surface (where tip math apex is)
-        const sy = yC(surface[di]); // true surface (visual contact point)
+        const ay = yC(placement.baseNm);
+        const sy = yC(surface[placement.contactIdx]);
         const wS = PW / X_NM,
           hS = PH / Y_NM;
         const p = tipP[currentTip] || {};
@@ -1234,10 +1457,10 @@
         g2d.clip();
 
         const tG = g2d.createLinearGradient(ax, contactY, ax, tipTopY);
-        tG.addColorStop(0, "rgba(180,215,240,0.65)");
-        tG.addColorStop(1, "rgba(160,195,220,0.12)");
+        tG.addColorStop(0, TD.fill0);
+        tG.addColorStop(1, TD.fill1);
         g2d.fillStyle = tG;
-        g2d.strokeStyle = "rgba(210,235,255,0.95)";
+        g2d.strokeStyle = TD.stroke;
         g2d.lineWidth = 2;
 
         function sh(fn) {
@@ -1270,8 +1493,8 @@
           if (pts.length < 2) pts.push([R, bodyNm]);
           // Sphere apex is at ay (measured), body drawn from ay upward
           const tG2 = g2d.createLinearGradient(ax, ay, ax, ay - bodyPx);
-          tG2.addColorStop(0, "rgba(180,215,240,0.65)");
-          tG2.addColorStop(1, "rgba(160,195,220,0.12)");
+          tG2.addColorStop(0, TD.fill0);
+          tG2.addColorStop(1, TD.fill1);
           g2d.fillStyle = tG2;
           const sTopY = ay - bodyPx;
           sh(() => {
@@ -1287,8 +1510,8 @@
             pts = [];
           // Hyperboloid apex at ay (measured), body upward
           const tG2 = g2d.createLinearGradient(ax, ay, ax, ay - bodyPx);
-          tG2.addColorStop(0, "rgba(180,215,240,0.65)");
-          tG2.addColorStop(1, "rgba(160,195,220,0.12)");
+          tG2.addColorStop(0, TD.fill0);
+          tG2.addColorStop(1, TD.fill1);
           g2d.fillStyle = tG2;
           for (let k = 0; k <= 100; k++) {
             const h = (k / 100) * bodyNm,
@@ -1304,8 +1527,8 @@
         } else if (currentTip === "flat") {
           // Flat: face at measured line ay
           const tG2 = g2d.createLinearGradient(ax, ay, ax, ay - bodyPx);
-          tG2.addColorStop(0, "rgba(180,215,240,0.65)");
-          tG2.addColorStop(1, "rgba(160,195,220,0.12)");
+          tG2.addColorStop(0, TD.fill0);
+          tG2.addColorStop(1, TD.fill1);
           g2d.fillStyle = tG2;
           const rp = (p.R || 18) * wS;
           const fTopY = ay - bodyPx;
@@ -1325,35 +1548,35 @@
           g2d.restore();
         } else if (currentTip === "inv_sphere") {
           const R = p.R || 20;
-          // Half-width of cylinder walls
           const hw = Math.min(R * wS + 10, PW / 4);
-          // Bowl radius must fit inside the walls: Rp <= hw
-          const Rp = Math.min(R * hS, hw * 0.9);
-          const iTopY = ay - bodyPx;
-          const tG2 = g2d.createLinearGradient(ax, iTopY, ax, ay);
-          tG2.addColorStop(0, "rgba(160,195,220,0.12)");
-          tG2.addColorStop(1, "rgba(180,215,240,0.65)");
+          const N = 80;
+
+          const tG2 = g2d.createLinearGradient(ax, contactY, ax, tipTopY);
+          tG2.addColorStop(0, TD.fill0);
+          tG2.addColorStop(1, TD.fill1);
           g2d.fillStyle = tG2;
-          // Bowl arc: center at (ax, ay-Rp) with radius Rp
-          // arc(0→π, anticlockwise=true) = TOP half = curves upward = CONCAVE bowl ✓
-          // This arc starts at (ax+Rp, ay-Rp) and ends at (ax-Rp, ay-Rp)
-          // The rim of the bowl sits at y = ay-Rp ± 0, lowest point at y = ay-2*Rp (top of bowl)
-          // Wait — center at (ax, ay-Rp), angle π/2 in canvas = DOWN → point = (ax, ay-Rp+Rp) = (ax,ay) ✓
-          // angle -π/2 (top) → (ax, ay-Rp-Rp) = (ax, ay-2Rp) — deepest point of bowl
-          // So arc(ax, ay-Rp, Rp, 0, π, true) goes from (ax+Rp, ay-Rp) UP through (ax, ay-2Rp) to (ax-Rp, ay-Rp)
-          // The bowl OPENS at y=ay-Rp (rim level) and curves UP — CONCAVE ✓
+
+          // Concave bowl: flat rim on contact plane, arch rises into tip at center.
+          // Parametric semicircle in nm (wS≠hS — do not use canvas.arc).
           sh(() => {
-            g2d.moveTo(ax - hw, iTopY);
-            g2d.lineTo(ax + hw, iTopY); // top edge
-            g2d.lineTo(ax + hw, ay - Rp); // right wall down to rim
-            g2d.arc(ax, ay - Rp, Rp, 0, Math.PI, true); // concave bowl (top half, curves up)
-            g2d.lineTo(ax - hw, ay - Rp); // left wall bottom to rim
+            g2d.moveTo(ax - hw, tipTopY);
+            g2d.lineTo(ax + hw, tipTopY);
+            g2d.lineTo(ax + hw, contactY);
+            for (let k = 0; k <= N; k++) {
+              const t = (k / N) * Math.PI;
+              const x = R * Math.cos(t);
+              const depth = R * Math.sin(t);
+              g2d.lineTo(ax + x * wS, contactY - depth * hS);
+            }
+            g2d.lineTo(ax - hw, contactY);
           });
+
           g2d.save();
           g2d.strokeStyle = "rgba(100,200,240,0.95)";
           g2d.lineWidth = 2.5;
           g2d.beginPath();
-          g2d.arc(ax, ay - Rp, Rp, 0, Math.PI, true);
+          g2d.moveTo(ax - R * wS, contactY);
+          g2d.lineTo(ax + R * wS, contactY);
           g2d.stroke();
           g2d.restore();
         } else if (currentTip === "sphere_cone") {
@@ -1374,50 +1597,36 @@
           const yTang = R - sv;
           const yTop = yTang + (halfW * halfW) / sv;
 
-          // Scale factor: map yTop nm → bodyNm so shape fills tip body
-          const scaleNm = bodyNm / yTop;
-          // Scaled nm values
-          const R_s = R * scaleNm;
-          const halfW_s = halfW * scaleNm;
-          const topW_s = topW * scaleNm;
-          const sv_s = sv * scaleNm;
-          const yTang_s = yTang * scaleNm;
-
-          // nm → canvas pixel helpers (apex at contactY)
+          // Draw at full physical size (matches tipT kernel — no scale-to-fit shrink).
           const nmX = (x) => ax + x * wS;
           const nmY = (y) => contactY - y * hS;
 
-          // Sample arc in nm space: centre (0, R_s), radius R_s
-          // From apex angle (-π/2) going right to tangent angle
-          // theta_apex = -π/2, theta_right = atan2(-sv_s, halfW_s) [Q4, negative]
           const tApex = -Math.PI / 2;
-          const tR = Math.atan2(-sv_s, halfW_s); // ≈ -60° (Q4)
-          const tL = Math.atan2(-sv_s, -halfW_s); // ≈ -120° (Q3)
+          const tR = Math.atan2(-sv, halfW);
+          const tL = Math.atan2(-sv, -halfW);
           const N = 80;
+          const shaftTopY = tipTopY;
 
           sh(() => {
-            // Right arc: apex → right tangent (counterclockwise: -90° → -60°, increasing)
             g2d.moveTo(nmX(0), nmY(0));
             for (let k = 0; k <= N; k++) {
               const t = tApex + ((tR - tApex) * k) / N;
-              g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+              g2d.lineTo(nmX(R * Math.cos(t)), nmY(R + R * Math.sin(t)));
             }
-            // Right slanted side to top-right corner
-            g2d.lineTo(nmX(topW_s), nmY(yTop * scaleNm));
-            // Flat top
-            g2d.lineTo(nmX(-topW_s), nmY(yTop * scaleNm));
-            // Left slanted side to left tangent
-            g2d.lineTo(nmX(-halfW_s), nmY(yTang_s));
-            // Left arc: left tangent → apex (counterclockwise: -120° → -90°... wait)
-            // Left side goes from tL(-120°) back to tApex(-90°), increasing angle ✓
+            g2d.lineTo(nmX(topW), nmY(yTop));
+            if (yTop * hS < bodyPx) {
+              g2d.lineTo(nmX(topW), shaftTopY);
+              g2d.lineTo(nmX(-topW), shaftTopY);
+              g2d.lineTo(nmX(-topW), nmY(yTop));
+            }
+            g2d.lineTo(nmX(-halfW), nmY(yTang));
             for (let k = 0; k <= N; k++) {
               const t = tL + ((tApex - tL) * k) / N;
-              g2d.lineTo(nmX(R_s * Math.cos(t)), nmY(R_s + R_s * Math.sin(t)));
+              g2d.lineTo(nmX(R * Math.cos(t)), nmY(R + R * Math.sin(t)));
             }
           });
 
-          // Arc centre marker
-          const cxY = nmY(R_s);
+          const cxY = nmY(R);
           if (cxY > tipTopY && cxY < contactY) {
             g2d.save();
             g2d.beginPath();
@@ -1461,8 +1670,12 @@
 
         g2d.restore();
 
+        const markerX =
+          currentTip === "inv_sphere" ? xC(placement.contactIdx) : ax;
+        const markerY = currentTip === "inv_sphere" ? sy : ay;
+
         // Dashed line from apex (measured) down to true surface — shows artifact gap
-        if (sy > ay + 2) {
+        if (currentTip !== "inv_sphere" && sy > ay + 2) {
           // only when there IS a gap (measured above surface)
           g2d.save();
           g2d.strokeStyle = "rgba(255,107,53,0.5)";
@@ -1476,31 +1689,34 @@
           g2d.restore();
         }
 
-        // Apex glow dot at MEASURED height (where tip physically sits)
+        // Contact glow dot. For concave tips, contact is often off-center.
         g2d.beginPath();
-        g2d.arc(ax, ay, 3.5, 0, Math.PI * 2);
+        g2d.arc(markerX, markerY, 3.5, 0, Math.PI * 2);
         g2d.fillStyle = "rgba(255,255,255,0.15)";
         g2d.fill();
         g2d.beginPath();
-        g2d.arc(ax, ay, 2, 0, Math.PI * 2);
+        g2d.arc(markerX, markerY, 2, 0, Math.PI * 2);
         g2d.fillStyle = "#fff";
-        g2d.shadowColor = sy > ay + 2 ? "#ff6b35" : "#00e5b0"; // red=artifact, green=touching
+        g2d.shadowColor =
+          currentTip !== "inv_sphere" && sy > ay + 2 ? CC.accent3 : CC.accent;
         g2d.shadowBlur = 12;
         g2d.fill();
         g2d.shadowBlur = 0;
       }
 
       function drawError() {
+        const C = chartColors();
+        const F = chartFonts();
         cx1.clearRect(0, 0, NX, 70);
-        cx1.fillStyle = "#040608";
+        cx1.fillStyle = C.bg;
         cx1.fillRect(0, 0, NX, 70);
-        cx1.strokeStyle = "#1a2e3e";
+        cx1.strokeStyle = C.border;
         cx1.lineWidth = 1;
         cx1.strokeRect(EML, EMT, EPW, EPH);
-        cx1.fillStyle = "#304a58";
-        cx1.font = "7px Courier New";
+        cx1.fillStyle = C.axis;
+        cx1.font = F.title;
         cx1.textAlign = "left";
-        cx1.fillText("ARTIFACT ERROR MAP", EML + 4, EMT - 4);
+        cx1.fillText("ARTIFACT ERROR MAP", EML + 4, EMT - 5);
         if (scanIdx < 2) return;
 
         let mx = 0;
@@ -1530,13 +1746,13 @@
           cx1.fillRect(px, EMT + EPH - t * EPH, Math.max(1, bw + 0.5), t * EPH);
         }
         cx1.globalAlpha = 1;
-        cx1.fillStyle = "#c97aff";
-        cx1.font = "7px Courier New";
+        cx1.fillStyle = C.accent4;
+        cx1.font = F.small;
         cx1.textAlign = "right";
         cx1.fillText(
           `max ${mx.toFixed(2)} nm${INV.invErr ? " [INV]" : ""}`,
           NX - EML,
-          EMT + 12,
+          EMT + 14,
         );
       }
 
@@ -1547,21 +1763,23 @@
         return -4 * (s ** 6 - s ** 3);
       }
       function drawFD() {
+        const C = chartColors();
+        const F = chartFonts();
         cx2.clearRect(0, 0, NX, 120);
-        cx2.fillStyle = "#040608";
+        cx2.fillStyle = C.bg;
         cx2.fillRect(0, 0, NX, 120);
-        cx2.strokeStyle = "#1a2e3e";
+        cx2.strokeStyle = C.border;
         cx2.lineWidth = 1;
         cx2.strokeRect(FML, FMT, FPW, FPH);
-        cx2.fillStyle = "#304a58";
-        cx2.font = "7px Courier New";
+        cx2.fillStyle = C.axis;
+        cx2.font = F.title;
         cx2.textAlign = "center";
-        cx2.fillText("Tip–Surface Separation (nm)", FML + FPW / 2, 120 - 6);
+        cx2.fillText("Tip–Surface Separation (nm)", FML + FPW / 2, 120 - 4);
 
         const maxD = 8,
           zY = FMT + FPH * 0.35,
           sF = FPH * 0.28;
-        cx2.strokeStyle = "#162230";
+        cx2.strokeStyle = C.grid1;
         cx2.lineWidth = 1;
         cx2.setLineDash([4, 4]);
         cx2.beginPath();
@@ -1571,9 +1789,9 @@
         cx2.setLineDash([]);
 
         const g = cx2.createLinearGradient(FML, FMT, FML + FPW, FMT);
-        g.addColorStop(0, "#c97aff");
-        g.addColorStop(0.4, "#2ea8ff");
-        g.addColorStop(1, "#ff6b35");
+        g.addColorStop(0, C.accent4);
+        g.addColorStop(0.4, C.accent2);
+        g.addColorStop(1, C.accent3);
         cx2.strokeStyle = g;
         cx2.lineWidth = 2;
         cx2.beginPath();
@@ -1595,24 +1813,25 @@
             py = Math.max(FMT + 4, Math.min(FMT + FPH - 4, zY - f * sF));
           cx2.beginPath();
           cx2.arc(px, py, 5, 0, Math.PI * 2);
-          cx2.fillStyle = "#00e5b0";
-          cx2.shadowColor = "#00e5b0";
+          cx2.fillStyle = C.accent;
+          cx2.shadowColor = C.accent;
           cx2.shadowBlur = 10;
           cx2.fill();
           cx2.shadowBlur = 0;
           const reg =
             sep < 0.1 ? "CONTACT" : sep < 1.5 ? "NEAR-CONTACT" : "NON-CONTACT";
-          const rc = sep < 0.1 ? "#ff6b35" : sep < 1.5 ? "#2ea8ff" : "#c97aff";
+          const rc =
+            sep < 0.1 ? C.accent3 : sep < 1.5 ? C.accent2 : C.accent4;
           cx2.fillStyle = rc;
-          cx2.font = "7px Courier New";
+          cx2.font = F.small;
           cx2.textAlign = "right";
-          cx2.fillText(`${reg}  d=${sep.toFixed(2)}nm`, NX - FML, FMT + 12);
+          cx2.fillText(`${reg}  d=${sep.toFixed(2)}nm`, NX - FML, FMT + 14);
         }
         for (let d = 0; d <= maxD; d += 2) {
-          cx2.fillStyle = "#304a58";
-          cx2.font = "7px Courier New";
+          cx2.fillStyle = C.axis;
+          cx2.font = F.small;
           cx2.textAlign = "center";
-          cx2.fillText(d, FML + (d / maxD) * FPW, FMT + FPH + 12);
+          cx2.fillText(d, FML + (d / maxD) * FPW, FMT + FPH + 14);
         }
       }
 
@@ -1621,10 +1840,13 @@
       const pvCtx = pvCv.getContext("2d");
 
       function drawPreview() {
-        const W = 174,
+        const C = chartColors();
+        const TD = tipDrawColors();
+        const W = pvCv.clientWidth || 248,
           H = 70;
+        if (pvCv.width !== W) pvCv.width = W;
         pvCtx.clearRect(0, 0, W, H);
-        pvCtx.fillStyle = "#040608";
+        pvCtx.fillStyle = C.bg;
         pvCtx.fillRect(0, 0, W, H);
         const cx = W / 2,
           apexY = H - 6,
@@ -1635,11 +1857,11 @@
         const p = tipP[currentTip] || {};
 
         const pg = pvCtx.createLinearGradient(cx, apexY, cx, apexY - bodyH);
-        pg.addColorStop(0, "rgba(180,215,235,0.38)");
-        pg.addColorStop(1, "rgba(144,180,200,0.06)");
+        pg.addColorStop(0, TD.fill0);
+        pg.addColorStop(1, TD.fill1);
         pvCtx.fillStyle = pg;
-        pvCtx.strokeStyle = "rgba(200,228,248,0.88)";
-        pvCtx.lineWidth = 1.6;
+        pvCtx.strokeStyle = TD.stroke;
+        pvCtx.lineWidth = 1.8;
 
         function sh(fn) {
           pvCtx.beginPath();
@@ -1715,20 +1937,25 @@
         } else if (currentTip === "inv_sphere") {
           const R = p.R || 20;
           const hw = Math.min(R * wS + 8, W / 2 - 3);
-          const Rp = Math.min(R * hS, hw * 0.9); // bowl radius always fits inside walls
-          // Arc center at (cx, apexY-Rp): arc(0→π, anticlockwise=true) = top half = curves upward = CONCAVE ✓
+          const N = 60;
           sh(() => {
             pvCtx.moveTo(cx - hw, apexY - bodyH);
-            pvCtx.lineTo(cx + hw, apexY - bodyH); // top
-            pvCtx.lineTo(cx + hw, apexY - Rp); // right wall down to rim
-            pvCtx.arc(cx, apexY - Rp, Rp, 0, Math.PI, true); // concave bowl
-            pvCtx.lineTo(cx - hw, apexY - Rp); // left rim
+            pvCtx.lineTo(cx + hw, apexY - bodyH);
+            pvCtx.lineTo(cx + hw, apexY);
+            for (let k = 0; k <= N; k++) {
+              const t = (k / N) * Math.PI;
+              const x = R * Math.cos(t);
+              const depth = R * Math.sin(t);
+              pvCtx.lineTo(cx + x * wS, apexY - depth * hS);
+            }
+            pvCtx.lineTo(cx - hw, apexY);
           });
           pvCtx.save();
           pvCtx.strokeStyle = "rgba(100,200,240,0.95)";
           pvCtx.lineWidth = 2.5;
           pvCtx.beginPath();
-          pvCtx.arc(cx, apexY - Rp, Rp, 0, Math.PI, true);
+          pvCtx.moveTo(cx - R * wS, apexY);
+          pvCtx.lineTo(cx + R * wS, apexY);
           pvCtx.stroke();
           pvCtx.restore();
         } else if (currentTip === "sphere_cone") {
@@ -1738,38 +1965,30 @@
           const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
           const yTang = R - sv,
             yTop = yTang + (halfW * halfW) / sv;
-          const scNm = NM / yTop;
-          const R_s = R * scNm,
-            hw_s = halfW * scNm,
-            top_s = topW * scNm,
-            yt_s = yTang * scNm;
           const pX = (x) => cx + x * wS,
             pY = (y) => apexY - y * hS;
-          const tA = -Math.PI / 2,
-            tR = Math.atan2(
-              -(R_s - (R_s - Math.sqrt(Math.max(0, R_s * R_s - hw_s * hw_s)))),
-              hw_s,
-            );
-          // Simpler: angles in nm space
-          const sv_s = sv * scNm;
-          const tRn = Math.atan2(-sv_s, hw_s),
-            tLn = Math.atan2(-sv_s, -hw_s);
+          const tRn = Math.atan2(-sv, halfW),
+            tLn = Math.atan2(-sv, -halfW);
           const N = 60;
           sh(() => {
             pvCtx.moveTo(pX(0), pY(0));
             for (let k = 0; k <= N; k++) {
-              const t = -Math.PI / 2 + ((tRn - -Math.PI / 2) * k) / N;
-              pvCtx.lineTo(pX(R_s * Math.cos(t)), pY(R_s + R_s * Math.sin(t)));
+              const t = -Math.PI / 2 + ((tRn + Math.PI / 2) * k) / N;
+              pvCtx.lineTo(pX(R * Math.cos(t)), pY(R + R * Math.sin(t)));
             }
-            pvCtx.lineTo(pX(top_s), pY(yTop * scNm));
-            pvCtx.lineTo(pX(-top_s), pY(yTop * scNm));
-            pvCtx.lineTo(pX(-hw_s), pY(yt_s));
+            pvCtx.lineTo(pX(topW), pY(yTop));
+            if (yTop * hS < bodyH) {
+              pvCtx.lineTo(pX(topW), apexY - bodyH);
+              pvCtx.lineTo(pX(-topW), apexY - bodyH);
+              pvCtx.lineTo(pX(-topW), pY(yTop));
+            }
+            pvCtx.lineTo(pX(-halfW), pY(yTang));
             for (let k = 0; k <= N; k++) {
               const t = tLn + ((-Math.PI / 2 - tLn) * k) / N;
-              pvCtx.lineTo(pX(R_s * Math.cos(t)), pY(R_s + R_s * Math.sin(t)));
+              pvCtx.lineTo(pX(R * Math.cos(t)), pY(R + R * Math.sin(t)));
             }
           });
-          const pcY = pY(R_s);
+          const pcY = pY(R);
           if (pcY > apexY - bodyH && pcY < apexY) {
             pvCtx.save();
             pvCtx.beginPath();
@@ -1798,15 +2017,17 @@
         // Apex dot
         pvCtx.beginPath();
         pvCtx.arc(cx, apexY, 2.5, 0, Math.PI * 2);
-        pvCtx.fillStyle = "#00e5b0";
-        pvCtx.shadowColor = "#00e5b0";
+        pvCtx.fillStyle = C.accent;
+        pvCtx.shadowColor = C.accent;
         pvCtx.shadowBlur = 8;
         pvCtx.fill();
         pvCtx.shadowBlur = 0;
 
         // Sample surface line
         pvCtx.save();
-        pvCtx.strokeStyle = "rgba(255,107,53,0.5)";
+        pvCtx.strokeStyle = isLightTheme()
+          ? "rgba(217,79,30,0.55)"
+          : "rgba(255,107,53,0.5)";
         pvCtx.lineWidth = 1;
         pvCtx.setLineDash([3, 4]);
         pvCtx.beginPath();
@@ -1818,10 +2039,10 @@
 
         // Label
         if (INV.invTip) {
-          pvCtx.fillStyle = "#c97aff";
-          pvCtx.font = "7px Courier New";
+          pvCtx.fillStyle = C.accent4;
+          pvCtx.font = chartFonts().small;
           pvCtx.textAlign = "left";
-          pvCtx.fillText("INV", 3, 10);
+          pvCtx.fillText("INV", 4, 12);
         }
         const names = {
           cone: "CONE",
@@ -1833,10 +2054,12 @@
           double_tip: "DOUBLE",
           sphere_cone: "CONE+SPH",
         };
-        pvCtx.fillStyle = "rgba(48,74,88,0.9)";
-        pvCtx.font = "7px Courier New";
+        pvCtx.fillStyle = isLightTheme()
+          ? "rgba(26,40,56,0.85)"
+          : "rgba(180,210,225,0.9)";
+        pvCtx.font = chartFonts().small;
         pvCtx.textAlign = "right";
-        pvCtx.fillText(names[currentTip] || currentTip, W - 3, 10);
+        pvCtx.fillText(names[currentTip] || currentTip, W - 4, 12);
       }
 
       // ── Stats ────────────────────────────────────────
@@ -2038,6 +2261,273 @@
       }
 
       // ═══════════════════════════════════════════════════
+      //  HEIGHT MAP EXPORT
+      // ═══════════════════════════════════════════════════
+      function downloadBlob(content, filename, mimeType) {
+        const blob =
+          content instanceof Blob
+            ? content
+            : new Blob([content], { type: mimeType || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function exportBaseName() {
+        const tp = tipP[currentTip] || {};
+        const sp = surfP[currentSurf] || {};
+        const tipStr = Object.entries(tp)
+          .map(([k, v]) => `${k}${v}`)
+          .join("_");
+        const surfStr = Object.entries(sp)
+          .map(([k, v]) => `${k}${v}`)
+          .join("_");
+        return `${currentTip}_${tipStr}__${currentSurf}_${surfStr}`;
+      }
+
+      function computeFullLineStats() {
+        let mx = 0,
+          rms = 0,
+          hMin = Infinity,
+          hMax = -Infinity;
+        for (let i = 0; i < NX; i++) {
+          const e = Math.abs(measured[i] - surface[i]);
+          if (e > mx) mx = e;
+          rms += e * e;
+          hMin = Math.min(hMin, surface[i], measured[i]);
+          hMax = Math.max(hMax, surface[i], measured[i]);
+        }
+        if (hMin === hMax) hMax = hMin + 1;
+        return {
+          err_max_nm: mx,
+          err_rms_nm: Math.sqrt(rms / NX),
+          h_min_nm: hMin,
+          h_max_nm: hMax,
+        };
+      }
+
+      function buildParamsJson() {
+        const stats = computeFullLineStats();
+        const tipIsErosion = currentTip === "inv_sphere";
+        const finalErosion = tipIsErosion !== (INV.erosion !== INV.invTip);
+        return {
+          simulator: "2d",
+          tip: currentTip,
+          tip_params: { ...(tipP[currentTip] || {}) },
+          surface: currentSurf,
+          surface_params: { ...(surfP[currentSurf] || {}) },
+          grid: { NX, x_nm: X_NM, dx_nm: DX },
+          noise_nm: parseFloat(document.getElementById("noiseSlider").value) || 0,
+          inverts: { ...INV },
+          operation: finalErosion ? "erosion" : "dilation",
+          png_scale: {
+            h_min_nm: stats.h_min_nm,
+            h_max_nm: stats.h_max_nm,
+            decode:
+              "h_nm = uint16 / 65535 * (h_max_nm - h_min_nm) + h_min_nm",
+          },
+          stats: {
+            err_max_nm: stats.err_max_nm,
+            err_rms_nm: stats.err_rms_nm,
+          },
+        };
+      }
+
+      function lineToCSV(arr) {
+        const lines = ["index,x_nm,height_nm"];
+        for (let i = 0; i < NX; i++) {
+          lines.push(`${i},${(i * DX).toFixed(4)},${arr[i].toFixed(6)}`);
+        }
+        return lines.join("\n");
+      }
+
+      function lineProfileToCSV() {
+        const lines = ["index,x_nm,true_nm,measured_nm"];
+        for (let i = 0; i < NX; i++) {
+          lines.push(
+            `${i},${(i * DX).toFixed(4)},${surface[i].toFixed(6)},${measured[i].toFixed(6)}`,
+          );
+        }
+        return lines.join("\n");
+      }
+
+      function heightToUint16(h, hMin, hMax) {
+        const t = (h - hMin) / (hMax - hMin);
+        return Math.max(0, Math.min(65535, Math.round(t * 65535)));
+      }
+
+      function crc32(bytes) {
+        let c = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) {
+          c ^= bytes[i];
+          for (let k = 0; k < 8; k++) {
+            c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+          }
+        }
+        return (c ^ 0xffffffff) >>> 0;
+      }
+
+      function pngChunk(type, data) {
+        const td = new TextEncoder().encode(type);
+        const len = data.length;
+        const buf = new Uint8Array(4 + 4 + len + 4);
+        const view = new DataView(buf.buffer);
+        view.setUint32(0, len);
+        buf.set(td, 4);
+        buf.set(data, 8);
+        const crcData = new Uint8Array(4 + len);
+        crcData.set(td);
+        crcData.set(data, 4);
+        view.setUint32(8 + len, crc32(crcData));
+        return buf;
+      }
+
+      async function deflateZlib(data) {
+        if (typeof CompressionStream === "undefined") {
+          throw new Error("CompressionStream not supported in this browser");
+        }
+        const cs = new CompressionStream("deflate");
+        const writer = cs.writable.getWriter();
+        writer.write(data);
+        writer.close();
+        const chunks = [];
+        const reader = cs.readable.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        let total = 0;
+        for (const ch of chunks) total += ch.length;
+        const out = new Uint8Array(total);
+        let off = 0;
+        for (const ch of chunks) {
+          out.set(ch, off);
+          off += ch.length;
+        }
+        return out;
+      }
+
+      async function lineToUint16PNG(arr, hMin, hMax) {
+        const width = NX,
+          height = 1;
+        const rowLen = 1 + width * 2;
+        const raw = new Uint8Array(rowLen);
+        raw[0] = 0;
+        for (let c = 0; c < width; c++) {
+          const u = heightToUint16(arr[c], hMin, hMax);
+          const o = 1 + c * 2;
+          raw[o] = (u >> 8) & 0xff;
+          raw[o + 1] = u & 0xff;
+        }
+        const idat = await deflateZlib(raw);
+        const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+        const ihdr = new Uint8Array(13);
+        const iv = new DataView(ihdr.buffer);
+        iv.setUint32(0, width);
+        iv.setUint32(4, height);
+        ihdr[8] = 16;
+        ihdr[9] = 0;
+        ihdr[10] = 0;
+        ihdr[11] = 0;
+        ihdr[12] = 0;
+        const parts = [
+          sig,
+          pngChunk("IHDR", ihdr),
+          pngChunk("IDAT", idat),
+          pngChunk("IEND", new Uint8Array(0)),
+        ];
+        let n = 0;
+        for (const p of parts) n += p.length;
+        const png = new Uint8Array(n);
+        let pos = 0;
+        for (const p of parts) {
+          png.set(p, pos);
+          pos += p.length;
+        }
+        return new Blob([png], { type: "image/png" });
+      }
+
+      function ensureExportReady() {
+        applyTransforms();
+        computeMeas();
+      }
+
+      async function exportHeightMap(kind) {
+        ensureExportReady();
+        const base = exportBaseName();
+        const stats = computeFullLineStats();
+        const { h_min_nm, h_max_nm } = stats;
+
+        if (kind === "true_csv" || kind === "all") {
+          downloadBlob(
+            lineToCSV(surface),
+            `true_surface_${base}.csv`,
+            "text/csv",
+          );
+        }
+        if (kind === "meas_csv" || kind === "all") {
+          downloadBlob(
+            lineToCSV(measured),
+            `measured_afm_${base}.csv`,
+            "text/csv",
+          );
+        }
+        if (kind === "profile_csv" || kind === "all") {
+          downloadBlob(
+            lineProfileToCSV(),
+            `profile_${base}.csv`,
+            "text/csv",
+          );
+        }
+        if (kind === "true_png" || kind === "all") {
+          downloadBlob(
+            await lineToUint16PNG(surface, h_min_nm, h_max_nm),
+            `true_surface_${base}_16bit.png`,
+            "image/png",
+          );
+        }
+        if (kind === "meas_png" || kind === "all") {
+          downloadBlob(
+            await lineToUint16PNG(measured, h_min_nm, h_max_nm),
+            `measured_afm_${base}_16bit.png`,
+            "image/png",
+          );
+        }
+        if (kind === "params" || kind === "all") {
+          downloadBlob(
+            JSON.stringify(buildParamsJson(), null, 2),
+            `params_${base}.json`,
+            "application/json",
+          );
+        }
+      }
+
+      document
+        .getElementById("exportTrueCsvBtn")
+        .addEventListener("click", () => exportHeightMap("true_csv"));
+      document
+        .getElementById("exportMeasCsvBtn")
+        .addEventListener("click", () => exportHeightMap("meas_csv"));
+      document
+        .getElementById("exportTruePngBtn")
+        .addEventListener("click", () => exportHeightMap("true_png"));
+      document
+        .getElementById("exportMeasPngBtn")
+        .addEventListener("click", () => exportHeightMap("meas_png"));
+      document
+        .getElementById("exportParamsBtn")
+        .addEventListener("click", () => exportHeightMap("params"));
+      document
+        .getElementById("exportAllBtn")
+        .addEventListener("click", () => exportHeightMap("all"));
+
+      // ═══════════════════════════════════════════════════
       //  INIT
       // ═══════════════════════════════════════════════════
       refreshTipSliders();
@@ -2049,6 +2539,10 @@
       drawPreview();
       render();
       setMode("loop");
+      window.addEventListener("resize", () => {
+        drawPreview();
+        if (!playing) render();
+      });
     </script>
   </body>
 </html>

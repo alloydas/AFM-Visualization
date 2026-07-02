@@ -66,12 +66,12 @@
         border-bottom: 1px solid var(--border);
       }
       .topbar a {
-        font-size: 8px;
+        font-size: 9px;
         letter-spacing: 1px;
         color: var(--accent2);
         text-decoration: none;
         border: 1px solid rgba(46, 168, 255, 0.3);
-        padding: 3px 8px;
+        padding: 4px 10px;
         white-space: nowrap;
       }
       .topbar a:hover {
@@ -88,7 +88,7 @@
         text-transform: uppercase;
       }
       .title-block p {
-        font-size: 7px;
+        font-size: 8px;
         letter-spacing: 2px;
         color: var(--text);
         opacity: 0.5;
@@ -101,7 +101,7 @@
         font-family: inherit;
         font-size: 9px;
         letter-spacing: 1px;
-        padding: 3px 10px;
+        padding: 4px 10px;
         cursor: pointer;
         white-space: nowrap;
       }
@@ -116,7 +116,7 @@
         gap: 0;
       }
       .sidebar {
-        width: 198px;
+        width: 220px;
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
@@ -151,8 +151,8 @@
         padding: 8px;
       }
       .panel-label {
-        font-size: 7px;
-        letter-spacing: 3px;
+        font-size: 8px;
+        letter-spacing: 2px;
         color: var(--accent);
         text-transform: uppercase;
         margin-bottom: 6px;
@@ -168,9 +168,9 @@
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 4px 7px;
+        padding: 4px 8px;
         font-family: inherit;
-        font-size: 9px;
+        font-size: 10px;
         cursor: pointer;
         text-align: left;
         transition: all 0.1s;
@@ -195,9 +195,9 @@
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 5px 3px;
+        padding: 4px 2px;
         font-family: inherit;
-        font-size: 7.5px;
+        font-size: 8px;
         cursor: pointer;
         text-align: center;
         transition: all 0.12s;
@@ -230,7 +230,7 @@
       .slider-header {
         display: flex;
         justify-content: space-between;
-        font-size: 7px;
+        font-size: 8px;
         letter-spacing: 1px;
       }
       .slider-header span:first-child {
@@ -306,7 +306,7 @@
         display: flex;
         align-items: center;
         gap: 4px;
-        font-size: 8px;
+        font-size: 9px;
         margin-bottom: 4px;
       }
       .mode-row {
@@ -319,9 +319,9 @@
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 4px 2px;
+        padding: 3px 2px;
         font-family: inherit;
-        font-size: 8px;
+        font-size: 9px;
         cursor: pointer;
         text-align: center;
       }
@@ -345,7 +345,7 @@
         padding: 4px 5px;
       }
       .stat-label {
-        font-size: 6px;
+        font-size: 7px;
         letter-spacing: 1px;
         color: var(--text);
         text-transform: uppercase;
@@ -367,7 +367,7 @@
         background: rgba(46, 168, 255, 0.04);
         border: 1px solid rgba(46, 168, 255, 0.12);
         padding: 7px 8px;
-        font-size: 7.5px;
+        font-size: 8px;
         line-height: 1.75;
         color: var(--text);
       }
@@ -394,17 +394,17 @@
       }
       .overlay-label {
         position: absolute;
-        font-size: 7px;
+        font-size: 9px;
         letter-spacing: 2px;
         color: rgba(0, 229, 176, 0.55);
         text-transform: uppercase;
         pointer-events: none;
       }
       .info-bar {
-        font-size: 7px;
+        font-size: 9px;
         letter-spacing: 1px;
         color: var(--text);
-        padding: 3px 8px;
+        padding: 4px 8px;
         background: var(--panel);
         border-top: 1px solid var(--border);
         flex-shrink: 0;
@@ -580,21 +580,21 @@
               <button
                 class="icon-btn"
                 id="viewIso"
-                style="flex: 1; font-size: 8px"
+                style="flex: 1; font-size: 9px"
               >
                 ISO
               </button>
               <button
                 class="icon-btn"
                 id="viewTop"
-                style="flex: 1; font-size: 8px"
+                style="flex: 1; font-size: 9px"
               >
                 TOP
               </button>
               <button
                 class="icon-btn"
                 id="viewFront"
-                style="flex: 1; font-size: 8px"
+                style="flex: 1; font-size: 9px"
               >
                 FRONT
               </button>
@@ -605,7 +605,7 @@
                 id="exportTipBtn"
                 style="
                   flex: 1;
-                  font-size: 8px;
+                  font-size: 9px;
                   background: rgba(201, 122, 255, 0.15);
                   border-color: #c97aff;
                   color: #c97aff;
@@ -618,13 +618,48 @@
                 id="exportSurfBtn"
                 style="
                   flex: 1;
-                  font-size: 8px;
+                  font-size: 9px;
                   background: rgba(0, 229, 176, 0.12);
                   border-color: #00e5b0;
                   color: #00e5b0;
                 "
               >
                 ⬇ SURF .OBJ
+              </button>
+            </div>
+            <div class="panel-label" style="margin-top: 8px; margin-bottom: 4px">
+              Height Map Export
+            </div>
+            <div class="view-btns">
+              <button class="icon-btn export-hm-btn" id="exportTrueCsvBtn" style="flex: 1; font-size: 8px">
+                ⬇ TRUE CSV
+              </button>
+              <button class="icon-btn export-hm-btn" id="exportMeasCsvBtn" style="flex: 1; font-size: 8px">
+                ⬇ MEAS CSV
+              </button>
+            </div>
+            <div class="view-btns" style="margin-top: 3px">
+              <button class="icon-btn export-hm-btn" id="exportTruePngBtn" style="flex: 1; font-size: 8px">
+                ⬇ TRUE PNG
+              </button>
+              <button class="icon-btn export-hm-btn" id="exportMeasPngBtn" style="flex: 1; font-size: 8px">
+                ⬇ MEAS PNG
+              </button>
+            </div>
+            <div class="view-btns" style="margin-top: 3px">
+              <button
+                class="icon-btn export-hm-btn"
+                id="exportParamsBtn"
+                style="flex: 1; font-size: 8px; color: #2ea8ff; border-color: rgba(46, 168, 255, 0.4)"
+              >
+                ⬇ PARAMS JSON
+              </button>
+              <button
+                class="icon-btn export-hm-btn"
+                id="exportAllBtn"
+                style="flex: 1; font-size: 8px; color: #f0c040; border-color: rgba(240, 192, 64, 0.4)"
+              >
+                ⬇ EXPORT ALL
               </button>
             </div>
           </div>
@@ -647,7 +682,7 @@
               </div>
               <div class="stat-box">
                 <div class="stat-label">Mode</div>
-                <div class="stat-val" id="statMode" style="font-size: 9px">
+                <div class="stat-val" id="statMode" style="font-size: 10px">
                   —
                 </div>
               </div>
@@ -1099,6 +1134,7 @@
             computeMeas();
             drawTipPreview();
             needsMeshUpdate = true;
+            syncTipPlacement();
           },
         );
       }
@@ -1113,6 +1149,7 @@
             computeMeas();
             dispGrid.set(surfGrid);
             needsMeshUpdate = true;
+            syncTipPlacement();
           },
         );
       }
@@ -1402,6 +1439,7 @@
         needsMeshUpdate = true;
         drawTipPreview();
         updateStats();
+        syncTipPlacement();
       }
 
       // ════════════════════════════════════════════
@@ -1458,6 +1496,7 @@
       // ════════════════════════════════════════════
       let scene, camera, renderer, controls;
       let trueMesh, measMesh, tipObj, scanLineMesh, tipLight;
+      let tipContactVerts = [];
 
       function initThree() {
         const cont = document.getElementById("canvasContainer");
@@ -1620,13 +1659,201 @@
         scanLineMesh.geometry.attributes.position.needsUpdate = true;
       }
 
+      function sampleGridBilinear(grid, colF, rowF) {
+        const c0 = Math.max(0, Math.min(GW - 2, Math.floor(colF)));
+        const r0 = Math.max(0, Math.min(GH - 2, Math.floor(rowF)));
+        const fc = colF - c0;
+        const fr = rowF - r0;
+        const i00 = r0 * GW + c0;
+        const i10 = r0 * GW + c0 + 1;
+        const i01 = (r0 + 1) * GW + c0;
+        const i11 = (r0 + 1) * GW + c0 + 1;
+        const s00 = grid[i00];
+        const s10 = grid[i10];
+        const s01 = grid[i01];
+        const s11 = grid[i11];
+        const s0 = s00 * (1 - fc) + s10 * fc;
+        const s1 = s01 * (1 - fc) + s11 * fc;
+        return s0 * (1 - fr) + s1 * fr;
+      }
+
+      // Bilinear sample of true surface height (nm) at fractional grid coords.
+      function sampleSurfBilinear(colF, rowF) {
+        return sampleGridBilinear(surfGrid, colF, rowF);
+      }
+
+      function sampleVisibleSurfaceBilinear(colF, rowF) {
+        return Math.max(
+          sampleGridBilinear(surfGrid, colF, rowF),
+          sampleGridBilinear(dispGrid, colF, rowF),
+        );
+      }
+
+      function nmToGridColRow(x_nm, z_nm) {
+        return {
+          colF: (x_nm / X_NM + 0.5) * (GW - 1),
+          rowF: (z_nm / Y_NM + 0.5) * (GH - 1),
+        };
+      }
+
+      // Continuous tip profile T(dx,dz): height (nm) of lowest solid above y=0 plane.
+      function tipDepthAtNm(dx_nm, dz_nm) {
+        const p = tipP[currentTip] || {};
+        const r_nm = Math.sqrt(dx_nm * dx_nm + dz_nm * dz_nm);
+
+        if (currentTip === "inv_sphere") {
+          const R = Math.min(p.R || 20, 34);
+          const outerR = R * 1.4;
+          if (r_nm > outerR) return null;
+          if (r_nm <= R) return Math.sqrt(Math.max(0, R * R - r_nm * r_nm));
+          return 0;
+        }
+
+        switch (currentTip) {
+          case "cone":
+            return r_nm / Math.tan(((p.angle || 15) * Math.PI) / 180);
+          case "sphere": {
+            const R = p.R || 20;
+            return r_nm < R ? R - Math.sqrt(R * R - r_nm * r_nm) : null;
+          }
+          case "hyperboloid": {
+            const a = p.a || 7;
+            return Math.sqrt(r_nm * r_nm + a * a) - a;
+          }
+          case "flat": {
+            const R = p.R || 18;
+            return r_nm <= R ? 0 : null;
+          }
+          case "asymmetric": {
+            const alpha = ((p.angle || 20) * Math.PI) / 180;
+            const tilt = ((p.tilt || 15) * Math.PI) / 180;
+            return Math.max(0, r_nm / Math.tan(alpha) + dx_nm * Math.tan(tilt));
+          }
+          case "double_tip": {
+            const alpha = ((p.angle || 15) * Math.PI) / 180;
+            const g = (p.gap || 30) / 2;
+            const r1 = Math.sqrt((dx_nm - g) ** 2 + dz_nm ** 2);
+            const r2 = Math.sqrt((dx_nm + g) ** 2 + dz_nm ** 2);
+            return Math.min(r1, r2) / Math.tan(alpha);
+          }
+          case "sphere_cone": {
+            const R = p.R || 30;
+            const halfW = p.angle || 15;
+            const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
+            const yTang = R - sv;
+            if (r_nm <= halfW) {
+              return R - Math.sqrt(Math.max(0, R * R - r_nm * r_nm));
+            }
+            return yTang + ((r_nm - halfW) * halfW) / sv;
+          }
+          default:
+            return null;
+        }
+      }
+
+      function tipFootprintRadiusNm() {
+        const p = tipP[currentTip] || {};
+        switch (currentTip) {
+          case "cone": {
+            const alpha = ((p.angle || 15) * Math.PI) / 180;
+            return Math.min(48 * Math.tan(alpha), 85);
+          }
+          case "sphere":
+            return Math.min(p.R || 20, 36);
+          case "hyperboloid": {
+            const a = p.a || 7;
+            return Math.sqrt((48 + a) ** 2 - a * a);
+          }
+          case "flat":
+            return Math.min(p.R || 18, 42);
+          case "inv_sphere":
+            return Math.min(p.R || 20, 34) * 1.4;
+          case "asymmetric": {
+            const alpha = ((p.angle || 20) * Math.PI) / 180;
+            return Math.min(48 * Math.tan(alpha), 80);
+          }
+          case "double_tip": {
+            const alpha = ((p.angle || 15) * Math.PI) / 180;
+            const g = (p.gap || 30) / 2;
+            return g + Math.min(48 * Math.tan(alpha), 40);
+          }
+          case "sphere_cone":
+            return (p.angle || 15) * 2;
+          default:
+            return TIP_R * dNm;
+        }
+      }
+
+      // Sample vertices from the rendered tip mesh (local nm, apex at y=0).
+      function collectTipContactVerts() {
+        tipContactVerts = [];
+        if (!tipObj) return;
+        tipObj.updateMatrixWorld(true);
+        const rootInv = new THREE.Matrix4().copy(tipObj.matrixWorld).invert();
+        const localM = new THREE.Matrix4();
+        const v = new THREE.Vector3();
+
+        tipObj.traverse((child) => {
+          if (!child.isMesh || !child.geometry?.attributes?.position) return;
+          if (child.userData.ignoreContact) return;
+          const pos = child.geometry.attributes.position;
+          localM.multiplyMatrices(rootInv, child.matrixWorld);
+          const stride = Math.max(1, Math.floor(pos.count / 900));
+          for (let i = 0; i < pos.count; i += stride) {
+            v.fromBufferAttribute(pos, i).applyMatrix4(localM);
+            if (v.y > 62) continue;
+            tipContactVerts.push({ x: v.x, y: v.y, z: v.z });
+          }
+        });
+      }
+
+      function considerTipSample(tipX, tipZ, dx, dz, depth, bestRef) {
+        if (depth === null || depth > 1e6) return bestRef.val;
+        const { colF, rowF } = nmToGridColRow(tipX + dx, tipZ + dz);
+        if (colF < 0 || colF > GW - 1 || rowF < 0 || rowF > GH - 1) return bestRef.val;
+        const s = sampleVisibleSurfaceBilinear(colF, rowF);
+        bestRef.val = Math.max(bestRef.val, s - depth);
+        return bestRef.val;
+      }
+
+      // Height of tip y=0 plane so solid(x,z) + profile >= surface(x,z) everywhere
+      // in the xz footprint (mesh vertices + fine grid, bilinear surface lookup).
+      function getTipPlacementHeight(row, col) {
+        const tipX = (col / (GW - 1) - 0.5) * X_NM;
+        const tipZ = (row / (GH - 1) - 0.5) * Y_NM;
+        const bestRef = { val: -Infinity };
+
+        for (const v of tipContactVerts) {
+          considerTipSample(tipX, tipZ, v.x, v.z, v.y, bestRef);
+        }
+
+        const Rmax = tipFootprintRadiusNm();
+        const step = Math.min(1.0, dNm * 0.5);
+        for (let dx = -Rmax; dx <= Rmax + 1e-6; dx += step) {
+          for (let dz = -Rmax; dz <= Rmax + 1e-6; dz += step) {
+            considerTipSample(tipX, tipZ, dx, dz, tipDepthAtNm(dx, dz), bestRef);
+          }
+        }
+
+        const idx = row * GW + col;
+        if (!isFinite(bestRef.val)) return measGrid[idx];
+        return Math.max(0, Math.min(95, bestRef.val));
+      }
+
       function placeTip(row, col) {
         if (!tipObj || row < 0 || row >= GH || col < 0 || col >= GW) return;
-        const h = dispGrid[row * GW + col] * vScale;
+        const h = getTipPlacementHeight(row, col) * vScale;
         const x = (col / (GW - 1) - 0.5) * X_NM,
           z = (row / (GH - 1) - 0.5) * Y_NM;
+        tipObj.scale.set(1, vScale, 1);
         tipObj.position.set(x, h, z);
         tipLight.position.set(x, h + 20, z);
+      }
+
+      function syncTipPlacement() {
+        const curRow = Math.min(Math.floor(scanPx / GW), GH - 1);
+        const visRow = INV.revScan ? GH - 1 - curRow : curRow;
+        placeTip(Math.max(0, visRow), GW >> 1);
       }
 
       // ════════════════════════════════════════════
@@ -1848,12 +2075,12 @@
             [-g, g].forEach((offset) => {
               const ag2 = new THREE.SphereGeometry(2, 12, 12);
               ag2.translate(offset, 0, 0);
-              tipObj.add(
-                new THREE.Mesh(
-                  ag2,
-                  new THREE.MeshBasicMaterial({ color: 0x00e5b0 }),
-                ),
+              const dot = new THREE.Mesh(
+                ag2,
+                new THREE.MeshBasicMaterial({ color: 0x00e5b0 }),
               );
+              dot.userData.ignoreContact = true;
+              tipObj.add(dot);
             });
             break;
           }
@@ -1898,26 +2125,30 @@
             // Arc centre marker (purple dot at y=R)
             const cg2 = new THREE.SphereGeometry(1.8, 12, 12);
             cg2.translate(0, R, 0);
-            tipObj.add(
-              new THREE.Mesh(
-                cg2,
-                new THREE.MeshBasicMaterial({
-                  color: 0xc97aff,
-                  transparent: true,
-                  opacity: 0.8,
-                }),
-              ),
+            const centerDot = new THREE.Mesh(
+              cg2,
+              new THREE.MeshBasicMaterial({
+                color: 0xc97aff,
+                transparent: true,
+                opacity: 0.8,
+              }),
             );
+            centerDot.userData.ignoreContact = true;
+            tipObj.add(centerDot);
             break;
           }
         }
 
         // ── Glowing apex dot at y=0 ───────────────────────────────────────────────
         const ag = new THREE.SphereGeometry(2.5, 16, 16);
-        tipObj.add(
-          new THREE.Mesh(ag, new THREE.MeshBasicMaterial({ color: 0x00e5b0 })),
+        const apexDot = new THREE.Mesh(
+          ag,
+          new THREE.MeshBasicMaterial({ color: 0x00e5b0 }),
         );
+        apexDot.userData.ignoreContact = true;
+        tipObj.add(apexDot);
         scene.add(tipObj);
+        collectTipContactVerts();
       }
 
       // ════════════════════════════════════════════
@@ -2315,7 +2546,7 @@
 
         if (INV.invTip) {
           tCtx.fillStyle = cv("--accent3");
-          tCtx.font = "7px Courier New";
+          tCtx.font = "9px Courier New";
           tCtx.textAlign = "left";
           tCtx.fillText("INV", 3, 10);
         }
@@ -2330,7 +2561,7 @@
           sphere_cone: "CONE+SPHERE",
         };
         tCtx.fillStyle = cv("--axis");
-        tCtx.font = "7px Courier New";
+        tCtx.font = "9px Courier New";
         tCtx.textAlign = "right";
         tCtx.fillText(names[currentTip] || currentTip, W - 4, 10);
       }
@@ -2426,7 +2657,7 @@
           "Ready — press PLAY to begin raster scan";
         dispGrid.set(surfGrid);
         buildTipObj();
-        placeTip(0, GW >> 1);
+        syncTipPlacement();
         updateScanLine(0);
         needsMeshUpdate = true;
         updateStats();
@@ -2453,6 +2684,7 @@
           vScale = parseFloat(this.value);
           document.getElementById("vscaleVal").textContent = vScale + "×";
           needsMeshUpdate = true;
+          syncTipPlacement();
         });
       document
         .getElementById("noiseSlider")
@@ -2474,6 +2706,262 @@
       document
         .getElementById("viewFront")
         .addEventListener("click", () => controls.setView("front"));
+
+      // ════════════════════════════════════════════
+      //  HEIGHT MAP EXPORT
+      // ════════════════════════════════════════════
+      function downloadBlob(content, filename, mimeType) {
+        const blob =
+          content instanceof Blob
+            ? content
+            : new Blob([content], { type: mimeType || "application/octet-stream" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function exportBaseName() {
+        const tp = tipP[currentTip] || {};
+        const sp = surfP[currentSurf] || {};
+        const tipStr = Object.entries(tp)
+          .map(([k, v]) => `${k}${v}`)
+          .join("_");
+        const surfStr = Object.entries(sp)
+          .map(([k, v]) => `${k}${v}`)
+          .join("_");
+        return `${currentTip}_${tipStr}__${currentSurf}_${surfStr}`;
+      }
+
+      function computeFullGridStats() {
+        const n = GW * GH;
+        let mx = 0,
+          rms = 0,
+          hMin = Infinity,
+          hMax = -Infinity;
+        for (let i = 0; i < n; i++) {
+          const e = Math.abs(measGrid[i] - surfGrid[i]);
+          if (e > mx) mx = e;
+          rms += e * e;
+          hMin = Math.min(hMin, surfGrid[i], measGrid[i]);
+          hMax = Math.max(hMax, surfGrid[i], measGrid[i]);
+        }
+        if (hMin === hMax) hMax = hMin + 1;
+        return {
+          err_max_nm: mx,
+          err_rms_nm: Math.sqrt(rms / n),
+          h_min_nm: hMin,
+          h_max_nm: hMax,
+        };
+      }
+
+      function buildParamsJson() {
+        const stats = computeFullGridStats();
+        const tipIsErosion = currentTip === "inv_sphere";
+        const doErosion = tipIsErosion !== (INV.erosion !== INV.invTip);
+        return {
+          simulator: "3d",
+          tip: currentTip,
+          tip_params: { ...(tipP[currentTip] || {}) },
+          surface: currentSurf,
+          surface_params: { ...(surfP[currentSurf] || {}) },
+          grid: { GW, GH, x_nm: X_NM, y_nm: Y_NM, d_nm: dNm },
+          noise_nm: parseFloat(document.getElementById("noiseSlider").value) || 0,
+          inverts: { ...INV },
+          operation: doErosion ? "erosion" : "dilation",
+          png_scale: {
+            h_min_nm: stats.h_min_nm,
+            h_max_nm: stats.h_max_nm,
+            decode:
+              "h_nm = uint16 / 65535 * (h_max_nm - h_min_nm) + h_min_nm",
+          },
+          stats: {
+            err_max_nm: stats.err_max_nm,
+            err_rms_nm: stats.err_rms_nm,
+          },
+        };
+      }
+
+      function gridToCSV(grid) {
+        const lines = ["row,col,x_nm,y_nm,height_nm"];
+        for (let r = 0; r < GH; r++) {
+          for (let c = 0; c < GW; c++) {
+            const h = grid[r * GW + c];
+            lines.push(
+              `${r},${c},${(c * dNm).toFixed(4)},${(r * dNm).toFixed(4)},${h.toFixed(6)}`,
+            );
+          }
+        }
+        return lines.join("\n");
+      }
+
+      function heightToUint16(h, hMin, hMax) {
+        const t = (h - hMin) / (hMax - hMin);
+        return Math.max(0, Math.min(65535, Math.round(t * 65535)));
+      }
+
+      function crc32(bytes) {
+        let c = 0xffffffff;
+        for (let i = 0; i < bytes.length; i++) {
+          c ^= bytes[i];
+          for (let k = 0; k < 8; k++) {
+            c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+          }
+        }
+        return (c ^ 0xffffffff) >>> 0;
+      }
+
+      function pngChunk(type, data) {
+        const td = new TextEncoder().encode(type);
+        const len = data.length;
+        const buf = new Uint8Array(4 + 4 + len + 4);
+        const view = new DataView(buf.buffer);
+        view.setUint32(0, len);
+        buf.set(td, 4);
+        buf.set(data, 8);
+        const crcData = new Uint8Array(4 + len);
+        crcData.set(td);
+        crcData.set(data, 4);
+        view.setUint32(8 + len, crc32(crcData));
+        return buf;
+      }
+
+      async function deflateZlib(data) {
+        if (typeof CompressionStream === "undefined") {
+          throw new Error("CompressionStream not supported in this browser");
+        }
+        const cs = new CompressionStream("deflate");
+        const writer = cs.writable.getWriter();
+        writer.write(data);
+        writer.close();
+        const chunks = [];
+        const reader = cs.readable.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+        }
+        let total = 0;
+        for (const ch of chunks) total += ch.length;
+        const out = new Uint8Array(total);
+        let off = 0;
+        for (const ch of chunks) {
+          out.set(ch, off);
+          off += ch.length;
+        }
+        return out;
+      }
+
+      async function gridToUint16PNG(grid, hMin, hMax) {
+        const rowLen = 1 + GW * 2;
+        const raw = new Uint8Array(rowLen * GH);
+        for (let r = 0; r < GH; r++) {
+          const rowOff = r * rowLen;
+          raw[rowOff] = 0;
+          for (let c = 0; c < GW; c++) {
+            const u = heightToUint16(grid[r * GW + c], hMin, hMax);
+            const o = rowOff + 1 + c * 2;
+            raw[o] = (u >> 8) & 0xff;
+            raw[o + 1] = u & 0xff;
+          }
+        }
+        const idat = await deflateZlib(raw);
+        const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+        const ihdr = new Uint8Array(13);
+        const iv = new DataView(ihdr.buffer);
+        iv.setUint32(0, GW);
+        iv.setUint32(4, GH);
+        ihdr[8] = 16;
+        ihdr[9] = 0;
+        ihdr[10] = 0;
+        ihdr[11] = 0;
+        ihdr[12] = 0;
+        const parts = [
+          sig,
+          pngChunk("IHDR", ihdr),
+          pngChunk("IDAT", idat),
+          pngChunk("IEND", new Uint8Array(0)),
+        ];
+        let n = 0;
+        for (const p of parts) n += p.length;
+        const png = new Uint8Array(n);
+        let pos = 0;
+        for (const p of parts) {
+          png.set(p, pos);
+          pos += p.length;
+        }
+        return new Blob([png], { type: "image/png" });
+      }
+
+      function ensureExportReady() {
+        fullRecompute();
+      }
+
+      async function exportHeightMap(kind) {
+        ensureExportReady();
+        const base = exportBaseName();
+        const stats = computeFullGridStats();
+        const { h_min_nm, h_max_nm } = stats;
+
+        if (kind === "true_csv" || kind === "all") {
+          downloadBlob(
+            gridToCSV(surfGrid),
+            `true_surface_${base}.csv`,
+            "text/csv",
+          );
+        }
+        if (kind === "meas_csv" || kind === "all") {
+          downloadBlob(
+            gridToCSV(measGrid),
+            `measured_afm_${base}.csv`,
+            "text/csv",
+          );
+        }
+        if (kind === "true_png" || kind === "all") {
+          downloadBlob(
+            await gridToUint16PNG(surfGrid, h_min_nm, h_max_nm),
+            `true_surface_${base}_16bit.png`,
+            "image/png",
+          );
+        }
+        if (kind === "meas_png" || kind === "all") {
+          downloadBlob(
+            await gridToUint16PNG(measGrid, h_min_nm, h_max_nm),
+            `measured_afm_${base}_16bit.png`,
+            "image/png",
+          );
+        }
+        if (kind === "params" || kind === "all") {
+          downloadBlob(
+            JSON.stringify(buildParamsJson(), null, 2),
+            `params_${base}.json`,
+            "application/json",
+          );
+        }
+      }
+
+      document
+        .getElementById("exportTrueCsvBtn")
+        .addEventListener("click", () => exportHeightMap("true_csv"));
+      document
+        .getElementById("exportMeasCsvBtn")
+        .addEventListener("click", () => exportHeightMap("meas_csv"));
+      document
+        .getElementById("exportTruePngBtn")
+        .addEventListener("click", () => exportHeightMap("true_png"));
+      document
+        .getElementById("exportMeasPngBtn")
+        .addEventListener("click", () => exportHeightMap("meas_png"));
+      document
+        .getElementById("exportParamsBtn")
+        .addEventListener("click", () => exportHeightMap("params"));
+      document
+        .getElementById("exportAllBtn")
+        .addEventListener("click", () => exportHeightMap("all"));
 
       // ════════════════════════════════════════════
       //  OBJ EXPORTER
@@ -2741,7 +3229,7 @@
         drawTipPreview();
         updateStats();
         buildTipObj();
-        placeTip(0, GW >> 1);
+        syncTipPlacement();
         updateScanLine(0);
         setMode("loop");
         loop();

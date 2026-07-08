@@ -101,6 +101,7 @@ input[type=range]{accent-color:var(--accent);width:100%;height:12px;}
       <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
       <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
       <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
+      <button class="btn" data-tip="snl10">◆ Bruker SNL-10</button>
     </div>
     <div class="slider-section" id="tipSliders"></div>
     <canvas id="tipPreview" width="182" height="76"></canvas>
@@ -282,7 +283,13 @@ const TIP_DEFS={
                {id:'gap',label:'Tip gap',min:5,max:80,step:1,val:30,unit:'nm'}],
   sphere_cone:[{id:'R',label:'Ball Radius',min:5,max:60,step:1,val:30,unit:'nm'},
                {id:'angle',label:'Tangent halfW',min:3,max:55,step:1,val:15,unit:'nm'}],
+  // Bruker SNL-10: sharpened nitride, 4-sided pyramid, rounded apex.
+  // Half-angles fixed at datasheet values (front 15°, back 25°, side 22.5°);
+  // only the apex radius is user-adjustable (nominal 2 nm, up to 12 nm).
+  snl10:      [{id:'R',label:'Apex radius R',min:2,max:12,step:1,val:2,unit:'nm'}],
 };
+// SNL-10 fixed half-angles from vertical (degrees)
+const SNL10={front:15, back:25, side:22.5};
 const SURF_DEFS={
   sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm'}],
   hills:    [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:14,unit:'nm'},{id:'scale',label:'Scale',min:20,max:120,step:5,val:60,unit:'nm'}],
@@ -413,6 +420,20 @@ function buildTipKernel(){
           } else {
             tipKernel[idx]=yTang+(r_nm-halfW)*halfW/sv;
           }
+          break;}
+        case 'snl10':{
+          // Asymmetric 4-sided pyramid with rounded apex (Bruker SNL-10).
+          // T(dx,dy)=max( |dx|·cot(side), front/back·cot ) ; apex rounded to R.
+          const R=p.R||2;
+          const cotF=1/Math.tan(SNL10.front*Math.PI/180);
+          const cotB=1/Math.tan(SNL10.back *Math.PI/180);
+          const cotS=1/Math.tan(SNL10.side *Math.PI/180);
+          const dx=dc*dNm, dy=dr*dNm;                 // dc→x (side), dr→y (front/back)
+          const tx=Math.abs(dx)*cotS;
+          const ty=dy>=0 ? dy*cotF : (-dy)*cotB;      // +y front (sharp), -y back (blunt)
+          let Tp=Math.max(tx,ty);
+          if(r_nm<R) Tp=Math.max(Tp, R-Math.sqrt(R*R-r_nm*r_nm));
+          tipKernel[idx]=Tp;
           break;}
       }
       // invTip is handled in computeMeas by switching operation — don't modify kernel
@@ -810,6 +831,26 @@ function buildTipObj(){
       tipObj.add(new THREE.Mesh(cg2,
         new THREE.MeshBasicMaterial({color:0xc97aff, transparent:true, opacity:0.8})));
       break;}
+
+    // ── BRUKER SNL-10 ───────────────────────────────────────────────────────
+    // Asymmetric 4-sided pyramid, apex at y=0. Side faces along x (22.5°),
+    // front (+z, 15°) sharper than back (-z, 25°).
+    case 'snl10':{
+      const h  = shH;
+      const tF = Math.tan(SNL10.front*Math.PI/180);
+      const tB = Math.tan(SNL10.back *Math.PI/180);
+      const tS = Math.tan(SNL10.side *Math.PI/180);
+      const xl=-h*tS, xr=h*tS, zf=h*tF, zb=-h*tB;   // top-rim corners at y=h
+      const A=[0,0,0], c1=[xl,h,zb], c2=[xr,h,zb], c3=[xr,h,zf], c4=[xl,h,zf];
+      const v=[];
+      const tri=(a,b,c)=>v.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
+      tri(A,c1,c2); tri(A,c2,c3); tri(A,c3,c4); tri(A,c4,c1);   // four side faces
+      tri(c1,c2,c3); tri(c1,c3,c4);                            // top cap
+      const g=new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(v,3));
+      g.computeVertexNormals();
+      tipObj.add(new THREE.Mesh(g, mat));
+      break;}
   }
 
   // ── Glowing apex dot at y=0 ───────────────────────────────────────────────
@@ -1016,6 +1057,16 @@ function drawTipPreview(){
         tCtx.fillStyle=cv('--accent4')||'#c97aff';tCtx.fill();tCtx.restore();
       }
       break;}
+
+    case 'snl10':{
+      // y-axis cross-section: back (left, 25°, blunt) vs front (right, 15°, sharp)
+      const lw=Math.max(3, bodyNm*Math.tan(SNL10.back *Math.PI/180)*wS);
+      const rw=Math.max(3, bodyNm*Math.tan(SNL10.front*Math.PI/180)*wS);
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        tCtx.lineTo(cx-lw, apexY-bodyH);
+        tCtx.lineTo(cx+rw, apexY-bodyH);
+      }); break;}
   }
 
   tCtx.beginPath(); tCtx.arc(cx,apexY,5,0,Math.PI*2);
@@ -1035,7 +1086,7 @@ function drawTipPreview(){
     tCtx.fillText('INV',3,10);
   }
   const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
-    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE'};
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',snl10:'SNL-10'};
   tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
   tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
 }

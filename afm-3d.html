@@ -363,6 +363,17 @@
       .stat-val.warn {
         color: #f0c040;
       }
+      .stat-section-label {
+        font-size: 7px;
+        letter-spacing: 2px;
+        color: var(--text);
+        text-transform: uppercase;
+        opacity: 0.45;
+        margin: 5px 0 3px;
+      }
+      .stat-section-label:first-of-type {
+        margin-top: 0;
+      }
       .note-box {
         background: rgba(46, 168, 255, 0.04);
         border: 1px solid rgba(46, 168, 255, 0.12);
@@ -423,29 +434,26 @@
       </button>
     </div>
 
-    <div class="layout">
-      <div class="sidebar">
-        <div class="sidebar-inner">
-          <!-- TIP -->
-          <div class="panel">
-            <div class="panel-label">Tip Geometry</div>
-            <div class="btn-group" id="tipBtns">
-              <button class="btn active" data-tip="cone">▼ Cone</button>
-              <button class="btn" data-tip="sphere">● Spherical</button>
-              <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
-              <button class="btn" data-tip="flat">▬ Flat Punch</button>
-              <button class="btn" data-tip="inv_sphere">
-                ⌣ Concave Sphere
-              </button>
-              <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
-              <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
-              <button class="btn" data-tip="sphere_cone">
-                ◓ Cone + Sphere Apex
-              </button>
-            </div>
-            <div class="slider-section" id="tipSliders"></div>
-            <canvas id="tipPreview" width="182" height="76"></canvas>
-          </div>
+<div class="layout">
+<div class="sidebar"><div class="sidebar-inner">
+
+  <!-- TIP -->
+  <div class="panel">
+    <div class="panel-label">Tip Geometry</div>
+    <div class="btn-group" id="tipBtns">
+      <button class="btn active" data-tip="cone">▼ Cone</button>
+      <button class="btn" data-tip="sphere">● Spherical</button>
+      <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
+      <button class="btn" data-tip="flat">▬ Flat Punch</button>
+      <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
+      <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
+      <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
+      <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
+      <button class="btn" data-tip="faceted_pyramid">◆ Faceted Pyramid</button>
+    </div>
+    <div class="slider-section" id="tipSliders"></div>
+    <canvas id="tipPreview" width="182" height="76"></canvas>
+  </div>
 
           <!-- SURFACE -->
           <div class="panel">
@@ -667,6 +675,18 @@
           <!-- STATS -->
           <div class="panel">
             <div class="panel-label">Live Statistics</div>
+            <div class="stat-section-label">Full grid preview</div>
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-label">Max Artifact</div>
+                <div class="stat-val err" id="statGridArt">—</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">RMS Error</div>
+                <div class="stat-val warn" id="statGridRms">—</div>
+              </div>
+            </div>
+            <div class="stat-section-label">During scan</div>
             <div class="stat-grid">
               <div class="stat-box">
                 <div class="stat-label">Max Artifact</div>
@@ -804,307 +824,43 @@
         });
       }
 
-      // ════════════════════════════════════════════
-      //  PARAM DEFS
-      // ════════════════════════════════════════════
-      const TIP_DEFS = {
-        cone: [
-          {
-            id: "angle",
-            label: "Half-angle α",
-            min: 3,
-            max: 80,
-            step: 1,
-            val: 15,
-            unit: "°",
-          },
-        ],
-        sphere: [
-          {
-            id: "R",
-            label: "Radius R",
-            min: 3,
-            max: 50,
-            step: 1,
-            val: 20,
-            unit: "nm",
-          },
-        ],
-        hyperboloid: [
-          {
-            id: "a",
-            label: "Sharpness a",
-            min: 2,
-            max: 30,
-            step: 1,
-            val: 7,
-            unit: "nm",
-          },
-        ],
-        flat: [
-          {
-            id: "R",
-            label: "Radius R",
-            min: 3,
-            max: 50,
-            step: 1,
-            val: 18,
-            unit: "nm",
-          },
-        ],
-        inv_sphere: [
-          {
-            id: "R",
-            label: "Bowl Radius",
-            min: 3,
-            max: 50,
-            step: 1,
-            val: 20,
-            unit: "nm",
-          },
-        ],
-        asymmetric: [
-          {
-            id: "angle",
-            label: "Half-angle α",
-            min: 3,
-            max: 60,
-            step: 1,
-            val: 20,
-            unit: "°",
-          },
-          {
-            id: "tilt",
-            label: "Tilt angle",
-            min: -40,
-            max: 40,
-            step: 1,
-            val: 15,
-            unit: "°",
-          },
-        ],
-        double_tip: [
-          {
-            id: "angle",
-            label: "Half-angle α",
-            min: 3,
-            max: 60,
-            step: 1,
-            val: 15,
-            unit: "°",
-          },
-          {
-            id: "gap",
-            label: "Tip gap",
-            min: 5,
-            max: 80,
-            step: 1,
-            val: 30,
-            unit: "nm",
-          },
-        ],
-        sphere_cone: [
-          {
-            id: "R",
-            label: "Ball Radius",
-            min: 5,
-            max: 60,
-            step: 1,
-            val: 30,
-            unit: "nm",
-          },
-          {
-            id: "angle",
-            label: "Tangent halfW",
-            min: 3,
-            max: 55,
-            step: 1,
-            val: 15,
-            unit: "nm",
-          },
-        ],
-      };
-      const SURF_DEFS = {
-        sine: [
-          {
-            id: "amp",
-            label: "Amplitude",
-            min: 2,
-            max: 45,
-            step: 1,
-            val: 18,
-            unit: "nm",
-          },
-          {
-            id: "period",
-            label: "Period",
-            min: 10,
-            max: 120,
-            step: 5,
-            val: 55,
-            unit: "nm",
-          },
-        ],
-        hills: [
-          {
-            id: "amp",
-            label: "Amplitude",
-            min: 2,
-            max: 40,
-            step: 1,
-            val: 14,
-            unit: "nm",
-          },
-          {
-            id: "scale",
-            label: "Scale",
-            min: 20,
-            max: 120,
-            step: 5,
-            val: 60,
-            unit: "nm",
-          },
-        ],
-        hemisphere: [
-          {
-            id: "R",
-            label: "Radius R",
-            min: 5,
-            max: 60,
-            step: 1,
-            val: 30,
-            unit: "nm",
-          },
-        ],
-        pit: [
-          {
-            id: "R",
-            label: "Radius R",
-            min: 5,
-            max: 60,
-            step: 1,
-            val: 28,
-            unit: "nm",
-          },
-        ],
-        trench: [
-          {
-            id: "period",
-            label: "Period",
-            min: 15,
-            max: 120,
-            step: 5,
-            val: 60,
-            unit: "nm",
-          },
-          {
-            id: "depth",
-            label: "Depth",
-            min: 5,
-            max: 70,
-            step: 1,
-            val: 30,
-            unit: "nm",
-          },
-        ],
-        rough: [
-          {
-            id: "scale",
-            label: "Amplitude",
-            min: 1,
-            max: 40,
-            step: 1,
-            val: 10,
-            unit: "×0.3",
-          },
-        ],
-        pyramid: [
-          {
-            id: "h",
-            label: "Height",
-            min: 5,
-            max: 70,
-            step: 1,
-            val: 40,
-            unit: "nm",
-          },
-          {
-            id: "w",
-            label: "Base width",
-            min: 10,
-            max: 160,
-            step: 5,
-            val: 80,
-            unit: "nm",
-          },
-        ],
-        dna: [
-          {
-            id: "amp",
-            label: "Amplitude",
-            min: 5,
-            max: 50,
-            step: 1,
-            val: 22,
-            unit: "nm",
-          },
-          {
-            id: "period",
-            label: "Period",
-            min: 20,
-            max: 100,
-            step: 5,
-            val: 50,
-            unit: "nm",
-          },
-        ],
-        chirp: [
-          {
-            id: "amp",
-            label: "Amplitude",
-            min: 2,
-            max: 45,
-            step: 1,
-            val: 18,
-            unit: "nm",
-          },
-          {
-            id: "rate",
-            label: "Chirp Rate",
-            min: 1,
-            max: 20,
-            step: 1,
-            val: 8,
-            unit: "×",
-          },
-        ],
-        lattice: [
-          {
-            id: "amp",
-            label: "Height",
-            min: 2,
-            max: 35,
-            step: 1,
-            val: 12,
-            unit: "nm",
-          },
-          {
-            id: "spacing",
-            label: "Spacing",
-            min: 8,
-            max: 60,
-            step: 2,
-            val: 22,
-            unit: "nm",
-          },
-        ],
-      };
-      const tipP = {},
-        surfP = {};
-      for (const [k, d] of Object.entries(TIP_DEFS))
-        tipP[k] = Object.fromEntries(d.map((x) => [x.id, x.val]));
-      for (const [k, d] of Object.entries(SURF_DEFS))
-        surfP[k] = Object.fromEntries(d.map((x) => [x.id, x.val]));
+// ════════════════════════════════════════════
+//  PARAM DEFS
+// ════════════════════════════════════════════
+const TIP_DEFS={
+  cone: [{id:'angle',label:'Half-angle α',min:3,max:80,step:1,val:15,unit:'°'}],
+  sphere:     [{id:'R',label:'Radius R',min:3,max:50,step:1,val:20,unit:'nm'}],
+  hyperboloid:[{id:'a',label:'Sharpness a',min:2,max:30,step:1,val:7,unit:'nm'}],
+  flat:       [{id:'R',label:'Radius R',min:3,max:50,step:1,val:18,unit:'nm'}],
+  inv_sphere: [{id:'R',label:'Bowl Radius',min:3,max:50,step:1,val:20,unit:'nm'}],
+  asymmetric: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:20,unit:'°'},
+               {id:'tilt',label:'Tilt angle',min:-40,max:40,step:1,val:15,unit:'°'}],
+  double_tip: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:15,unit:'°'},
+               {id:'gap',label:'Tip gap',min:5,max:80,step:1,val:30,unit:'nm'}],
+  sphere_cone:[{id:'R',label:'Ball Radius',min:5,max:60,step:1,val:30,unit:'nm'},
+               {id:'angle',label:'Tangent halfW',min:3,max:55,step:1,val:15,unit:'nm'}],
+  // 4-sided pyramid with independent face half-angles and rounded apex.
+  // Defaults match Bruker SNL-10 datasheet (front 15°, back 25°, side 22.5°, R 2 nm).
+  faceted_pyramid: [{id:'R',label:'Apex radius R',min:2,max:12,step:1,val:2,unit:'nm'},
+                    {id:'front',label:'Front half-angle',min:5,max:45,step:0.5,val:15,unit:'°'},
+                    {id:'back',label:'Back half-angle',min:5,max:45,step:0.5,val:25,unit:'°'},
+                    {id:'side',label:'Side half-angle',min:5,max:45,step:0.5,val:22.5,unit:'°'}],
+};
+const SURF_DEFS={
+  sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm'}],
+  hills:    [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:14,unit:'nm'},{id:'scale',label:'Scale',min:20,max:120,step:5,val:60,unit:'nm'}],
+  hemisphere:[{id:'R',label:'Radius R',min:5,max:60,step:1,val:30,unit:'nm'}],
+  pit:      [{id:'R',label:'Radius R',min:5,max:60,step:1,val:28,unit:'nm'}],
+  trench:   [{id:'period',label:'Period',min:15,max:120,step:5,val:60,unit:'nm'},{id:'depth',label:'Depth',min:5,max:70,step:1,val:30,unit:'nm'}],
+  rough:    [{id:'scale',label:'Amplitude',min:1,max:40,step:1,val:10,unit:'×0.3'}],
+  pyramid:  [{id:'h',label:'Height',min:5,max:70,step:1,val:40,unit:'nm'},{id:'w',label:'Base width',min:10,max:160,step:5,val:80,unit:'nm'}],
+  dna:      [{id:'amp',label:'Amplitude',min:5,max:50,step:1,val:22,unit:'nm'},{id:'period',label:'Period',min:20,max:100,step:5,val:50,unit:'nm'}],
+  chirp:    [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'rate',label:'Chirp Rate',min:1,max:20,step:1,val:8,unit:'×'}],
+  lattice:  [{id:'amp',label:'Height',min:2,max:35,step:1,val:12,unit:'nm'},{id:'spacing',label:'Spacing',min:8,max:60,step:2,val:22,unit:'nm'}],
+};
+const tipP={},surfP={};
+for(const[k,d]of Object.entries(TIP_DEFS))  tipP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
+for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
 
       // ════════════════════════════════════════════
       //  SLIDER UI
@@ -1303,82 +1059,60 @@
         }
       }
 
-      // ════════════════════════════════════════════
-      //  TIP KERNEL (2D)
-      // ════════════════════════════════════════════
-      function buildTipKernel() {
-        const p = tipP[currentTip] || {};
-        for (let dr = -TIP_R; dr <= TIP_R; dr++) {
-          for (let dc = -TIP_R; dc <= TIP_R; dc++) {
-            const r_nm = Math.sqrt((dc * dNm) ** 2 + (dr * dNm) ** 2);
-            const idx = (dr + TIP_R) * KW + (dc + TIP_R);
-            switch (currentTip) {
-              case "cone":
-                tipKernel[idx] =
-                  r_nm / Math.tan(((p.angle || 15) * Math.PI) / 180);
-                break;
-              case "sphere": {
-                const R = p.R || 20;
-                tipKernel[idx] =
-                  r_nm < R ? R - Math.sqrt(R * R - r_nm * r_nm) : 1e9;
-                break;
-              }
-              case "hyperboloid": {
-                const a = p.a || 7;
-                tipKernel[idx] = Math.sqrt(r_nm * r_nm + a * a) - a;
-                break;
-              }
-              case "flat": {
-                const R = p.R || 18;
-                tipKernel[idx] = r_nm <= R ? 0 : 1e9;
-                break;
-              }
-              case "inv_sphere": {
-                // Match 2D: T(r) = R - sqrt(R²-r²), nonnegative, T(0)=0.
-                // (sqrt(R²-r²)-R would be negative at the rim and breaks flat-surface erosion.)
-                const R = p.R || 20;
-                tipKernel[idx] =
-                  r_nm < R ? R - Math.sqrt(R * R - r_nm * r_nm) : 1e9;
-                break;
-              }
-              case "asymmetric": {
-                const alpha = ((p.angle || 20) * Math.PI) / 180,
-                  tilt = ((p.tilt || 15) * Math.PI) / 180;
-                tipKernel[idx] = Math.max(
-                  0,
-                  r_nm / Math.tan(alpha) + dc * dNm * Math.tan(tilt),
-                );
-                break;
-              }
-              case "double_tip": {
-                const alpha = ((p.angle || 15) * Math.PI) / 180,
-                  g = (p.gap || 30) / 2;
-                const r1 = Math.sqrt((dc * dNm - g) ** 2 + (dr * dNm) ** 2);
-                const r2 = Math.sqrt((dc * dNm + g) ** 2 + (dr * dNm) ** 2);
-                tipKernel[idx] = Math.min(r1, r2) / Math.tan(alpha);
-                break;
-              }
-              case "sphere_cone": {
-                // U-shape: arc at bottom (r ≤ halfW), straight sides (r > halfW)
-                // T(r) = R - sqrt(R²-r²)           for r ≤ halfW  (circular arc)
-                // T(r) = yTang + (r-halfW)*halfW/sv for r > halfW  (straight side, C1 join)
-                const R = p.R || 30,
-                  halfW = p.angle || 15;
-                const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
-                const yTang = R - sv;
-                if (r_nm <= halfW) {
-                  tipKernel[idx] =
-                    R - Math.sqrt(Math.max(0, R * R - r_nm * r_nm));
-                } else {
-                  tipKernel[idx] = yTang + ((r_nm - halfW) * halfW) / sv;
-                }
-                break;
-              }
-            }
-            // invTip is handled in computeMeas by switching operation — don't modify kernel
+// ════════════════════════════════════════════
+//  TIP KERNEL (2D)
+// ════════════════════════════════════════════
+function buildTipKernel(){
+  const p=tipP[currentTip]||{};
+  for(let dr=-TIP_R;dr<=TIP_R;dr++){
+    for(let dc=-TIP_R;dc<=TIP_R;dc++){
+      const r_nm=Math.sqrt((dc*dNm)**2+(dr*dNm)**2);
+      const idx=(dr+TIP_R)*KW+(dc+TIP_R);
+      switch(currentTip){
+        case 'cone':
+          tipKernel[idx]=r_nm/Math.tan((p.angle||15)*Math.PI/180); break;
+        case 'sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?R-Math.sqrt(R*R-r_nm*r_nm):1e9;break;}
+        case 'hyperboloid':{const a=p.a||7;tipKernel[idx]=Math.sqrt(r_nm*r_nm+a*a)-a;break;}
+        case 'flat':{const R=p.R||18;tipKernel[idx]=r_nm<=R?0:1e9;break;}
+        case 'inv_sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?Math.sqrt(R*R-r_nm*r_nm)-R:1e9;break;}
+        case 'asymmetric':{
+          const alpha=(p.angle||20)*Math.PI/180,tilt=(p.tilt||15)*Math.PI/180;
+          tipKernel[idx]=Math.max(0,r_nm/Math.tan(alpha)+dc*dNm*Math.tan(tilt));break;}
+        case 'double_tip':{
+          const alpha=(p.angle||15)*Math.PI/180,g=(p.gap||30)/2;
+          const r1=Math.sqrt((dc*dNm-g)**2+(dr*dNm)**2);
+          const r2=Math.sqrt((dc*dNm+g)**2+(dr*dNm)**2);
+          tipKernel[idx]=Math.min(r1,r2)/Math.tan(alpha);break;}
+        case 'sphere_cone':{
+          // U-shape: arc at bottom (r ≤ halfW), straight sides (r > halfW)
+          // T(r) = R - sqrt(R²-r²)           for r ≤ halfW  (circular arc)
+          // T(r) = yTang + (r-halfW)*halfW/sv for r > halfW  (straight side, C1 join)
+          const R=p.R||30, halfW=p.angle||15;
+          const sv=Math.sqrt(Math.max(1e-6, R*R-halfW*halfW));
+          const yTang=R-sv;
+          if(r_nm<=halfW){
+            tipKernel[idx]=R-Math.sqrt(Math.max(0,R*R-r_nm*r_nm));
+          } else {
+            tipKernel[idx]=yTang+(r_nm-halfW)*halfW/sv;
           }
-        }
+          break;}
+        case 'faceted_pyramid':{
+          const R=p.R||2;
+          const cotF=1/Math.tan((p.front||15)*Math.PI/180);
+          const cotB=1/Math.tan((p.back||25)*Math.PI/180);
+          const cotS=1/Math.tan((p.side||22.5)*Math.PI/180);
+          const dx=dc*dNm, dy=dr*dNm;
+          const tx=Math.abs(dx)*cotS;
+          const ty=dy>=0 ? dy*cotF : (-dy)*cotB;
+          let Tp=Math.max(tx,ty);
+          if(r_nm<R) Tp=Math.max(Tp, R-Math.sqrt(R*R-r_nm*r_nm));
+          tipKernel[idx]=Tp;
+          break;}
       }
+      // invTip is handled in computeMeas by switching operation — don't modify kernel
+    }
+  }
+}
 
       // ════════════════════════════════════════════
       //  2D MINKOWSKI (dilation or erosion)
@@ -1428,6 +1162,7 @@
               measGrid[r * GW + c] = Math.max(0, Math.min(H_MAX, best));
             }
         }
+        updateGridStats();
       }
 
       function fullRecompute() {
@@ -1746,6 +1481,19 @@
             }
             return yTang + ((r_nm - halfW) * halfW) / sv;
           }
+          case "faceted_pyramid": {
+            const R = p.R || 2;
+            const cotF = 1 / Math.tan(((p.front || 15) * Math.PI) / 180);
+            const cotB = 1 / Math.tan(((p.back || 25) * Math.PI) / 180);
+            const cotS = 1 / Math.tan(((p.side || 22.5) * Math.PI) / 180);
+            const tx = Math.abs(dx_nm) * cotS;
+            const ty =
+              dz_nm >= 0 ? dz_nm * cotF : -dz_nm * cotB;
+            let Tp = Math.max(tx, ty);
+            if (r_nm < R)
+              Tp = Math.max(Tp, R - Math.sqrt(R * R - r_nm * r_nm));
+            return Tp;
+          }
           default:
             return null;
         }
@@ -1779,6 +1527,13 @@
           }
           case "sphere_cone":
             return (p.angle || 15) * 2;
+          case "faceted_pyramid": {
+            const h = 48;
+            const sideW = h * Math.tan(((p.side || 22.5) * Math.PI) / 180);
+            const frontW = h * Math.tan(((p.front || 15) * Math.PI) / 180);
+            const backW = h * Math.tan(((p.back || 25) * Math.PI) / 180);
+            return Math.max(sideW, frontW, backW) + (p.R || 2);
+          }
           default:
             return TIP_R * dNm;
         }
@@ -2122,22 +1877,30 @@
             const lathe = new THREE.LatheGeometry(pts2D, 64);
             tipObj.add(new THREE.Mesh(lathe, mat));
 
-            // Arc centre marker (purple dot at y=R)
-            const cg2 = new THREE.SphereGeometry(1.8, 12, 12);
-            cg2.translate(0, R, 0);
-            const centerDot = new THREE.Mesh(
-              cg2,
-              new THREE.MeshBasicMaterial({
-                color: 0xc97aff,
-                transparent: true,
-                opacity: 0.8,
-              }),
-            );
-            centerDot.userData.ignoreContact = true;
-            tipObj.add(centerDot);
-            break;
-          }
-        }
+      // Arc centre marker (purple dot at y=R)
+      const cg2 = new THREE.SphereGeometry(1.8, 12, 12);
+      cg2.translate(0, R, 0);
+      tipObj.add(new THREE.Mesh(cg2,
+        new THREE.MeshBasicMaterial({color:0xc97aff, transparent:true, opacity:0.8})));
+      break;}
+
+    case 'faceted_pyramid':{
+      const h=shH;
+      const tF=Math.tan((p.front||15)*Math.PI/180);
+      const tB=Math.tan((p.back||25)*Math.PI/180);
+      const tS=Math.tan((p.side||22.5)*Math.PI/180);
+      const xl=-h*tS, xr=h*tS, zf=h*tF, zb=-h*tB;
+      const A=[0,0,0], c1=[xl,h,zb], c2=[xr,h,zb], c3=[xr,h,zf], c4=[xl,h,zf];
+      const v=[];
+      const tri=(a,b,c)=>v.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
+      tri(A,c1,c2); tri(A,c2,c3); tri(A,c3,c4); tri(A,c4,c1);
+      tri(c1,c2,c3); tri(c1,c3,c4);
+      const g=new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(v,3));
+      g.computeVertexNormals();
+      tipObj.add(new THREE.Mesh(g, mat));
+      break;}
+  }
 
         // ── Glowing apex dot at y=0 ───────────────────────────────────────────────
         const ag = new THREE.SphereGeometry(2.5, 16, 16);
@@ -2267,6 +2030,23 @@
       // ════════════════════════════════════════════
       //  STATS
       // ════════════════════════════════════════════
+      function scanArtifactStats(nPixels) {
+        let mx = 0,
+          rms = 0;
+        for (let i = 0; i < nPixels; i++) {
+          const e = Math.abs(measGrid[i] - surfGrid[i]);
+          if (e > mx) mx = e;
+          rms += e * e;
+        }
+        return { mx, rms: Math.sqrt(rms / nPixels) };
+      }
+
+      function updateGridStats() {
+        const { mx, rms } = scanArtifactStats(GW * GH);
+        document.getElementById("statGridArt").textContent = mx.toFixed(2) + " nm";
+        document.getElementById("statGridRms").textContent = rms.toFixed(2) + " nm";
+      }
+
       function updateStats() {
         const doneRows = Math.min(Math.floor(scanPx / GW), GH);
         document.getElementById("statRows").textContent = doneRows + "/" + GH;
@@ -2277,16 +2057,9 @@
           document.getElementById("statRms").textContent = "—";
           return;
         }
-        let mx = 0,
-          rms = 0;
-        for (let i = 0; i < doneRows * GW; i++) {
-          const e = Math.abs(measGrid[i] - surfGrid[i]);
-          if (e > mx) mx = e;
-          rms += e * e;
-        }
+        const { mx, rms } = scanArtifactStats(doneRows * GW);
         document.getElementById("statArt").textContent = mx.toFixed(2) + " nm";
-        document.getElementById("statRms").textContent =
-          Math.sqrt(rms / (doneRows * GW)).toFixed(2) + " nm";
+        document.getElementById("statRms").textContent = rms.toFixed(2) + " nm";
       }
 
       // ════════════════════════════════════════════
@@ -2469,55 +2242,41 @@
             break;
           }
 
-          case "sphere_cone": {
-            const R = p.R || 30,
-              halfW = p.angle || 15,
-              topW = halfW * 2;
-            const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
-            const yTang = R - sv,
-              yTop = yTang + (halfW * halfW) / sv;
-            const scNm = bodyNm / yTop;
-            const R_s = R * scNm,
-              hw_s = halfW * scNm,
-              top_s = topW * scNm,
-              sv_s = sv * scNm,
-              yt_s = yTang * scNm;
-            const pX = (x) => cx + x * wS,
-              pY = (y) => apexY - y * hS;
-            const tRn = Math.atan2(-sv_s, hw_s),
-              tLn = Math.atan2(-sv_s, -hw_s);
-            const N = 60;
-            solid(() => {
-              tCtx.moveTo(pX(0), pY(0));
-              for (let k = 0; k <= N; k++) {
-                const t = -Math.PI / 2 + ((tRn + Math.PI / 2) * k) / N;
-                tCtx.lineTo(pX(R_s * Math.cos(t)), pY(R_s + R_s * Math.sin(t)));
-              }
-              tCtx.lineTo(pX(top_s), pY(yTop * scNm));
-              tCtx.lineTo(pX(-top_s), pY(yTop * scNm));
-              tCtx.lineTo(pX(-hw_s), pY(yt_s));
-              for (let k = 0; k <= N; k++) {
-                const t = tLn + ((-Math.PI / 2 - tLn) * k) / N;
-                tCtx.lineTo(pX(R_s * Math.cos(t)), pY(R_s + R_s * Math.sin(t)));
-              }
-            });
-            const pcY = pY(R_s);
-            if (pcY > apexY - bodyH && pcY < apexY) {
-              tCtx.save();
-              tCtx.beginPath();
-              tCtx.arc(cx, pcY, 3, 0, Math.PI * 2);
-              tCtx.strokeStyle = "rgba(201,122,255,0.6)";
-              tCtx.lineWidth = 2;
-              tCtx.stroke();
-              tCtx.beginPath();
-              tCtx.arc(cx, pcY, 1.5, 0, Math.PI * 2);
-              tCtx.fillStyle = cv("--accent4") || "#c97aff";
-              tCtx.fill();
-              tCtx.restore();
-            }
-            break;
-          }
-        }
+    case 'sphere_cone':{
+      const R=p.R||30, halfW=p.angle||15, topW=halfW*2;
+      const sv=Math.sqrt(Math.max(1e-6,R*R-halfW*halfW));
+      const yTang=R-sv, yTop=yTang+(halfW*halfW)/sv;
+      const scNm=bodyNm/yTop;
+      const R_s=R*scNm, hw_s=halfW*scNm, top_s=topW*scNm, sv_s=sv*scNm, yt_s=yTang*scNm;
+      const pX=(x)=>cx+x*wS, pY=(y)=>apexY-y*hS;
+      const tRn=Math.atan2(-sv_s,hw_s), tLn=Math.atan2(-sv_s,-hw_s);
+      const N=60;
+      solid(()=>{
+        tCtx.moveTo(pX(0),pY(0));
+        for(let k=0;k<=N;k++){const t=(-Math.PI/2)+(tRn+Math.PI/2)*k/N; tCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
+        tCtx.lineTo(pX(top_s),pY(yTop*scNm));
+        tCtx.lineTo(pX(-top_s),pY(yTop*scNm));
+        tCtx.lineTo(pX(-hw_s),pY(yt_s));
+        for(let k=0;k<=N;k++){const t=tLn+((-Math.PI/2)-tLn)*k/N; tCtx.lineTo(pX(R_s*Math.cos(t)),pY(R_s+R_s*Math.sin(t)));}
+      });
+      const pcY=pY(R_s);
+      if(pcY>apexY-bodyH && pcY<apexY){
+        tCtx.save();tCtx.beginPath();tCtx.arc(cx,pcY,3,0,Math.PI*2);
+        tCtx.strokeStyle='rgba(201,122,255,0.6)';tCtx.lineWidth=2;tCtx.stroke();
+        tCtx.beginPath();tCtx.arc(cx,pcY,1.5,0,Math.PI*2);
+        tCtx.fillStyle=cv('--accent4')||'#c97aff';tCtx.fill();tCtx.restore();
+      }
+      break;}
+
+    case 'faceted_pyramid':{
+      const lw=Math.max(3, bodyNm*Math.tan((p.back||25)*Math.PI/180)*wS);
+      const rw=Math.max(3, bodyNm*Math.tan((p.front||15)*Math.PI/180)*wS);
+      solid(()=>{
+        tCtx.moveTo(cx, apexY);
+        tCtx.lineTo(cx-lw, apexY-bodyH);
+        tCtx.lineTo(cx+rw, apexY-bodyH);
+      }); break;}
+  }
 
         tCtx.beginPath();
         tCtx.arc(cx, apexY, 5, 0, Math.PI * 2);
@@ -2544,27 +2303,17 @@
         tCtx.setLineDash([]);
         tCtx.restore();
 
-        if (INV.invTip) {
-          tCtx.fillStyle = cv("--accent3");
-          tCtx.font = "9px Courier New";
-          tCtx.textAlign = "left";
-          tCtx.fillText("INV", 3, 10);
-        }
-        const names = {
-          cone: "CONE",
-          sphere: "SPHERE",
-          hyperboloid: "HYPER.",
-          flat: "FLAT",
-          inv_sphere: "CONCAVE",
-          asymmetric: "ASYM.",
-          double_tip: "DOUBLE",
-          sphere_cone: "CONE+SPHERE",
-        };
-        tCtx.fillStyle = cv("--axis");
-        tCtx.font = "9px Courier New";
-        tCtx.textAlign = "right";
-        tCtx.fillText(names[currentTip] || currentTip, W - 4, 10);
-      }
+  if(INV.invTip){
+    tCtx.fillStyle=cv('--accent3'); tCtx.font='7px Courier New'; tCtx.textAlign='left';
+    tCtx.fillText('INV',3,10);
+  }
+  const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED'};
+  tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
+  tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
+}
+
+
 
       // ════════════════════════════════════════════
       //  RENDER LOOP
@@ -2738,22 +2487,17 @@
       }
 
       function computeFullGridStats() {
-        const n = GW * GH;
-        let mx = 0,
-          rms = 0,
-          hMin = Infinity,
+        const { mx, rms } = scanArtifactStats(GW * GH);
+        let hMin = Infinity,
           hMax = -Infinity;
-        for (let i = 0; i < n; i++) {
-          const e = Math.abs(measGrid[i] - surfGrid[i]);
-          if (e > mx) mx = e;
-          rms += e * e;
+        for (let i = 0; i < GW * GH; i++) {
           hMin = Math.min(hMin, surfGrid[i], measGrid[i]);
           hMax = Math.max(hMax, surfGrid[i], measGrid[i]);
         }
         if (hMin === hMax) hMax = hMin + 1;
         return {
           err_max_nm: mx,
-          err_rms_nm: Math.sqrt(rms / n),
+          err_rms_nm: rms,
           h_min_nm: hMin,
           h_max_nm: hMax,
         };

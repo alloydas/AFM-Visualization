@@ -185,6 +185,14 @@
         border-color: var(--accent);
         color: var(--accent);
       }
+      .btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .btn:disabled:hover {
+        border-color: var(--border);
+        color: var(--text);
+      }
       .toggle-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -450,6 +458,7 @@
       <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
       <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
       <button class="btn" data-tip="faceted_pyramid">◆ Faceted Pyramid</button>
+      <button class="btn" data-tip="custom" id="tipCustomBtn" disabled title="Import a .obj tip first">⬆ Custom</button>
     </div>
     <div class="slider-section" id="tipSliders"></div>
     <canvas id="tipPreview" width="182" height="76"></canvas>
@@ -469,6 +478,7 @@
               <button class="btn" data-surf="dna">⊛ DNA Ridges</button>
               <button class="btn" data-surf="chirp">≋ Chirp</button>
               <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
+              <button class="btn" data-surf="custom" id="surfCustomBtn" disabled title="Import a .obj surface first">⬆ Custom</button>
             </div>
             <div class="slider-section" id="surfSliders"></div>
             <div class="slider-row" style="margin-top: 6px">
@@ -635,6 +645,36 @@
                 ⬇ SURF .OBJ
               </button>
             </div>
+            <div class="view-btns" style="margin-top: 3px">
+              <button
+                class="icon-btn"
+                id="importTipBtn"
+                style="
+                  flex: 1;
+                  font-size: 9px;
+                  background: rgba(201, 122, 255, 0.08);
+                  border-color: #c97aff;
+                  color: #c97aff;
+                "
+              >
+                ⬆ TIP .OBJ
+              </button>
+              <button
+                class="icon-btn"
+                id="importSurfBtn"
+                style="
+                  flex: 1;
+                  font-size: 9px;
+                  background: rgba(0, 229, 176, 0.08);
+                  border-color: #00e5b0;
+                  color: #00e5b0;
+                "
+              >
+                ⬆ SURF .OBJ
+              </button>
+            </div>
+            <input type="file" id="importTipFile" accept=".obj,model/obj,text/plain" style="display: none" />
+            <input type="file" id="importSurfFile" accept=".obj,model/obj,text/plain" style="display: none" />
             <div class="panel-label" style="margin-top: 8px; margin-bottom: 4px">
               Height Map Export
             </div>
@@ -784,6 +824,14 @@
       const KW = 2 * TIP_R + 1;
       const tipKernel = new Float32Array(KW * KW);
 
+      // Custom tip/surface from .obj import (physics grids + display mesh)
+      const customTipKernel = new Float32Array(KW * KW);
+      const customSurfHeights = new Float32Array(GW * GH);
+      let customTipGeo = null;
+      let customTipFootprintR = TIP_R * dNm;
+      let hasCustomTip = false;
+      let hasCustomSurf = false;
+
       let vScale = 3,
         scanPx = 0,
         playing = false,
@@ -889,6 +937,7 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
             buildTipKernel();
             computeMeas();
             drawTipPreview();
+            buildTipObj();
             needsMeshUpdate = true;
             syncTipPlacement();
           },
@@ -920,6 +969,10 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
       }
 
       function buildSurface() {
+        if (currentSurf === "custom") {
+          if (hasCustomSurf) rawSurf.set(customSurfHeights);
+          return;
+        }
         const base = 25,
           p = surfP[currentSurf] || {};
         for (let r = 0; r < GH; r++) {
@@ -1063,6 +1116,10 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
 //  TIP KERNEL (2D)
 // ════════════════════════════════════════════
 function buildTipKernel(){
+  if(currentTip==='custom'){
+    if(hasCustomTip) tipKernel.set(customTipKernel);
+    return;
+  }
   const p=tipP[currentTip]||{};
   for(let dr=-TIP_R;dr<=TIP_R;dr++){
     for(let dc=-TIP_R;dc<=TIP_R;dc++){
@@ -1433,6 +1490,29 @@ function buildTipKernel(){
 
       // Continuous tip profile T(dx,dz): height (nm) of lowest solid above y=0 plane.
       function tipDepthAtNm(dx_nm, dz_nm) {
+        if (currentTip === "custom") {
+          const colF = dx_nm / dNm + TIP_R;
+          const rowF = dz_nm / dNm + TIP_R;
+          if (colF < 0 || colF > KW - 1 || rowF < 0 || rowF > KW - 1)
+            return null;
+          const c0 = Math.floor(colF),
+            r0 = Math.floor(rowF);
+          const c1 = Math.min(KW - 1, c0 + 1),
+            r1 = Math.min(KW - 1, r0 + 1);
+          const tx = colF - c0,
+            ty = rowF - r0;
+          const v00 = tipKernel[r0 * KW + c0],
+            v10 = tipKernel[r0 * KW + c1],
+            v01 = tipKernel[r1 * KW + c0],
+            v11 = tipKernel[r1 * KW + c1];
+          if (v00 > 1e6 || v10 > 1e6 || v01 > 1e6 || v11 > 1e6) return null;
+          return (
+            v00 * (1 - tx) * (1 - ty) +
+            v10 * tx * (1 - ty) +
+            v01 * (1 - tx) * ty +
+            v11 * tx * ty
+          );
+        }
         const p = tipP[currentTip] || {};
         const r_nm = Math.sqrt(dx_nm * dx_nm + dz_nm * dz_nm);
 
@@ -1500,6 +1580,7 @@ function buildTipKernel(){
       }
 
       function tipFootprintRadiusNm() {
+        if (currentTip === "custom") return customTipFootprintR;
         const p = tipP[currentTip] || {};
         switch (currentTip) {
           case "cone": {
@@ -1640,6 +1721,12 @@ function buildTipKernel(){
         }
 
         switch (currentTip) {
+          case "custom": {
+            if (customTipGeo) {
+              tipObj.add(new THREE.Mesh(customTipGeo.clone(), mat));
+            }
+            break;
+          }
           // ── SHARP / BLUNT CONE ─────────────────────────────────────────────────
           case "cone": {
             const alpha = ((p.angle || 15) * Math.PI) / 180;
@@ -2107,6 +2194,26 @@ function buildTipKernel(){
         }
 
         switch (currentTip) {
+          case "custom": {
+            const pts = [];
+            for (let dc = -TIP_R; dc <= TIP_R; dc++) {
+              const d = tipKernel[TIP_R * KW + (dc + TIP_R)];
+              if (d < 1e6 && d <= bodyNm) pts.push([dc * dNm, d]);
+            }
+            if (pts.length >= 2) {
+              solid(() => {
+                tCtx.moveTo(cx + pts[0][0] * wS, apexY - pts[0][1] * hS);
+                for (let i = 1; i < pts.length; i++)
+                  tCtx.lineTo(cx + pts[i][0] * wS, apexY - pts[i][1] * hS);
+                tCtx.lineTo(
+                  cx + pts[pts.length - 1][0] * wS,
+                  apexY - bodyH,
+                );
+                tCtx.lineTo(cx + pts[0][0] * wS, apexY - bodyH);
+              });
+            }
+            break;
+          }
           case "cone": {
             const alpha = ((p.angle || 15) * Math.PI) / 180;
             const hw = Math.max(3, bodyNm * Math.tan(alpha) * wS);
@@ -2308,7 +2415,7 @@ function buildTipKernel(){
     tCtx.fillText('INV',3,10);
   }
   const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
-    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED'};
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',custom:'CUSTOM'};
   tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
   tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
 }
@@ -2923,9 +3030,303 @@ function buildTipKernel(){
       document
         .getElementById("exportSurfBtn")
         .addEventListener("click", exportSurfOBJ);
+
+      // ════════════════════════════════════════════
+      //  OBJ IMPORTER
+      // ════════════════════════════════════════════
+      function parseOBJ(text) {
+        const verts = [];
+        const faces = [];
+        const lines = text.split(/\r?\n/);
+        for (let li = 0; li < lines.length; li++) {
+          const line = lines[li].trim();
+          if (!line || line[0] === "#") continue;
+          const parts = line.split(/\s+/);
+          const tag = parts[0];
+          if (tag === "v" && parts.length >= 4) {
+            verts.push(
+              parseFloat(parts[1]),
+              parseFloat(parts[2]),
+              parseFloat(parts[3]),
+            );
+          } else if (tag === "f" && parts.length >= 4) {
+            const ids = [];
+            for (let i = 1; i < parts.length; i++) {
+              const tok = parts[i].split("/")[0];
+              let vi = parseInt(tok, 10);
+              if (!vi) continue;
+              if (vi < 0) vi = verts.length / 3 + vi + 1;
+              ids.push(vi - 1);
+            }
+            for (let i = 1; i + 1 < ids.length; i++) {
+              faces.push(ids[0], ids[i], ids[i + 1]);
+            }
+          }
+        }
+        if (!verts.length || !faces.length) {
+          throw new Error("OBJ has no vertices or faces");
+        }
+        return {
+          positions: new Float32Array(verts),
+          indices: new Uint32Array(faces),
+        };
+      }
+
+      // Point-in-triangle + Y interpolation (xz plane, Y up).
+      function triHeightAtXZ(px, pz, ax, ay, az, bx, by, bz, cx, cy, cz) {
+        const v0x = bx - ax,
+          v0z = bz - az;
+        const v1x = cx - ax,
+          v1z = cz - az;
+        const v2x = px - ax,
+          v2z = pz - az;
+        const den = v0x * v1z - v1x * v0z;
+        if (Math.abs(den) < 1e-12) return null;
+        const inv = 1 / den;
+        const u = (v2x * v1z - v1x * v2z) * inv;
+        const v = (v0x * v2z - v2x * v0z) * inv;
+        if (u < -1e-6 || v < -1e-6 || u + v > 1 + 1e-6) return null;
+        return ay + u * (by - ay) + v * (cy - ay);
+      }
+
+      function rasterizeHeightGrid(
+        positions,
+        indices,
+        cols,
+        rows,
+        xOf,
+        zOf,
+        mode,
+      ) {
+        // mode: 'max' (surface) or 'min' (tip). Empty cells stay NaN.
+        const out = new Float32Array(cols * rows);
+        out.fill(NaN);
+        // Precompute grid xz for fast bbox→index mapping
+        const xs = new Float32Array(cols);
+        const zs = new Float32Array(rows);
+        for (let c = 0; c < cols; c++) xs[c] = xOf(c);
+        for (let r = 0; r < rows; r++) zs[r] = zOf(r);
+        const x0 = xs[0],
+          x1 = xs[cols - 1],
+          z0 = zs[0],
+          z1 = zs[rows - 1];
+        const dx = cols > 1 ? (x1 - x0) / (cols - 1) : 1;
+        const dz = rows > 1 ? (z1 - z0) / (rows - 1) : 1;
+
+        const nTri = indices.length / 3;
+        for (let t = 0; t < nTri; t++) {
+          const ia = indices[t * 3] * 3,
+            ib = indices[t * 3 + 1] * 3,
+            ic = indices[t * 3 + 2] * 3;
+          const ax = positions[ia],
+            ay = positions[ia + 1],
+            az = positions[ia + 2];
+          const bx = positions[ib],
+            by = positions[ib + 1],
+            bz = positions[ib + 2];
+          const cx = positions[ic],
+            cy = positions[ic + 1],
+            cz = positions[ic + 2];
+          const minX = Math.min(ax, bx, cx),
+            maxX = Math.max(ax, bx, cx);
+          const minZ = Math.min(az, bz, cz),
+            maxZ = Math.max(az, bz, cz);
+          let cLo = Math.max(0, Math.floor((minX - x0) / dx) - 1);
+          let cHi = Math.min(cols - 1, Math.ceil((maxX - x0) / dx) + 1);
+          let rLo = Math.max(0, Math.floor((minZ - z0) / dz) - 1);
+          let rHi = Math.min(rows - 1, Math.ceil((maxZ - z0) / dz) + 1);
+          for (let r = rLo; r <= rHi; r++) {
+            const z = zs[r];
+            for (let c = cLo; c <= cHi; c++) {
+              const x = xs[c];
+              const y = triHeightAtXZ(x, z, ax, ay, az, bx, by, bz, cx, cy, cz);
+              if (y === null) continue;
+              const idx = r * cols + c;
+              const cur = out[idx];
+              if (isNaN(cur)) out[idx] = y;
+              else if (mode === "max") out[idx] = Math.max(cur, y);
+              else out[idx] = Math.min(cur, y);
+            }
+          }
+        }
+        return out;
+      }
+
+      function normalizeTipMesh(positions) {
+        let minX = Infinity,
+          maxX = -Infinity,
+          minY = Infinity,
+          maxY = -Infinity,
+          minZ = Infinity,
+          maxZ = -Infinity;
+        for (let i = 0; i < positions.length; i += 3) {
+          const x = positions[i],
+            y = positions[i + 1],
+            z = positions[i + 2];
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          if (z < minZ) minZ = z;
+          if (z > maxZ) maxZ = z;
+        }
+        const cx = (minX + maxX) / 2,
+          cz = (minZ + maxZ) / 2;
+        const halfSpan = Math.max(maxX - minX, maxZ - minZ) / 2;
+        let scale = 1;
+        const targetHalf = 40;
+        if (halfSpan > 56 || halfSpan < 4) {
+          scale = halfSpan > 1e-9 ? targetHalf / halfSpan : 1;
+        }
+        const out = new Float32Array(positions.length);
+        for (let i = 0; i < positions.length; i += 3) {
+          out[i] = (positions[i] - cx) * scale;
+          out[i + 1] = (positions[i + 1] - minY) * scale;
+          out[i + 2] = (positions[i + 2] - cz) * scale;
+        }
+        return out;
+      }
+
+      function meshToBufferGeometry(positions, indices) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geo.setIndex(new THREE.BufferAttribute(indices, 1));
+        geo.computeVertexNormals();
+        return geo;
+      }
+
+      function activateCustomTipUI() {
+        currentTip = "custom";
+        const btn = document.getElementById("tipCustomBtn");
+        btn.disabled = false;
+        document
+          .querySelectorAll("#tipBtns .btn")
+          .forEach((b) =>
+            b.classList.toggle("active", b.dataset.tip === "custom"),
+          );
+        refreshTipSliders();
+      }
+
+      function activateCustomSurfUI() {
+        currentSurf = "custom";
+        const btn = document.getElementById("surfCustomBtn");
+        btn.disabled = false;
+        document
+          .querySelectorAll("#surfBtns .btn")
+          .forEach((b) =>
+            b.classList.toggle("active", b.dataset.surf === "custom"),
+          );
+        refreshSurfSliders();
+      }
+
+      function importTipFromOBJ(text) {
+        const { positions: rawPos, indices } = parseOBJ(text);
+        const positions = normalizeTipMesh(rawPos);
+        const xOf = (c) => (c - TIP_R) * dNm;
+        const zOf = (r) => (r - TIP_R) * dNm;
+        const heights = rasterizeHeightGrid(
+          positions,
+          indices,
+          KW,
+          KW,
+          xOf,
+          zOf,
+          "min",
+        );
+        customTipKernel.fill(1e9);
+        let maxR = 0;
+        for (let i = 0; i < KW * KW; i++) {
+          if (!isNaN(heights[i])) {
+            customTipKernel[i] = Math.max(0, heights[i]);
+            const dr = Math.floor(i / KW) - TIP_R;
+            const dc = (i % KW) - TIP_R;
+            const r = Math.sqrt(dr * dr + dc * dc) * dNm;
+            if (r > maxR) maxR = r;
+          }
+        }
+        customTipFootprintR = Math.max(maxR, dNm);
+        if (customTipGeo) customTipGeo.dispose();
+        customTipGeo = meshToBufferGeometry(positions, indices);
+        hasCustomTip = true;
+        activateCustomTipUI();
+        buildTipKernel();
+        computeMeas();
+        drawTipPreview();
+        buildTipObj();
+        reset3D();
+      }
+
+      function importSurfFromOBJ(text) {
+        const { positions, indices } = parseOBJ(text);
+        const xOf = (c) => (c / (GW - 1) - 0.5) * X_NM;
+        const zOf = (r) => (r / (GH - 1) - 0.5) * Y_NM;
+        const heights = rasterizeHeightGrid(
+          positions,
+          indices,
+          GW,
+          GH,
+          xOf,
+          zOf,
+          "max",
+        );
+        let floorY = Infinity;
+        for (let i = 0; i < heights.length; i++) {
+          if (!isNaN(heights[i]) && heights[i] < floorY) floorY = heights[i];
+        }
+        if (!isFinite(floorY)) floorY = 2;
+        for (let i = 0; i < GW * GH; i++) {
+          let h = isNaN(heights[i]) ? floorY : heights[i];
+          customSurfHeights[i] = Math.max(2, Math.min(95, h));
+        }
+        hasCustomSurf = true;
+        activateCustomSurfUI();
+        buildSurface();
+        applyTransforms();
+        computeMeas();
+        dispGrid.set(surfGrid);
+        needsMeshUpdate = true;
+        reset3D();
+      }
+
+      function readOBJFile(file, onText) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            onText(String(reader.result || ""));
+          } catch (err) {
+            alert("Failed to import OBJ: " + (err.message || err));
+          }
+        };
+        reader.onerror = () => alert("Failed to read file");
+        reader.readAsText(file);
+      }
+
+      document.getElementById("importTipBtn").addEventListener("click", () => {
+        document.getElementById("importTipFile").value = "";
+        document.getElementById("importTipFile").click();
+      });
+      document.getElementById("importSurfBtn").addEventListener("click", () => {
+        document.getElementById("importSurfFile").value = "";
+        document.getElementById("importSurfFile").click();
+      });
+      document
+        .getElementById("importTipFile")
+        .addEventListener("change", (e) => {
+          const f = e.target.files && e.target.files[0];
+          readOBJFile(f, importTipFromOBJ);
+        });
+      document
+        .getElementById("importSurfFile")
+        .addEventListener("change", (e) => {
+          const f = e.target.files && e.target.files[0];
+          readOBJFile(f, importSurfFromOBJ);
+        });
+
       document.getElementById("tipBtns").addEventListener("click", (e) => {
         const t = e.target.closest("[data-tip]");
         if (!t) return;
+        if (t.dataset.tip === "custom" && !hasCustomTip) return;
         currentTip = t.dataset.tip;
         document
           .querySelectorAll("#tipBtns .btn")
@@ -2942,6 +3343,7 @@ function buildTipKernel(){
       document.getElementById("surfBtns").addEventListener("click", (e) => {
         const t = e.target.closest("[data-surf]");
         if (!t) return;
+        if (t.dataset.surf === "custom" && !hasCustomSurf) return;
         currentSurf = t.dataset.surf;
         document
           .querySelectorAll("#surfBtns .btn")

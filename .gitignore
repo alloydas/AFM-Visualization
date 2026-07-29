@@ -1,0 +1,12 @@
+# Local notes and presentation (not part of the simulator repo)
+PROJECT_CONTEXT_AND_PROGRESS.md
+meeting-slides.html
+afm_presentation.pptx
+presentation_assets/
+
+# SPM scan data
+TGXYZ02/
+
+# Python bytecode
+__pycache__/
+*.py[cod]

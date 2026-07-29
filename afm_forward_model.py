@@ -174,7 +174,13 @@ def tip_height(r_nm: float, dc_nm: float, tip: str, p: dict[str, float]) -> floa
         return 0.0 if r_nm <= r else BLOCKED
     if tip == "inv_sphere":
         r = p.get("R", 20)
-        return r - math.sqrt(r * r - r_nm * r_nm) if r_nm < r else BLOCKED
+        lip = max(0.0, p.get("lip", 8))
+        outer = r + lip
+        if r_nm > outer:
+            return BLOCKED
+        if r_nm <= r:
+            return math.sqrt(max(0.0, r * r - r_nm * r_nm))
+        return 0.0
     if tip == "asymmetric":
         alpha = math.radians(p.get("angle", 20))
         tilt = math.radians(p.get("tilt", 15))
@@ -213,8 +219,9 @@ def build_tip_kernel(cfg: SimConfig) -> np.ndarray:
 
 def _do_erosion(cfg: SimConfig) -> bool:
     inv = cfg.inverts
-    tip_is_erosion = cfg.tip == "inv_sphere"
-    return tip_is_erosion != (inv.erosion != inv.inv_tip)
+    # Contact-mode AFM defaults to dilation for every tip (including concave).
+    # User toggles can flip to erosion for teaching / morphological duals.
+    return inv.erosion != inv.inv_tip
 
 
 def compute_measured(surface: np.ndarray, kernel: np.ndarray, cfg: SimConfig) -> np.ndarray:

@@ -880,7 +880,8 @@ const TIP_DEFS={
   sphere:     [{id:'R',label:'Radius R',min:3,max:50,step:1,val:20,unit:'nm'}],
   hyperboloid:[{id:'a',label:'Sharpness a',min:2,max:30,step:1,val:7,unit:'nm'}],
   flat:       [{id:'R',label:'Radius R',min:3,max:50,step:1,val:18,unit:'nm'}],
-  inv_sphere: [{id:'R',label:'Bowl Radius',min:3,max:50,step:1,val:20,unit:'nm'}],
+  inv_sphere: [{id:'R',label:'Bowl radius',min:3,max:50,step:1,val:20,unit:'nm'},
+               {id:'lip',label:'Flat lip width',min:0,max:40,step:1,val:8,unit:'nm'}],
   asymmetric: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:20,unit:'°'},
                {id:'tilt',label:'Tilt angle',min:-40,max:40,step:1,val:15,unit:'°'}],
   double_tip: [{id:'angle',label:'Half-angle α',min:3,max:60,step:1,val:15,unit:'°'},
@@ -1112,6 +1113,35 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
         }
       }
 
+// Unified concave-sphere profile (visual, placement, and measured image).
+// y=0 is the contact plane (rim / flat lip). Contact-mode AFM height is
+// M = max(S − T) with T = tip solid height above that plane:
+//   r ≤ R:          sqrt(R²−r²)  (bowl recess)
+//   R < r ≤ R+lip:  0            (flat annular lip)
+//   r > R+lip:      outside tip
+function invSphereParams(p) {
+  const footprintCap = TIP_R * dNm;
+  const R = Math.min(p.R || 20, 50);
+  const lip = Math.max(0, Math.min(p.lip ?? 8, 40));
+  // Keep at least a rim sample inside the kernel even for deep bowls.
+  const outerR = Math.min(Math.max(R, R + lip), footprintCap);
+  return { R, lip, outerR, footprintCap };
+}
+
+function invSphereTipT(r_nm, p) {
+  const { R, outerR } = invSphereParams(p);
+  if (r_nm > outerR) return null;
+  if (R <= outerR + 1e-9) {
+    // Full bowl + optional flat lip fit in the kernel.
+    if (r_nm <= R) return Math.sqrt(Math.max(0, R * R - r_nm * r_nm));
+    return 0;
+  }
+  // Bowl deeper/wider than kernel: truncate at outerR and shift so the
+  // cut rim is the contact plane (T=0). Avoids bogus below-floor heights.
+  const tEdge = Math.sqrt(Math.max(0, R * R - outerR * outerR));
+  return Math.sqrt(Math.max(0, R * R - r_nm * r_nm)) - tEdge;
+}
+
 // ════════════════════════════════════════════
 //  TIP KERNEL (2D)
 // ════════════════════════════════════════════
@@ -1131,7 +1161,7 @@ function buildTipKernel(){
         case 'sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?R-Math.sqrt(R*R-r_nm*r_nm):1e9;break;}
         case 'hyperboloid':{const a=p.a||7;tipKernel[idx]=Math.sqrt(r_nm*r_nm+a*a)-a;break;}
         case 'flat':{const R=p.R||18;tipKernel[idx]=r_nm<=R?0:1e9;break;}
-        case 'inv_sphere':{const R=p.R||20;tipKernel[idx]=r_nm<R?Math.sqrt(R*R-r_nm*r_nm)-R:1e9;break;}
+        case 'inv_sphere':{const t=invSphereTipT(r_nm,p);tipKernel[idx]=t===null?1e9:t;break;}
         case 'asymmetric':{
           const alpha=(p.angle||20)*Math.PI/180,tilt=(p.tilt||15)*Math.PI/180;
           tipKernel[idx]=Math.max(0,r_nm/Math.tan(alpha)+dc*dNm*Math.tan(tilt));break;}
@@ -1175,9 +1205,9 @@ function buildTipKernel(){
       //  2D MINKOWSKI (dilation or erosion)
       // ════════════════════════════════════════════
       function computeMeas() {
-        // invTip XOR erosion: either one switches to erosion, both cancel out
-        const tipIsErosion = currentTip === "inv_sphere";
-        const doErosion = tipIsErosion !== (INV.erosion !== INV.invTip);
+        // Contact-mode AFM is morphological dilation with the tip profile.
+        // User toggles (erosion / invTip) can still flip to erosion.
+        const doErosion = INV.erosion !== INV.invTip;
         // Max height that makes sense = max surface + typical tip artifact headroom
         const H_MAX = 95;
         if (doErosion) {
@@ -1315,9 +1345,10 @@ function buildTipKernel(){
         gh.position.y = -1;
         scene.add(gh);
         addAxes();
-        // Surface meshes
+        // Surface meshes — true does not write depth so measured remains visible underneath
         trueMesh = createSurfMesh(0.45);
         measMesh = createSurfMesh(0.97);
+        trueMesh.material.depthWrite = false;
         scene.add(trueMesh);
         scene.add(measMesh);
         // Scan line
@@ -1474,13 +1505,6 @@ function buildTipKernel(){
         return sampleGridBilinear(surfGrid, colF, rowF);
       }
 
-      function sampleVisibleSurfaceBilinear(colF, rowF) {
-        return Math.max(
-          sampleGridBilinear(surfGrid, colF, rowF),
-          sampleGridBilinear(dispGrid, colF, rowF),
-        );
-      }
-
       function nmToGridColRow(x_nm, z_nm) {
         return {
           colF: (x_nm / X_NM + 0.5) * (GW - 1),
@@ -1516,13 +1540,7 @@ function buildTipKernel(){
         const p = tipP[currentTip] || {};
         const r_nm = Math.sqrt(dx_nm * dx_nm + dz_nm * dz_nm);
 
-        if (currentTip === "inv_sphere") {
-          const R = Math.min(p.R || 20, 34);
-          const outerR = R * 1.4;
-          if (r_nm > outerR) return null;
-          if (r_nm <= R) return Math.sqrt(Math.max(0, R * R - r_nm * r_nm));
-          return 0;
-        }
+        if (currentTip === "inv_sphere") return invSphereTipT(r_nm, p);
 
         switch (currentTip) {
           case "cone":
@@ -1596,7 +1614,7 @@ function buildTipKernel(){
           case "flat":
             return Math.min(p.R || 18, 42);
           case "inv_sphere":
-            return Math.min(p.R || 20, 34) * 1.4;
+            return invSphereParams(p).outerR;
           case "asymmetric": {
             const alpha = ((p.angle || 20) * Math.PI) / 180;
             return Math.min(48 * Math.tan(alpha), 80);
@@ -1647,20 +1665,22 @@ function buildTipKernel(){
         if (depth === null || depth > 1e6) return bestRef.val;
         const { colF, rowF } = nmToGridColRow(tipX + dx, tipZ + dz);
         if (colF < 0 || colF > GW - 1 || rowF < 0 || rowF > GH - 1) return bestRef.val;
-        const s = sampleVisibleSurfaceBilinear(colF, rowF);
+        const s = sampleSurfBilinear(colF, rowF);
         bestRef.val = Math.max(bestRef.val, s - depth);
         return bestRef.val;
       }
 
-      // Height of tip y=0 plane so solid(x,z) + profile >= surface(x,z) everywhere
-      // in the xz footprint (mesh vertices + fine grid, bilinear surface lookup).
+      // Height of tip y=0 plane so solid(x,z) + profile >= true surface(x,z)
+      // everywhere in the xz footprint (analytical grid; concave skips mesh verts).
       function getTipPlacementHeight(row, col) {
         const tipX = (col / (GW - 1) - 0.5) * X_NM;
         const tipZ = (row / (GH - 1) - 0.5) * Y_NM;
         const bestRef = { val: -Infinity };
 
-        for (const v of tipContactVerts) {
-          considerTipSample(tipX, tipZ, v.x, v.z, v.y, bestRef);
+        if (currentTip !== "inv_sphere") {
+          for (const v of tipContactVerts) {
+            considerTipSample(tipX, tipZ, v.x, v.z, v.y, bestRef);
+          }
         }
 
         const Rmax = tipFootprintRadiusNm();
@@ -1810,84 +1830,55 @@ function buildTipKernel(){
           }
 
           // ── CONCAVE SPHERE ─────────────────────────────────────────────────────
-          // Wide cylindrical body with a deep hemispherical bowl carved into the bottom.
-          // The bowl interior is a clearly visible curved depression — distinct from flat.
+          // Bowl (lathe, r≤R) + flat lip + shaft; matches kernel & placement profiles.
           case "inv_sphere": {
-            const R = Math.min(p.R || 20, 34);
-            const outerR = R * 1.4;
+            const { R, outerR } = invSphereParams(p);
 
-            // Outer cylinder (wider than flat, and taller to make shape clear)
-            const cyl = new THREE.CylinderGeometry(outerR, outerR, shH, 32);
-            cyl.translate(0, shH / 2 + R, 0);
-            tipObj.add(new THREE.Mesh(cyl, mat));
-
-            // Bowl inner surface: render the TOP hemisphere with FrontSide from inside.
-            // Center at (0, R), so the opening (equator) is at y=0.
-            // thetaStart=0, thetaLen=π/2 gives the top hemisphere (from north pole down to equator).
-            // With BackSide this renders the INNER concave surface correctly.
             const bowlMat = new THREE.MeshPhongMaterial({
               color: 0x88bbdd,
-              side: THREE.BackSide,
-              transparent: false,
-              opacity: 1.0,
               shininess: 120,
               specular: 0x6699bb,
             });
-            const bowl = new THREE.SphereGeometry(
-              R,
-              48,
-              24,
-              0,
-              Math.PI * 2,
-              0,
-              Math.PI / 2,
-            );
-            bowl.translate(0, R, 0);
-            tipObj.add(new THREE.Mesh(bowl, bowlMat));
+            const bowlPts = [];
+            for (let i = 0; i <= 40; i++) {
+              const r = (R * i) / 40;
+              bowlPts.push(
+                new THREE.Vector2(r, Math.sqrt(Math.max(0, R * R - r * r))),
+              );
+            }
+            tipObj.add(new THREE.Mesh(new THREE.LatheGeometry(bowlPts, 48), bowlMat));
 
-            // Dark cavity fill — a slightly smaller sphere rendered FrontSide,
-            // making the bowl look deep and clearly concave (not flat).
-            const cavityMat = new THREE.MeshPhongMaterial({
-              color: 0x112233,
-              side: THREE.FrontSide,
-              transparent: true,
-              opacity: 0.7,
-              shininess: 20,
-            });
-            const cavity = new THREE.SphereGeometry(
-              R * 0.92,
-              48,
-              24,
-              0,
-              Math.PI * 2,
-              0,
-              Math.PI / 2,
-            );
-            cavity.translate(0, R, 0);
-            tipObj.add(new THREE.Mesh(cavity, cavityMat));
+            if (outerR > R + 0.05) {
+              const lipGeo = new THREE.RingGeometry(R, outerR, 48);
+              lipGeo.rotateX(-Math.PI / 2);
+              tipObj.add(new THREE.Mesh(lipGeo, mat));
+            }
 
-            // Bright rim ring at y=0 (the bowl opening edge)
+            const cyl = new THREE.CylinderGeometry(outerR, outerR, shH, 32);
+            cyl.translate(0, shH / 2, 0);
+            tipObj.add(new THREE.Mesh(cyl, mat));
+
             const rimMat = new THREE.MeshPhongMaterial({
               color: 0xaaddff,
               emissive: 0x223344,
               shininess: 180,
             });
-            const rim = new THREE.TorusGeometry(R, 1.4, 12, 48);
+            const rim = new THREE.TorusGeometry(R, 0.9, 10, 48);
             rim.rotateX(Math.PI / 2);
             tipObj.add(new THREE.Mesh(rim, rimMat));
-
-            // Outer rim of cylinder base
-            const outerRim = new THREE.TorusGeometry(outerR, 1.0, 8, 48);
-            outerRim.rotateX(Math.PI / 2);
-            tipObj.add(
-              new THREE.Mesh(
-                outerRim,
-                new THREE.MeshPhongMaterial({
-                  color: 0xc0d8e8,
-                  shininess: 100,
-                }),
-              ),
-            );
+            if (outerR > R + 0.05) {
+              const outerRim = new THREE.TorusGeometry(outerR, 0.7, 8, 48);
+              outerRim.rotateX(Math.PI / 2);
+              tipObj.add(
+                new THREE.Mesh(
+                  outerRim,
+                  new THREE.MeshPhongMaterial({
+                    color: 0xc0d8e8,
+                    shininess: 100,
+                  }),
+                ),
+              );
+            }
             break;
           }
 
@@ -1912,17 +1903,6 @@ function buildTipKernel(){
             const bR = Math.min(shH * Math.tan(alpha), 40);
             [-g, g].forEach((offset) => {
               tipObj.add(new THREE.Mesh(makeCone(bR, shH, offset, 0), mat));
-            });
-            // Second apex dot for the offset tips
-            [-g, g].forEach((offset) => {
-              const ag2 = new THREE.SphereGeometry(2, 12, 12);
-              ag2.translate(offset, 0, 0);
-              const dot = new THREE.Mesh(
-                ag2,
-                new THREE.MeshBasicMaterial({ color: 0x00e5b0 }),
-              );
-              dot.userData.ignoreContact = true;
-              tipObj.add(dot);
             });
             break;
           }
@@ -1963,12 +1943,6 @@ function buildTipKernel(){
 
             const lathe = new THREE.LatheGeometry(pts2D, 64);
             tipObj.add(new THREE.Mesh(lathe, mat));
-
-      // Arc centre marker (purple dot at y=R)
-      const cg2 = new THREE.SphereGeometry(1.8, 12, 12);
-      cg2.translate(0, R, 0);
-      tipObj.add(new THREE.Mesh(cg2,
-        new THREE.MeshBasicMaterial({color:0xc97aff, transparent:true, opacity:0.8})));
       break;}
 
     case 'faceted_pyramid':{
@@ -1989,14 +1963,6 @@ function buildTipKernel(){
       break;}
   }
 
-        // ── Glowing apex dot at y=0 ───────────────────────────────────────────────
-        const ag = new THREE.SphereGeometry(2.5, 16, 16);
-        const apexDot = new THREE.Mesh(
-          ag,
-          new THREE.MeshBasicMaterial({ color: 0x00e5b0 }),
-        );
-        apexDot.userData.ignoreContact = true;
-        tipObj.add(apexDot);
         scene.add(tipObj);
         collectTipContactVerts();
       }
@@ -2284,16 +2250,25 @@ function buildTipKernel(){
           }
 
           case "inv_sphere": {
-            const R = p.R || 20;
-            const hw = Math.min(R * wS + 8, W / 2 - 2);
-            const R_px = Math.min(R * hS, hw * 0.9); // bowl radius always fits inside walls
-            // Arc center at (cx, apexY-R_px): top half (anticlockwise=true) = concave bowl ✓
+            const { R, outerR } = invSphereParams(p);
+            const outer_px = Math.min(outerR * wS, W / 2 - 2);
+            const R_x = R * wS;
+            const N = 60;
             solid(() => {
-              tCtx.moveTo(cx - hw, apexY - bodyH);
-              tCtx.lineTo(cx + hw, apexY - bodyH);
-              tCtx.lineTo(cx + hw, apexY - R_px);
-              tCtx.arc(cx, apexY - R_px, R_px, 0, Math.PI, true); // top half = concave
-              tCtx.lineTo(cx - hw, apexY - R_px);
+              tCtx.moveTo(cx - outer_px, apexY - bodyH);
+              tCtx.lineTo(cx + outer_px, apexY - bodyH);
+              tCtx.lineTo(cx + outer_px, apexY);
+              if (outer_px > R_x + 0.5) tCtx.lineTo(cx + R_x, apexY);
+              // Bowl recesses upward into the tip (do not use canvas.arc — wS≠hS).
+              for (let k = 0; k <= N; k++) {
+                const t = (k / N) * Math.PI;
+                const x = R * Math.cos(t);
+                const depth = R * Math.sin(t);
+                tCtx.lineTo(cx + x * wS, apexY - depth * hS);
+              }
+              if (outer_px > R_x + 0.5) tCtx.lineTo(cx - R_x, apexY);
+              tCtx.lineTo(cx - outer_px, apexY);
+              tCtx.lineTo(cx - outer_px, apexY - bodyH);
             });
             tCtx.save();
             tCtx.strokeStyle = dark
@@ -2301,7 +2276,14 @@ function buildTipKernel(){
               : "rgba(0,100,180,0.90)";
             tCtx.lineWidth = 2.5;
             tCtx.beginPath();
-            tCtx.arc(cx, apexY - R_px, R_px, 0, Math.PI, true);
+            tCtx.moveTo(cx - R_x, apexY);
+            for (let k = 0; k <= N; k++) {
+              const t = (k / N) * Math.PI;
+              tCtx.lineTo(
+                cx + R * Math.cos(t) * wS,
+                apexY - R * Math.sin(t) * hS,
+              );
+            }
             tCtx.stroke();
             tCtx.restore();
             break;
@@ -2612,8 +2594,7 @@ function buildTipKernel(){
 
       function buildParamsJson() {
         const stats = computeFullGridStats();
-        const tipIsErosion = currentTip === "inv_sphere";
-        const doErosion = tipIsErosion !== (INV.erosion !== INV.invTip);
+        const doErosion = INV.erosion !== INV.invTip;
         return {
           simulator: "3d",
           tip: currentTip,

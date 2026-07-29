@@ -710,11 +710,20 @@
         inv_sphere: [
           {
             id: "R",
-            label: "Bowl Radius",
+            label: "Bowl radius",
             min: 3,
             max: 50,
             step: 1,
             val: 20,
+            unit: "nm",
+          },
+          {
+            id: "lip",
+            label: "Flat lip width",
+            min: 0,
+            max: 40,
+            step: 1,
+            val: 8,
             unit: "nm",
           },
         ],
@@ -1003,9 +1012,10 @@
       // ═══════════════════════════════════════════════════
       //  TIP PROFILE  T(dc) — dc is SIGNED pixel offset from centre
       // ═══════════════════════════════════════════════════
-      // Returns the height (nm) the tip sits above its apex at signed lateral offset dc_nm.
-      // For dilation: measured[i] = max_j[ surface[i+j] + T(j) ]
-      // For erosion:  measured[i] = min_j[ surface[i+j] - T(j) ]
+      // Returns the height (nm) of tip solid above its reference (apex / rim plane)
+      // at signed lateral offset dc_nm.
+      // Dilation: measured[i] = max_j[ surface[i+j] - T(j) ]
+      // Erosion:  measured[i] = min_j[ surface[i+j] + T(j) ]
       // T must be >= 0. Infinity means the tip cannot reach that offset (blocked).
 
       function tipT(dc_nm) {
@@ -1030,12 +1040,14 @@
             return r <= R ? 0 : Infinity;
           }
           case "inv_sphere": {
-            // Concave sphere: T(r) = R - sqrt(R²-r²) — same as convex sphere formula.
-            // The concave tip contacts the surface at the RIM (r=R) not the centre.
-            // It acts via EROSION: measured = min[ surface[j] - T(j) ]
-            // which is handled in computeMeas by detecting inv_sphere.
+            // Concave bowl + flat lip. T = tip solid height above the rim/lip plane.
+            // Contact-mode AFM uses dilation: M = max(S − T), same as all other tips.
             const R = p.R || 20;
-            return r < R ? R - Math.sqrt(R * R - r * r) : Infinity;
+            const lip = Math.max(0, p.lip ?? 8);
+            const outerR = Math.min(R + lip, TIP_R_NM);
+            if (r > outerR) return Infinity;
+            if (r <= R) return Math.sqrt(Math.max(0, R * R - r * r));
+            return 0;
           }
           case "asymmetric": {
             // Tilt is along the signed dc direction — one side steeper, other shallower
@@ -1203,18 +1215,11 @@
       //   Dilation:  M[i] = max_j { S[i+j] - T[j] }
       //   Erosion:   M[i] = min_j { S[i+j] + T[j] }
       //
-      // Dilation gives PROBE-BROADENING artifact (measured >= true surface
-      // only where tip can physically reach). On a flat surface, T[0]=0 wins
-      // and M[i]=S[i] exactly — flat measures flat. ✓
-      //
-      // inv_sphere uses erosion because the concave tip contacts at the rim,
-      // so it cannot reach INTO surface features (measures too narrow = erosion).
+      // Dilation is the physical default for every tip shape (including concave).
+      // User toggles (erosion / invTip) can flip to erosion for teaching/duals.
 
       function computeMeas() {
-        const tipIsErosion = currentTip === "inv_sphere";
-        const baseErosion = tipIsErosion;
-        const userFlip = INV.erosion !== INV.invTip;
-        const finalErosion = baseErosion !== userFlip;
+        const finalErosion = INV.erosion !== INV.invTip;
 
         if (finalErosion) {
           // EROSION: M[i] = min_j { S[i+j] + T[j] }
@@ -1394,13 +1399,15 @@
       }
 
       function getTipDrawPlacement(di) {
+        // Measured height is the tip reference-plane height (dilation).
+        // For concave tips, also find which sample point is the binding contact.
         if (currentTip !== "inv_sphere") {
           return { baseNm: measured[di], contactIdx: di };
         }
 
         const R = tipP.inv_sphere?.R || 20;
-        const wS = PW / X_NM;
-        const rimHalfNm = Math.min(R * wS + 10, PW / 4) / wS;
+        const lip = Math.max(0, tipP.inv_sphere?.lip ?? 8);
+        const outerR = Math.min(R + lip, TIP_R_NM);
         let bestBase = -Infinity;
         let contactIdx = di;
 
@@ -1410,10 +1417,9 @@
           j++
         ) {
           const r = Math.abs(j * DX);
-          if (r > rimHalfNm) continue;
+          if (r > outerR) continue;
 
-          // Drawn bowl profile: rim at 0, center recessed upward by R.
-          // base + profile must stay at or above the sample everywhere.
+          // Same geometric T as tipT / dilation kernel.
           const profile = r <= R ? Math.sqrt(Math.max(0, R * R - r * r)) : 0;
           const base = surface[di + j] - profile;
           if (base > bestBase) {
@@ -1548,7 +1554,9 @@
           g2d.restore();
         } else if (currentTip === "inv_sphere") {
           const R = p.R || 20;
-          const hw = Math.min(R * wS + 10, PW / 4);
+          const lip = Math.max(0, p.lip ?? 8);
+          const outerR = Math.min(R + lip, TIP_R_NM);
+          const hw = Math.min(outerR * wS, PW / 4);
           const N = 80;
 
           const tG2 = g2d.createLinearGradient(ax, contactY, ax, tipTopY);
@@ -1556,18 +1564,19 @@
           tG2.addColorStop(1, TD.fill1);
           g2d.fillStyle = tG2;
 
-          // Concave bowl: flat rim on contact plane, arch rises into tip at center.
-          // Parametric semicircle in nm (wS≠hS — do not use canvas.arc).
+          // Concave bowl + flat lip on contact plane.
           sh(() => {
             g2d.moveTo(ax - hw, tipTopY);
             g2d.lineTo(ax + hw, tipTopY);
             g2d.lineTo(ax + hw, contactY);
+            if (hw > R * wS + 0.5) g2d.lineTo(ax + R * wS, contactY);
             for (let k = 0; k <= N; k++) {
               const t = (k / N) * Math.PI;
               const x = R * Math.cos(t);
               const depth = R * Math.sin(t);
               g2d.lineTo(ax + x * wS, contactY - depth * hS);
             }
+            if (hw > R * wS + 0.5) g2d.lineTo(ax - R * wS, contactY);
             g2d.lineTo(ax - hw, contactY);
           });
 
@@ -1936,18 +1945,22 @@
           pvCtx.restore();
         } else if (currentTip === "inv_sphere") {
           const R = p.R || 20;
-          const hw = Math.min(R * wS + 8, W / 2 - 3);
+          const lip = Math.max(0, p.lip ?? 8);
+          const outerR = Math.min(R + lip, TIP_R_NM);
+          const hw = Math.min(outerR * wS, W / 2 - 3);
           const N = 60;
           sh(() => {
             pvCtx.moveTo(cx - hw, apexY - bodyH);
             pvCtx.lineTo(cx + hw, apexY - bodyH);
             pvCtx.lineTo(cx + hw, apexY);
+            if (hw > R * wS + 0.5) pvCtx.lineTo(cx + R * wS, apexY);
             for (let k = 0; k <= N; k++) {
               const t = (k / N) * Math.PI;
               const x = R * Math.cos(t);
               const depth = R * Math.sin(t);
               pvCtx.lineTo(cx + x * wS, apexY - depth * hS);
             }
+            if (hw > R * wS + 0.5) pvCtx.lineTo(cx - R * wS, apexY);
             pvCtx.lineTo(cx - hw, apexY);
           });
           pvCtx.save();
@@ -2313,8 +2326,7 @@
 
       function buildParamsJson() {
         const stats = computeFullLineStats();
-        const tipIsErosion = currentTip === "inv_sphere";
-        const finalErosion = tipIsErosion !== (INV.erosion !== INV.invTip);
+        const finalErosion = INV.erosion !== INV.invTip;
         return {
           simulator: "2d",
           tip: currentTip,

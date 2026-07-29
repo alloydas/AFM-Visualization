@@ -46,6 +46,7 @@
       html,
       body {
         height: 100%;
+        height: 100dvh;
         overflow: hidden;
       }
       body {
@@ -65,6 +66,24 @@
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
         background: var(--bg);
+        z-index: 40;
+      }
+      .sidebar-toggle {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: var(--accent);
+        font-family: inherit;
+        font-size: 9px;
+        letter-spacing: 1px;
+        padding: 4px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .sidebar-toggle:hover,
+      .sidebar-toggle[aria-expanded="true"] {
+        background: rgba(0, 229, 176, 0.1);
+        border-color: var(--accent);
       }
       .topbar a {
         font-size: 9px;
@@ -83,6 +102,15 @@
         letter-spacing: 4px;
         color: var(--accent);
         text-transform: uppercase;
+      }
+      .title-hint {
+        display: block;
+        font-size: 8px;
+        letter-spacing: 1px;
+        color: var(--text);
+        opacity: 0.5;
+        margin-top: 2px;
+        text-transform: none;
       }
       .theme-toggle {
         background: var(--panel);
@@ -105,6 +133,7 @@
         flex: 1;
         min-height: 0;
         overflow: hidden;
+        position: relative;
       }
       .sidebar {
         width: 268px;
@@ -116,12 +145,45 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        background: var(--bg);
+        transition:
+          width 0.2s ease,
+          transform 0.2s ease,
+          padding 0.2s ease,
+          border-color 0.2s ease;
+      }
+      .sidebar.collapsed {
+        width: 0;
+        padding-left: 0;
+        padding-right: 0;
+        border-right-color: transparent;
+        overflow: hidden;
+      }
+      .sidebar-inner {
+        width: 248px;
+        min-width: 248px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
       .sidebar::-webkit-scrollbar {
         width: 3px;
       }
       .sidebar::-webkit-scrollbar-thumb {
         background: var(--border);
+      }
+      .sidebar-backdrop {
+        display: none;
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 25;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+      }
+      .sidebar-backdrop.show {
+        display: block;
       }
       .main {
         flex: 1;
@@ -141,9 +203,56 @@
         justify-content: center;
         background: var(--canvas-bg);
         border: 1px solid var(--border);
+        overflow: hidden;
+        position: relative;
       }
       .cv-wrap.cv-main {
         flex: 1 1 200px;
+        touch-action: none;
+        cursor: grab;
+      }
+      .cv-wrap.cv-main:active {
+        cursor: grabbing;
+      }
+      .cv-xform {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform-origin: center center;
+        will-change: transform;
+      }
+      @media (max-width: 820px) {
+        .sidebar {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          z-index: 30;
+          width: min(300px, 88vw);
+          padding: 10px;
+          box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+          transform: translateX(0);
+        }
+        .sidebar.collapsed {
+          width: min(300px, 88vw);
+          padding: 10px;
+          transform: translateX(-105%);
+          border-right-color: var(--border);
+          overflow-y: auto;
+        }
+        .sidebar-inner {
+          width: 100%;
+          min-width: 0;
+        }
+        .title {
+          font-size: 10px;
+          letter-spacing: 2px;
+        }
+        .title-hint {
+          display: none;
+        }
       }
       .cv-wrap.cv-err {
         flex: 0 1 72px;
@@ -364,12 +473,26 @@
   <body>
     <div class="topbar">
       <a href="index.html">← Home</a>
-      <div class="title">AFM 2D Simulator</div>
+      <button
+        class="sidebar-toggle"
+        id="sidebarToggle"
+        type="button"
+        aria-expanded="true"
+        aria-controls="sidebar"
+        title="Toggle controls"
+      >
+        ☰ CONTROLS
+      </button>
+      <div class="title">
+        AFM 2D Simulator
+        <span class="title-hint">Drag to pan · Scroll / pinch to zoom · Double-tap to reset</span>
+      </div>
       <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">◑ LIGHT</button>
     </div>
     <div class="wrap">
+      <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="Close controls"></button>
       <!-- SIDEBAR -->
-      <div class="sidebar">
+      <div class="sidebar" id="sidebar"><div class="sidebar-inner">
         <div class="panel">
           <div class="plabel">Tip Geometry</div>
           <div id="tipBtns">
@@ -506,13 +629,15 @@
             </div>
           </div>
         </div>
-      </div>
+      </div></div>
       <!-- sidebar -->
 
       <!-- MAIN -->
       <div class="main">
-        <div class="cv-wrap cv-main">
-          <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
+        <div class="cv-wrap cv-main" id="cvMainWrap">
+          <div class="cv-xform" id="cvMainXform">
+            <canvas class="main-cv" id="cv0" width="700" height="520"></canvas>
+          </div>
         </div>
         <div class="cv-wrap cv-err">
           <canvas class="main-cv" id="cv1" width="700" height="70"></canvas>
@@ -2555,6 +2680,169 @@
         drawPreview();
         if (!playing) render();
       });
+
+      // ═══════════════════════════════════════════════════
+      //  SIDEBAR + MAIN VIEW (pan / pinch-zoom)
+      // ═══════════════════════════════════════════════════
+      (function initMobileView() {
+        const sidebar = document.getElementById("sidebar");
+        const toggle = document.getElementById("sidebarToggle");
+        const backdrop = document.getElementById("sidebarBackdrop");
+        const wrap = document.getElementById("cvMainWrap");
+        const xform = document.getElementById("cvMainXform");
+        if (!sidebar || !toggle) return;
+        const MQ = window.matchMedia("(max-width: 820px)");
+
+        function isMobile() {
+          return MQ.matches;
+        }
+        function setOpen(open) {
+          sidebar.classList.toggle("collapsed", !open);
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          toggle.textContent = open ? "✕ CONTROLS" : "☰ CONTROLS";
+          if (backdrop) backdrop.classList.toggle("show", open && isMobile());
+          requestAnimationFrame(() => {
+            drawPreview();
+            if (!playing) render();
+          });
+        }
+        function syncDefault() {
+          setOpen(!isMobile());
+        }
+        toggle.addEventListener("click", () => {
+          setOpen(sidebar.classList.contains("collapsed"));
+        });
+        if (backdrop) backdrop.addEventListener("click", () => setOpen(false));
+        MQ.addEventListener("change", syncDefault);
+        syncDefault();
+
+        if (!wrap || !xform) return;
+        const view = { scale: 1, x: 0, y: 0 };
+        const pointers = new Map();
+        let mode = null;
+        let lx = 0,
+          ly = 0;
+        let pinchDist = 1,
+          pinchScale = 1,
+          pinchX = 0,
+          pinchY = 0,
+          pinchVX = 0,
+          pinchVY = 0;
+        let lastTap = 0;
+        let moved = false;
+
+        function apply() {
+          xform.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+        }
+        function resetView() {
+          view.scale = 1;
+          view.x = 0;
+          view.y = 0;
+          apply();
+        }
+        function clampScale(s) {
+          return Math.max(0.45, Math.min(4, s));
+        }
+        function pts() {
+          return [...pointers.values()];
+        }
+        function dist(a, b) {
+          return Math.hypot(a.x - b.x, a.y - b.y);
+        }
+
+        wrap.addEventListener(
+          "wheel",
+          (e) => {
+            e.preventDefault();
+            const rect = wrap.getBoundingClientRect();
+            const cx = e.clientX - rect.left - rect.width / 2;
+            const cy = e.clientY - rect.top - rect.height / 2;
+            const prev = view.scale;
+            const next = clampScale(view.scale * (e.deltaY < 0 ? 1.08 : 1 / 1.08));
+            const k = next / prev;
+            view.x = cx - (cx - view.x) * k;
+            view.y = cy - (cy - view.y) * k;
+            view.scale = next;
+            apply();
+          },
+          { passive: false },
+        );
+
+        wrap.addEventListener("pointerdown", (e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          wrap.setPointerCapture(e.pointerId);
+          pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (pointers.size === 1) {
+            mode = "pan";
+            lx = e.clientX;
+            ly = e.clientY;
+            moved = false;
+          } else if (pointers.size >= 2) {
+            mode = "pinch";
+            moved = true;
+            const p = pts();
+            pinchDist = Math.max(1, dist(p[0], p[1]));
+            pinchScale = view.scale;
+            pinchX = (p[0].x + p[1].x) / 2;
+            pinchY = (p[0].y + p[1].y) / 2;
+            pinchVX = view.x;
+            pinchVY = view.y;
+          }
+        });
+        wrap.addEventListener("pointermove", (e) => {
+          if (!pointers.has(e.pointerId)) return;
+          pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (mode === "pinch" || pointers.size >= 2) {
+            const p = pts();
+            if (p.length < 2) return;
+            const d = Math.max(1, dist(p[0], p[1]));
+            const midX = (p[0].x + p[1].x) / 2;
+            const midY = (p[0].y + p[1].y) / 2;
+            view.scale = clampScale(pinchScale * (d / pinchDist));
+            view.x = pinchVX + (midX - pinchX);
+            view.y = pinchVY + (midY - pinchY);
+            apply();
+            return;
+          }
+          if (mode !== "pan") return;
+          const dx = e.clientX - lx,
+            dy = e.clientY - ly;
+          if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+          view.x += dx;
+          view.y += dy;
+          lx = e.clientX;
+          ly = e.clientY;
+          apply();
+        });
+        function endPointer(e) {
+          if (pointers.has(e.pointerId) && pointers.size === 1 && !moved) {
+            const now = Date.now();
+            if (now - lastTap < 300) {
+              resetView();
+              lastTap = 0;
+            } else {
+              lastTap = now;
+            }
+          }
+          pointers.delete(e.pointerId);
+          try {
+            wrap.releasePointerCapture(e.pointerId);
+          } catch (_) {}
+          if (pointers.size === 0) mode = null;
+          else if (pointers.size === 1) {
+            const p = pts()[0];
+            mode = "pan";
+            lx = p.x;
+            ly = p.y;
+          }
+        }
+        wrap.addEventListener("pointerup", endPointer);
+        wrap.addEventListener("pointercancel", endPointer);
+        wrap.addEventListener("dblclick", (e) => {
+          e.preventDefault();
+          resetView();
+        });
+      })();
     </script>
   </body>
 </html>

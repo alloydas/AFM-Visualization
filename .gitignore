@@ -10,3 +10,6 @@ TGXYZ02/
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Generated geometry-validation evidence
+validation_results/

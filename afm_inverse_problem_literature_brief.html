@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AFM Tip Geometry and Inverse Reconstruction — Literature Discussion Brief</title>
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #536270;
+      --accent: #0b5f84;
+      --accent-soft: #e9f4f8;
+      --line: #d8e1e7;
+      --paper: #ffffff;
+      --page: #edf2f5;
+      --warn: #fff7df;
+      --warn-line: #e0b849;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      line-height: 1.53;
+    }
+    main {
+      width: min(8.5in, calc(100% - 32px));
+      min-height: 11in;
+      margin: 24px auto;
+      padding: 0.7in 0.75in;
+      background: var(--paper);
+      box-shadow: 0 2px 12px #24374622;
+    }
+    h1, h2, h3 { color: #123c52; line-height: 1.2; }
+    h1 {
+      margin: 0 0 0.18rem;
+      font-size: 23pt;
+      letter-spacing: -0.35px;
+    }
+    h2 {
+      margin: 1.8rem 0 0.55rem;
+      padding-bottom: 0.28rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 15pt;
+    }
+    h3 { margin: 1.15rem 0 0.35rem; font-size: 12pt; }
+    p { margin: 0.55rem 0; }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12pt;
+    }
+    .meta {
+      margin-top: 0.85rem;
+      padding: 0.7rem 0.85rem;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      color: #244557;
+    }
+    .callout {
+      margin: 1rem 0;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--warn-line);
+      border-left-width: 4px;
+      background: var(--warn);
+    }
+    .callout strong { color: #614500; }
+    ul, ol { margin: 0.45rem 0 0.75rem; padding-left: 1.35rem; }
+    li { margin: 0.28rem 0; }
+    a { color: #075b83; overflow-wrap: anywhere; }
+    .reference {
+      margin: 0.55rem 0;
+      padding-left: 1.5rem;
+      text-indent: -1.5rem;
+    }
+    .label {
+      display: inline-block;
+      margin-right: 0.25rem;
+      padding: 0.08rem 0.35rem;
+      border-radius: 3px;
+      background: #dcecf3;
+      color: #124760;
+      font-size: 9.5pt;
+      font-weight: bold;
+    }
+    .small { color: var(--muted); font-size: 9.5pt; }
+    table { width: 100%; margin: 0.85rem 0; border-collapse: collapse; font-size: 10.2pt; }
+    th, td { padding: 0.55rem; border: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: #edf5f8; color: #17445a; }
+    @media print {
+      @page { size: letter; margin: 0.5in; }
+      body { background: #fff; font-size: 10.5pt; }
+      main { width: auto; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+      h2 { break-after: avoid; }
+      h3, table, .callout { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AFM Tip Geometry and Inverse Reconstruction</h1>
+    <p class="subtitle">Literature discussion brief for a meeting with mentors</p>
+    <div class="meta">
+      <strong>Purpose.</strong> This note records my current understanding after a focused literature review. It is intended to help me check my interpretation of the project and identify a sensible next experiment. It is not a claim that the project direction is wrong, nor a claim of novelty before a fuller literature review and mentor input.
+    </div>
+
+    <h2>1. Executive summary</h2>
+    <ul>
+      <li>The AFM forward model used in the simulator—tip-induced dilation—and the classical inverse operations—erosion, blind tip reconstruction (BTR), and certainty maps—are established methods. Villarrubia's 1997 paper is the principal reference.</li>
+      <li>There are already ML approaches for AFM restoration and for noise-robust BTR. Therefore, a generic claim of “using ML to solve AFM tip deconvolution” would overlap substantially with existing work.</li>
+      <li>Synthetic AFM data generators also exist. SimuScan (2026), for example, simulates tip convolution, noise, debris, and flattening to train segmentation/detection models.</li>
+      <li>My focused search found an unresolved <em>candidate</em> question: whether inverse/reconstruction models trained on idealized probe geometries remain reliable when evaluated on a held-out distribution of <strong>SEM-informed, non-ideal probe geometries</strong>—and whether SEM-informed training improves that robustness.</li>
+      <li>This is not yet proof of a publishable gap. It would need a systematic review and, more importantly, confirmation that it is a useful and appropriately scoped question for this project.</li>
+    </ul>
+
+    <h2>2. Background: what is already established?</h2>
+
+    <h3>Forward imaging: dilation</h3>
+    <p>In the usual height-field approximation, the AFM measurement is the geometric interaction between a sample surface and the finite probe. Features are broadened by the probe. Villarrubia expresses this as mathematical morphological <em>dilation</em>. The existing simulator implements this forward operation.</p>
+
+    <h3>Classical inverse operations</h3>
+    <p>If the tip geometry is known, morphological <em>erosion</em> gives the tightest surface upper bound consistent with the measured image. It does not generally return the true surface everywhere: locations that the tip could not access or contacted at multiple points are information-limited. A <em>certainty map</em> identifies pixels that satisfy a strict recoverability condition. These operations are already implemented in software such as Gwyddion.</p>
+
+    <h3>Blind tip reconstruction (BTR)</h3>
+    <p>BTR estimates a tip from AFM data without requiring a pre-calibrated characterizer. It begins with a deliberately blunt candidate tip and repeatedly “carves” it down using constraints from sharp features in the measured image. The result is an upper bound on the tip, not a guaranteed exact physical tip. Its accuracy depends on the sample containing informative features, the imaging conditions, and the noise level.</p>
+
+    <h3>Why SEM is useful—but limited</h3>
+    <p>SEM is a well-established way to measure a visible tip profile, apex radius, and face angle. However, it gives a 2D projection. A single side-view SEM image of a tetrahedral or pyramidal probe does not uniquely provide the unseen faces or a full 3D height kernel. It can constrain a 2D profile and support a 3D parametric approximation, but it is not a complete 3D reconstruction by itself. SEM measurements can also differ from the effective AFM imaging geometry because of charging, contamination, resolution limits, and the fact that SEM does not measure tip–sample contact behavior.</p>
+
+    <h2>3. What the key papers actually contribute</h2>
+
+    <h3>Villarrubia (1997): the mathematical foundation</h3>
+    <p><span class="label">Established</span> Provides algorithms for (1) forward imaging by dilation, (2) surface reconstruction by erosion with a known tip, (3) tip reconstruction with a known characterizer, (4) blind tip reconstruction, and (5) certainty maps. The paper explicitly discusses the fact that erosion returns an upper-bound reconstruction and that noise can destabilize BTR.</p>
+    <p><strong>Relevance here:</strong> The simulator's forward model is useful infrastructure, but this underlying morphology is not itself a new method.</p>
+
+    <h3>Matsunaga et al. (2023): differentiable BTR for noisy data</h3>
+    <p><span class="label">ML inverse</span> Replaces the hand-tuned BTR update process with differentiable dilation/erosion, backpropagation, and regularization. The authors demonstrate better noise robustness than conventional BTR on synthetic high-speed-AFM molecular images, detect a double-tip case, and test on a real molecular data set.</p>
+    <p><strong>Relevance here:</strong> This substantially overlaps with a broad proposal to use ML to estimate the tip and subsequently recover the surface. It is a strong baseline, not a reason to abandon the project automatically. Its experiments use idealized model tips and biomolecular images, leaving possible room for a different probe-geometry and validation regime.</p>
+
+    <h3>Kocur et al. (2022/2023) and Bonagiri et al. (2024): ML artifact correction</h3>
+    <p><span class="label">ML inverse</span> Kocur et al. train a CNN on synthetic distorted/ground-truth pairs to correct AFM artifacts without requiring the operator to specify the artifact at inference time. Bonagiri et al. train an encoder–decoder network using simulated tip-convoluted/deconvoluted pairs to recover nanoscale 3D surface profiles.</p>
+    <p><strong>Relevance here:</strong> End-to-end learned AFM restoration is also already established. A new model would need a specific, measurable contribution beyond simply replacing erosion with a CNN.</p>
+
+    <h3>SimuScan (2026): synthetic AFM data for downstream ML</h3>
+    <p><span class="label">Synthetic data</span> SimuScan creates labeled synthetic AFM data from parameterized, CAD, or self-seeded sample geometries. It includes tip convolution, optional single/double tips, noise, debris, feedback artifacts, and flattening. Its reported downstream task is feature identification/segmentation and autonomous scanning, rather than recovering tip and surface geometry.</p>
+    <p><strong>Relevance here:</strong> A simulator that batch-generates artifact-containing AFM images is not new by itself. However, SimuScan's reported probe model is controlled through idealized tip parameters; it does not report a study based on a library of SEM-informed, worn or faceted probe geometries.</p>
+
+    <h3>Chen et al. (2024): multi-view neural 3D AFM</h3>
+    <p><span class="label">3D reconstruction</span> Uses multiple tilted AFM scans and a neural implicit surface method to reconstruct complex 3D samples. The paper uses a Bruker TESPA-V2 probe and models it as a quadrilateral pyramid. It is particularly relevant because it confirms that obtaining additional views is how one resolves geometry that a single conventional AFM view cannot reveal.</p>
+    <p><strong>Relevance here:</strong> It supports the conclusion that one SEM side view cannot establish a complete 3D tip. It also demonstrates that faceted commercial tips are already represented parametrically in AFM simulation.</p>
+
+    <h2>4. The candidate gap, stated carefully</h2>
+    <p>The proposed gap should <strong>not</strong> be phrased as “nobody has used SEM to characterize AFM tips.” That has been done for decades. It should also not be phrased as “nobody has applied ML to AFM deconvolution.” That has also been done.</p>
+    <p>A narrower and testable candidate question is:</p>
+    <div class="callout">
+      <strong>Do inverse AFM reconstruction methods trained or tuned using idealized probe geometries retain accuracy when evaluated on AFM images formed with held-out, SEM-informed non-ideal probe geometries; and does training on an SEM-informed probe distribution improve robustness?</strong>
+    </div>
+    <p>In the focused search used for this brief, I found:</p>
+    <ul>
+      <li>direct SEM/TEM tip characterization studies;</li>
+      <li>classical and differentiable BTR studies, including noise and double-tip cases;</li>
+      <li>synthetic AFM generators and CNN-based artifact correction;</li>
+      <li>multi-view AFM reconstruction; and</li>
+      <li>sim-to-real/domain-transfer discussion for AFM more broadly.</li>
+    </ul>
+    <p>I did <strong>not</strong> find a study that combines all of the following: a library of SEM-informed non-ideal probe geometries; a controlled ideal-tip-versus-realistic-tip domain-shift benchmark; and an ablation asking whether SEM-informed training improves AFM inverse reconstruction. Absence from this focused search is not proof that no such study exists. A fuller review using Web of Science/Scopus/Google Scholar and citation chaining would be required before making a novelty claim.</p>
+
+    <h2>5. What experiment would actually test the candidate gap?</h2>
+    <p>The answer is <strong>both</strong> evaluation and training comparison. Merely showing that an existing model fails on one tip would be a useful diagnostic, but weak as a contribution. Training a new model only on SEM-informed synthetic data without a controlled comparison would also be inconclusive.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>What to do</th>
+          <th>Why it is needed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Build probe representations</td>
+          <td>Extract 2D SEM profiles and fit visible face angles/apex shape. Construct explicitly labeled 3D approximations (e.g., tetrahedral/pyramidal models with measured visible faces and stated assumptions for hidden faces).</td>
+          <td>A single SEM view cannot establish a literal 3D tip. “SEM-informed” is more accurate than “actual 3D.”</td>
+        </tr>
+        <tr>
+          <td>2. Generate controlled data</td>
+          <td>Use the forward model to make known surface → measured AFM pairs. Hold out entire tip geometries, not merely random images, for testing.</td>
+          <td>Known ground truth permits measurement of both surface and tip errors.</td>
+        </tr>
+        <tr>
+          <td>3. Define baselines</td>
+          <td>Compare classical erosion/BTR, differentiable BTR, and an ML restoration baseline where feasible.</td>
+          <td>Shows whether the proposed approach improves on established methods rather than only on a weak custom baseline.</td>
+        </tr>
+        <tr>
+          <td>4. Measure domain shift</td>
+          <td>Train or configure a baseline using ideal cone/sphere/pyramid tips, then evaluate it on held-out SEM-informed tip simulations.</td>
+          <td>Tests whether idealized-tip assumptions produce a meaningful failure mode.</td>
+        </tr>
+        <tr>
+          <td>5. Test mitigation</td>
+          <td>Train a matched model on ideal + SEM-informed geometry distributions; compare it fairly against the ideal-only version on the same held-out probes.</td>
+          <td>Tests whether realistic geometry representation actually improves robustness.</td>
+        </tr>
+        <tr>
+          <td>6. Validate physically</td>
+          <td>Where possible, test on AFM scans with a known reference sample and independent SEM images of the same probe before/after scanning.</td>
+          <td>Simulation-only results establish an internal benchmark, not guaranteed experimental utility.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p><strong>Recommended initial scope:</strong> begin with a 2D profile study. A side-view SEM image directly supports a 2D, asymmetric profile kernel, so this provides a defensible benchmark without pretending a single view is full 3D geometry. If that produces a meaningful domain gap, expand to clearly labeled 3D tetrahedral approximations or collect additional SEM views.</p>
+
+    <h2>6. Practical interpretation for the simulator</h2>
+    <p>The simulator can still be valuable even though forward morphology is established. Its strongest role is likely as a transparent, configurable <strong>benchmark/data-generation layer</strong>:</p>
+    <ul>
+      <li>record the sample, probe representation, scan grid, noise, and artifact parameters for every generated example;</li>
+      <li>produce true surface, measured surface, probe kernel, and optionally a certainty/confidence map;</li>
+      <li>separate ideal tips, parametric faceted tips, and SEM-informed profiles in the dataset metadata;</li>
+      <li>make every approximation visible and reproducible.</li>
+    </ul>
+    <p>The simulator itself may also be a useful educational or laboratory tool. Whether that is independently publishable depends on the intended venue and contribution expectations; the literature review alone cannot answer that question.</p>
+
+    <h2>7. Questions for mentor discussion</h2>
+    <ol>
+      <li>Was the simulator intended mainly as supporting infrastructure for an inverse-model or robustness study, rather than as a standalone method paper?</li>
+      <li>Is the “ideal-tip to SEM-informed-tip domain gap” a scientifically useful and appropriately scoped question for this project?</li>
+      <li>Should the first milestone be a 2D benchmark using real SEM side profiles, before attempting a 3D faceted approximation?</li>
+      <li>What experimental reference samples and AFM/SEM data are realistically available for validating simulated conclusions?</li>
+      <li>Would building directly on an existing open implementation (e.g., differentiable BTR) be preferable to developing an entirely new inverse model?</li>
+    </ol>
+
+    <h2>8. References and useful resources</h2>
+    <p class="reference">[1] Villarrubia, J. S. “Algorithms for Scanned Probe Microscope Image Simulation, Surface Reconstruction, and Tip Estimation.” <em>Journal of Research of NIST</em> 102, 425 (1997). <a href="https://doi.org/10.6028/jres.102.030">doi.org/10.6028/jres.102.030</a></p>
+    <p class="reference">[2] Matsunaga, Y. et al. “End-to-end differentiable blind tip reconstruction for noisy atomic force microscopy images.” <em>Scientific Reports</em> 13, 129 (2023). <a href="https://doi.org/10.1038/s41598-022-27057-2">doi.org/10.1038/s41598-022-27057-2</a></p>
+    <p class="reference">[3] Kocur, V. et al. “Correction of AFM data artifacts using a convolutional neural network trained with synthetically generated data.” <em>Ultramicroscopy</em> 246, 113666 (2023; online 2022). <a href="https://doi.org/10.1016/j.ultramic.2022.113666">doi.org/10.1016/j.ultramic.2022.113666</a></p>
+    <p class="reference">[4] Bonagiri, L. K. S. et al. “Precise Surface Profiling at the Nanoscale Enabled by Deep Learning.” <em>Nano Letters</em> (2024). <a href="https://doi.org/10.1021/acs.nanolett.3c04712">doi.org/10.1021/acs.nanolett.3c04712</a></p>
+    <p class="reference">[5] Millan-Solsona, R. et al. “Synthetic data-driven deep learning for label-free autonomous atomic force microscopy.” <em>Nature Communications</em> 17, 3886 (2026). <a href="https://doi.org/10.1038/s41467-026-70421-3">doi.org/10.1038/s41467-026-70421-3</a></p>
+    <p class="reference">[6] Chen, S. et al. “Multi-view neural 3D reconstruction of micro- and nanostructures with atomic force microscopy.” <em>Communications Engineering</em> 3, 131 (2024). <a href="https://doi.org/10.1038/s44172-024-00270-9">doi.org/10.1038/s44172-024-00270-9</a></p>
+    <p class="reference">[7] Dai, J. et al. “Accurate tip characterization in critical dimension atomic force microscopy.” <em>Measurement Science and Technology</em> 31, 085013 (2020). <a href="https://doi.org/10.1088/1361-6501/ab7fd2">doi.org/10.1088/1361-6501/ab7fd2</a></p>
+    <p class="reference">[8] “A Novel Method for Determining AFM Probe Tip Characteristics Using Trench-Based Reference Material.” <em>Nanomanufacturing and Metrology</em> (2025). <a href="https://doi.org/10.1007/s41871-025-00262-z">doi.org/10.1007/s41871-025-00262-z</a></p>
+    <p class="reference">[9] Gwyddion User Guide: “Tip Convolution Artefacts.” <a href="http://gwyddion.net/documentation/user-guide-en/tip-convolution-artefacts.html">gwyddion.net/documentation/user-guide-en/tip-convolution-artefacts.html</a></p>
+
+    <p class="small"><strong>Review boundary.</strong> This brief was prepared from a focused web and citation search in July 2026. It is intentionally cautious: it identifies closely related work and a possible empirical question, rather than asserting that no prior work exists. A formal literature review should add database searches and forward/backward citation chaining before any novelty statement is used in a manuscript.</p>
+  </main>
+</body>
+</html>

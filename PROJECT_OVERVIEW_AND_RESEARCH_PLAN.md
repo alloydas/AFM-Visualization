@@ -1,7 +1,8 @@
 # AFM Forward Simulation, Validation, and Inverse Reconstruction Roadmap
 
 **Project status:** Active research and software development  
-**Current emphasis:** Validated forward modelling and preparation for inverse reconstruction  
+**Current emphasis:** Forward-model manuscript draft by 1 October 2026; submission readiness by 31 October 2026; inverse-problem foundation by 27 November 2026  
+**Capacity:** Approximately 10 hours per week (about 8 focused research hours plus 2 hours for meetings, review, documentation, and contingency)  
 
 
 ## Executive summary
@@ -18,7 +19,7 @@ This collaborative project develops a transparent, browser-based platform for ex
 - a Python implementation for repeatable simulation and future batch generation; and
 - independent geometry-validation tooling that compares exported meshes with the analytical equations used by the simulator.
 
-The immediate research objective is to establish a reliable and reproducible forward model. The longer-term objective is to study the inverse problem: recovering the surface, the probe, or both from a distorted AFM measurement. A promising publication direction is not simply “using machine learning for AFM deconvolution,” which is already established, but testing whether inverse methods trained on ideal probe shapes remain reliable for held-out, SEM-informed non-ideal probes.
+The immediate research objective is to establish a reliable and reproducible forward model and complete a forward-model manuscript this semester (complete draft by 1 October 2026; submission-ready by 31 October 2026). Forward-model validation uses real AFM measurement data (Bruker `.spm` files) from known calibration samples: the simulator predicts what the measurement should look like given an independently characterized probe, and the prediction is compared against the real measurement. The longer-term objective is the inverse problem: recovering known sample geometry from real AFM measurements, with reconstruction quality evaluated as a function of the probe model used. Independent probe characterization (SEM imaging, datasheets, or tip-check samples) provides ground truth for the probe geometry that enters the simulator and against which any probe-estimation method is evaluated.
 
 ## 1. Scientific motivation
 
@@ -253,31 +254,36 @@ Two current mesh-validation examples pass the configured requirements of at leas
 
 These results validate specific exported mesh profiles against their intended equations. They do not yet validate the complete simulator against experimental AFM data.
 
-The agreed next validation step is to extract calibrated raw profile data from an SEM image, with the extraction procedure demonstrated by an experienced collaborator. That work will:
+The agreed next validation steps close the gap between internal consistency and experimental accuracy through two complementary comparisons:
+
+**Probe-geometry validation via independent characterization.** An experienced collaborator will demonstrate the procedure for extracting calibrated raw profile data from SEM images of AFM probes. That work will:
 
 1. establish the SEM image scale and coordinate convention;
 2. digitize and preserve raw probe-profile coordinates;
 3. document any alignment, baseline, segmentation, or smoothing applied to the data;
 4. convert the extracted profile into a simulator-compatible probe representation without losing its physical scale;
-5. compare the extracted SEM profile with the simulator's generated or rasterized probe output; and
+5. compare the extracted profile with the simulator's generated or rasterized probe output; and
 6. report residual errors and the uncertainty introduced by image resolution and profile extraction.
 
-This comparison provides direct validation of the simulator's probe-geometry representation. Validating the complete forward image-formation model will additionally require a known or independently characterized sample, an AFM measurement made with the corresponding probe, and comparison with the simulator's predicted measured surface.
+**Forward-model validation against real AFM measurements.** Real AFM data is available as Bruker `.spm` files, which preserve calibrated height values, scan parameters, and instrument metadata. By scanning a known calibration sample with a characterized probe, the full forward-model prediction loop can be tested: the simulator takes the known sample geometry and independently characterized probe as inputs, computes the predicted measurement, and the result is compared directly against the real `.spm` height map. Discrepancies reveal modelling gaps that internal self-tests cannot detect.
 
-After the SEM profile comparison, the supporting validation work is:
+Together, these two comparisons validate the simulator at the probe-geometry level (SEM profile match) and at the image-formation level (predicted vs real measurement). The `.spm` format is preferred over generic `.tiff` export because it retains the instrument's native calibration, scan metadata, and data-processing history, reducing the risk of misaligned scales or undocumented transformations.
+
+After these experimental comparisons, the supporting validation work for the October manuscript is limited to the highest-value checks that fit a 10-hour weekly budget:
 
 1. browser-to-Python golden tests for representative probe/surface combinations;
-2. CSV and 16-bit PNG round-trip tests;
-3. deliberate negative controls showing that incorrect geometry fails;
-4. convergence studies over grid spacing and probe-mesh resolution; and
-5. automated regression tests for transforms, boundaries, and imported geometry.
+2. CSV and 16-bit PNG round-trip tests where needed for claimed exports;
+3. deliberate negative controls showing that incorrect geometry fails; and
+4. targeted resolution-sensitivity checks rather than exhaustive convergence studies.
+
+Broader automated regression suites and full experimental AFM/reference-sample validation remain important, but they are deferred if they threaten the 1 October draft or 31 October submission-ready deadlines.
 
 ## 7. Current limitations and research risks
 
 - A height-field model cannot represent overhangs or multiple heights at one lateral position.
 - Geometric convolution does not include deformation, adhesion, friction, cantilever response, drift, line flattening, or feedback dynamics.
 - The direct grid algorithm trades resolution for browser responsiveness.
-- A single SEM side view constrains only a visible 2D profile; it does not uniquely determine a full 3D probe.
+- A single SEM side view constrains only a visible 2D profile; it does not uniquely determine a full 3D probe. Additional characterization (tip-check samples, multiple SEM views, or manufacturer specifications) may be needed for full 3D probe modelling.
 - An OBJ mesh may contain a visually complete object whose relevant AFM height envelope is sparse or poorly sampled.
 - Imported OBJ probes are automatically centered, shifted to a contact reference, and rescaled when their lateral span falls outside expected bounds. This is convenient for demonstration but can alter absolute nanometre calibration unless scale is checked explicitly.
 - The interactive 3D model uses a fixed lateral probe-kernel footprint of approximately 28 nm; geometry outside that footprint does not contribute to the calculation.
@@ -291,37 +297,40 @@ After the SEM profile comparison, the supporting validation work is:
 
 ## 8. Publication and dissemination plan
 
-The publication strategy should be staged and evidence-led. No target venue or manuscript timeline is currently fixed in the project files, so the stages below are a proposed plan for collective review rather than an existing commitment.
+The publication strategy is staged and evidence-led. The near-term commitment for this semester is a forward-model manuscript with a complete draft circulated by **1 October 2026** and a submission-ready package by **31 October 2026**. Venue selection and authorship details should be confirmed collectively during the first week of drafting.
 
-### Stage A: Software and demonstration output
+### Stage A: Software and demonstration output (ongoing support for Stage B)
 
-Prepare a versioned software release with a stable web deployment, installation-free demonstration, user guide, example geometries, documented coordinate conventions, and reproducible validation commands. Archive a citable release if project policy permits. Posters, demonstrations, and research meetings can use the simulator to communicate the problem and gather feedback.
+Prepare a versioned software snapshot with documented coordinate conventions, example geometries, and reproducible validation commands. Archive the SEM-profile comparison evidence, `.spm`-based forward-model comparisons, and mesh-validation reports used in the paper. Posters, demonstrations, and research meetings can continue to use the simulator, but feature expansion is deferred until after the manuscript is submission-ready.
 
-### Stage B: Forward-model and benchmark paper
+### Stage B: Forward-model paper (complete draft 1 October; submission-ready 31 October)
 
-A methods or software paper is possible if the contribution is framed around the integrated and validated platform rather than claiming novelty for morphological dilation itself. A credible submission would include:
+Freeze the forward-paper scope around the validated forward simulator, experimental validation against real AFM data, probe-geometry comparison, current mesh validation, exports, limitations, and reproducibility. A methods or software paper is credible if the contribution is framed around the integrated and validated platform rather than claiming novelty for morphological dilation itself.
 
-- formal browser-to-Python agreement tests;
-- sensitivity and convergence studies;
-- validation of analytical and imported probe geometries;
-- a reproducible artifact benchmark spanning ideal and non-ideal probes;
-- comparison with an established package such as Gwyddion where applicable;
-- at least one physical reference-sample case if data are available; and
-- openly documented data and evaluation protocols.
+A submission-ready package should include:
 
-The likely contribution would be a transparent bridge between interactive education, arbitrary probe geometry, reproducible forward simulation, and dataset generation. Venue selection should follow a review of expectations for software, microscopy methods, and engineering-education publications.
+- forward-model prediction vs real `.spm` measurement on a known calibration sample, with residual analysis;
+- SEM raw-profile extraction, calibration, and residual comparison against the simulator's probe representation;
+- current analytical/mesh geometry validation (for example cone and triangular pyramid);
+- the highest-value browser-to-Python agreement cases that fit the October budget;
+- targeted negative-control or resolution-sensitivity checks where feasible;
+- openly documented data, commands, and evaluation protocols.
 
-### Stage C: Main inverse-problem study
+If work slips, protect the October deadlines by moving additional tip types, broad convergence studies, large dataset generation, major UI refactoring, and software restructuring to post-submission work.
 
-The stronger research publication opportunity is a controlled study of probe-geometry domain shift:
+The likely contribution is a transparent bridge between interactive education, arbitrary probe geometry, reproducible forward simulation validated against real measurements, and a path to later dataset generation and inverse benchmarking. Venue selection should follow a brief review of expectations for software, microscopy methods, and engineering-education publications.
 
-> Do inverse AFM methods trained or tuned with idealized probes retain accuracy on measurements formed by held-out SEM-informed non-ideal probes, and does training with a realistic probe distribution improve robustness?
+### Stage C: Main inverse-problem study (foundation by 27 November; full study next semester)
 
-This wording avoids unsupported claims that SEM tip characterization or ML deconvolution is itself new. Before using a novelty claim, the focused literature brief should be expanded into a systematic search with database queries and forward/backward citation chaining.
+The longer-term research opportunity is a controlled study of inverse reconstruction grounded in real AFM data. The availability of real `.spm` measurements from known calibration samples, combined with independent probe characterization (SEM, datasheets, or tip-check samples), enables a direct experimental benchmark that most prior work has not attempted. The candidate research question is:
 
-### Stage D: Experimental extension
+> Can inverse AFM reconstruction methods recover the known geometry of a calibration sample from real AFM measurements, and how does reconstruction quality depend on the probe model used—ideal, parameterized non-ideal, or independently characterized?
 
-If suitable data can be collected, evaluate the best methods using a known reference sample and an independently imaged probe, ideally with SEM observations before and after AFM scanning. This would distinguish simulation consistency from practical reconstruction value and could support a follow-on microscopy application paper.
+This question is grounded in real data rather than a purely synthetic domain-shift study, making the results directly relevant to practitioners. Before committing to specific novelty claims, the focused literature brief should be expanded into a systematic search with database queries and forward/backward citation chaining. This semester ends with a dataset schema, baselines, and a pilot protocol—not a completed inverse paper.
+
+### Stage D: Extended real-data validation (after the semester foundation)
+
+With additional calibration samples and probes, the benchmark can be expanded to evaluate how reconstruction methods behave across different probe conditions (new, worn, contaminated) and sample geometries. Ideally, SEM observations of the probe before and after AFM scanning would provide independent evidence of probe wear and allow pre/post comparisons. This would support a follow-on microscopy application paper and strengthen claims about practical reconstruction value beyond simulation-only evaluation.
 
 Authorship, contribution statements, software licensing, data release, and target venues should be agreed collectively before manuscript preparation.
 
@@ -343,9 +352,9 @@ This phase establishes what information the forward model permits before introdu
 
 Generate paired examples containing:
 
-- true surface;
-- measured AFM surface;
-- probe kernel;
+- true surface (known calibration geometry or synthetic ground truth);
+- measured AFM surface (simulated via the forward model and, where available, real `.spm` measurements);
+- probe kernel (analytical, parameterized, or independently characterized);
 - reconstruction or certainty mask;
 - noise and artifact settings; and
 - complete metadata describing units, grid spacing, transforms, and random seeds.
@@ -355,13 +364,15 @@ Probe data should be divided into distinct groups:
 - ideal analytical probes;
 - parameterized faceted probes;
 - synthetic worn or multi-apex probes; and
-- SEM-informed non-ideal profiles or explicitly labelled 3D approximations.
+- independently characterized probes (from SEM profiles, datasheets, or tip-check samples).
 
-Entire probe geometries must be held out during testing. Randomly splitting images made by the same probes would leak probe-specific information and underestimate domain shift.
+Entire probe geometries must be held out during testing. Randomly splitting images made by the same probes would leak probe-specific information and underestimate domain shift. Where real `.spm` data is available for known samples, it should be included as an additional evaluation tier alongside synthetic forward-model pairs.
 
-### Phase 3: Evaluate domain shift
+### Phase 3: Evaluate reconstruction quality across probe models
 
-Train or configure methods using ideal probes, then evaluate without adjustment on held-out non-ideal probes. Stratify results by probe wear, asymmetry, apex multiplicity, noise, surface class, and feature scale.
+Evaluate inverse methods by comparing recovered surface geometry against known ground truth. Vary the probe model provided to each method—ideal, parameterized non-ideal, or independently characterized—and measure how reconstruction quality depends on probe-model fidelity. Stratify results by probe condition, surface class, noise, and feature scale.
+
+Where real `.spm` measurements of known calibration samples are available, these provide the strongest evaluation tier: success means recovering the known sample geometry from a real measurement, not just from a synthetic forward-model output.
 
 Recommended metrics include height RMSE and mean absolute error, structural similarity, feature width/height error, spectral error, uncertainty calibration, and probe-kernel error when the probe is estimated.
 
@@ -378,7 +389,7 @@ Compare, under the same splits:
 - domain randomization over probe geometry; and
 - physics-informed or unrolled models that embed dilation/erosion in the network.
 
-The main ablation should isolate whether realistic probe distributions improve generalization, not merely whether a larger model improves average error.
+The main ablation should isolate whether using a more accurate probe model improves reconstruction of known sample geometry, not merely whether a larger model improves average error on synthetic data.
 
 ### Phase 5: Add uncertainty and joint estimation
 
@@ -392,64 +403,70 @@ Because multiple surface/probe pairs can explain one measurement, the model shou
 
 Multi-view or multi-orientation data are especially important for resolving geometry that a single height map or SEM view cannot identify.
 
-### Phase 6: Sim-to-real validation
+### Phase 6: Closed-loop experimental validation
 
-Apply the selected method to experimental data only after synthetic performance and failure modes are understood. Where possible:
+Apply the selected method to real `.spm` measurements and verify results against independently known geometry. The validation loop is:
 
-1. scan a known calibration structure;
-2. characterize the probe independently;
-3. reconstruct the surface and, where applicable, the probe;
-4. forward-simulate the reconstruction;
-5. compare the re-simulated image with the measurement; and
+1. obtain a real AFM measurement of a known calibration structure;
+2. characterize the probe independently (SEM, datasheet, or tip-check);
+3. reconstruct the surface and, where applicable, the probe from the real measurement;
+4. compare the reconstructed surface against the known calibration geometry;
+5. forward-simulate the reconstruction to check self-consistency with the measurement; and
 6. report discrepancies and uncertainty rather than selecting only visually successful cases.
 
-## 10. Proposed near-term milestones
+This loop has been central to the project from the outset: the forward model is validated against real data, and inverse methods are evaluated by their ability to recover known geometry from real data.
 
-### Milestone 1: Forward-model verification
+## 10. Semester research timeline (8 September – 27 November 2026)
 
-- Learn and document the raw SEM profile-extraction procedure.
-- Extract calibrated probe coordinates and retain both raw and processed data.
-- Compare the SEM-derived profile against the simulator representation, including residuals and uncertainty.
-- Add browser/Python golden cases.
-- Add negative controls and resolution-convergence tests.
-- Validate exported faceted-pyramid geometry and define mesh-only checks for worn probes.
-- Reconcile documentation with the currently implemented probe library.
-- Record all validation commands and software versions.
+Capacity is approximately **115 hours** over this window at **10 hours per week**: about 8 hours of focused research and 2 hours for meetings, review, documentation, and contingency. Inverse-model training, a large dataset, major UI refactoring, and nonessential simulator features are deferred until after the forward-model paper is submission-ready.
 
-### Milestone 2: Dataset prototype
+### 10.1 8 September – 1 October: complete manuscript draft
 
-- Build a batch generator around the Python model.
-- Define a versioned metadata schema.
-- Produce a small balanced dataset with probe-level train/validation/test splits.
-- Verify every sample by re-running the saved parameters.
+| Window | Hours | Work | Exit criteria |
+|--------|------:|------|---------------|
+| 8–13 Sep | 10 | Agree on paper contribution and claims; select a likely venue/template; build the manuscript outline and figure/evidence checklist; assign collaborative review responsibilities. | Outline, claim list, and evidence checklist approved. |
+| 14–20 Sep | 10 | Learn the SEM raw-data extraction workflow; extract and calibrate one probe profile; compare it with the simulator representation; begin `.spm`-based forward-model comparison on a known calibration sample; preserve raw/processed data and uncertainty notes. | Calibrated SEM profile comparison and initial `.spm` forward-model comparison with residuals and uncertainty notes. |
+| 21–27 Sep | 10 | Rerun current cone/pyramid validation; prepare core figures including simulator-vs-real comparison; write Methods, Results, validation, and limitations. | Core figures and Methods/Results/limitations draft complete. |
+| 28 Sep – 1 Oct | 5–7 | Assemble Introduction, related work, discussion, conclusion, references, and collaborative contribution wording. | **Complete draft circulated by 1 October.** |
 
-### Milestone 3: Inverse baseline benchmark
+### 10.2 2–31 October: review and submission package
 
-- Implement known-probe erosion and certainty maps.
-- Select classical and differentiable blind-tip baselines.
-- Establish quantitative surface and probe metrics.
-- Publish a benchmark protocol before tuning a new model.
+| Window | Hours | Work | Exit criteria |
+|--------|------:|------|---------------|
+| 2–4 Oct | 3–5 | Collect and triage feedback; lock the revision list and claims. | Revision list frozen. |
+| 5–11 Oct | 10 | Address scientific feedback; add the highest-value browser-to-Python golden cases; reconcile code/documentation inconsistencies. | Priority scientific revisions and golden cases complete. |
+| 12–18 Oct | 10 | Complete targeted negative-control and resolution-sensitivity checks; finalize SEM-comparison and `.spm` forward-model comparison metrics, uncertainty, and limitations. | **Validation and uncertainty package frozen by 18 October.** |
+| 19–25 Oct | 10 | Complete collaborative revision, reference verification, figure polishing, captions, reproducibility statement, and supplementary material. | Near-final manuscript and supplements ready for last review. |
+| 26–31 Oct | 8–10 | Final technical and editorial review, venue formatting, author/contribution approval, and archive of the evidence package. | **Manuscript submission-ready by 31 October.** |
 
-### Milestone 4: SEM-informed pilot
+**Deadline-protection rule.** If work slips, protect the paper deadline by moving additional tip types, broad convergence studies, and software restructuring to post-submission work.
 
-- Extract defensible 2D profiles from several SEM images.
-- Record calibration, segmentation, fitting uncertainty, and hidden-face assumptions.
-- Test ideal-to-non-ideal domain shift first in 2D.
-- Proceed to faceted 3D approximations only if the pilot demonstrates a measurable and scientifically useful gap.
+### 10.3 1–27 November: inverse-problem foundation
 
-### Milestone 5: Experimental and publication package
+| Window | Hours | Work | Exit criteria |
+|--------|------:|------|---------------|
+| 1–8 Nov | 10 | Extend the literature matrix with inverse methods evaluated on real data; refine the publication question around recovering known sample geometry from real `.spm` measurements as a function of probe-model fidelity. | Updated literature matrix and narrowed candidate claim. |
+| 9–15 Nov | 10 | Define a versioned dataset/metadata schema incorporating real `.spm` data and independently characterized probes; synchronize the Python model with priority probe types; produce a small reproducible pilot set. | **Small versioned dataset prototype with real-data tier by 15 November.** |
+| 16–22 Nov | 10 | Establish known-probe erosion and one published reconstruction baseline on both synthetic and real data; define surface, probe, feature, and uncertainty metrics. | Executable baseline and metric definitions. |
+| 23–27 Nov | 6–8 | Run a pilot reconstruction on real `.spm` data from a known sample if inputs are ready; otherwise finalize the executable benchmark protocol, risk register, data requirements, and next-semester experiment plan. | **Inverse benchmark specification plus baseline/pilot evidence by 27 November.** |
 
-- Add import support for real SPM height maps with documented calibration and preprocessing.
-- Collect or obtain reference-sample AFM data.
-- Complete ablations and uncertainty analysis.
-- Release code, dataset documentation, and reproducible evaluation scripts as permitted.
-- Prepare the forward-platform and inverse-domain-shift outputs for the most appropriate venues.
+Solving the full inverse problem is explicitly next-semester work.
+
+### 10.4 Semester milestone checklist
+
+- **1 October:** complete forward-model paper draft circulated.
+- **18 October:** validation and uncertainty package frozen.
+- **31 October:** forward-model manuscript submission-ready.
+- **15 November:** small versioned dataset prototype with real-data tier and probe-level splits.
+- **27 November:** inverse benchmark specification plus baseline/pilot evidence; full inverse study deferred.
 
 ## 11. Criteria for project success
 
-The forward-model phase will be successful when the numerical outputs are reproducible, independently testable, consistent across browser and Python implementations, and bounded by clearly stated assumptions.
+This semester will be successful if the forward-model manuscript is complete by 1 October, submission-ready by 31 October, and the inverse programme ends on 27 November with an executable benchmark foundation rather than an unfinished paper claim.
 
-The inverse phase will be successful if it determines—positively or negatively—whether realistic probe geometry causes a meaningful generalization failure, and whether a controlled mitigation improves performance on genuinely held-out probes. A negative result would still be valuable if the benchmark is rigorous and reveals where idealized models are sufficient.
+The forward-model phase will be successful when the numerical outputs are reproducible, independently testable, consistent across browser and Python implementations for the cases claimed in the paper, validated against real AFM measurements from known calibration samples, and bounded by clearly stated assumptions.
+
+The inverse phase will be successful if it demonstrates—positively or negatively—whether inverse methods can recover known calibration-sample geometry from real AFM measurements, how reconstruction quality depends on probe-model fidelity, and whether independently characterized probes improve performance over idealized models. A negative result would still be valuable if the benchmark is rigorous and reveals where idealized probe models are sufficient.
 
 The broader project succeeds by making AFM probe artifacts easier to understand while producing a defensible path from visualization to quantitative reconstruction research.
 

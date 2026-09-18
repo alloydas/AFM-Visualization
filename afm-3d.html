@@ -565,6 +565,7 @@
               <button class="btn active" data-scan="200" style="flex: 1" title="200 nm field — nanometre features">200 nm</button>
               <button class="btn" data-scan="2000" style="flex: 1" title="2 µm field">2 µm</button>
               <button class="btn" data-scan="20000" style="flex: 1" title="20 µm field — µm probes and calibration gratings">20 µm</button>
+              <button class="btn" data-scan="50000" style="flex: 1" title="50 µm field">50 µm</button>
             </div>
           </div>
 
@@ -584,6 +585,8 @@
               <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
               <button class="btn" data-surf="vgrp_15m" title="Bruker VGRP-15M calibration grating: 180 nm deep, 10 µm pitch, Pt-coated, on a 15 mm disc. Switches the scan to 20 µm.">▦ VGRP-15M</button>
               <button class="btn" data-surf="vgrp_gs" title="Bruker VGRP-GS: the same grating on a glass slide. Switches the scan to 20 µm.">▦ VGRP-GS</button>
+              <button class="btn" data-surf="tgxyz02_sq" title="MikroMasch TGXYZ02, 10 µm pitch area: square SiO2 pillars 5 µm on a side, 100 nm tall. Switches the scan to 20 µm.">⊡ TGXYZ02 squares</button>
+              <button class="btn" data-surf="tgxyz02_circ" title="MikroMasch TGXYZ02, 5 µm pitch area: circular holes Ø2.54 µm, 100 nm deep. Switches the scan to 20 µm.">⊙ TGXYZ02 circles</button>
               <button class="btn" data-surf="custom" id="surfCustomBtn" disabled title="Import a .obj surface first">⬆ Custom</button>
             </div>
             <div class="slider-section" id="surfSliders"></div>
@@ -922,7 +925,7 @@
       // Scan field. Switchable, because the samples people calibrate with (the
       // Bruker VGRP gratings: 10 µm pitch, 180 nm deep) and the µm probes that
       // scan them do not fit in a 200 nm window.
-      const SCANS = [200, 2000, 20000];
+      const SCANS = [200, 2000, 20000, 50000];
       let X_NM = 200,
         Y_NM = 200,
         dNm = X_NM / GW;
@@ -1040,9 +1043,20 @@ const SURF_DEFS={
              {id:'depth',label:'Pit depth',min:180,max:180,step:1,val:180,unit:'nm'}],
   vgrp_gs:  [{id:'pitch',label:'Pitch',min:10000,max:10000,step:1,val:10000,unit:'nm'},
              {id:'depth',label:'Pit depth',min:180,max:180,step:1,val:180,unit:'nm'}],
+  // MikroMasch TGXYZ02: SiO2 steps on Si, 100 nm step height, a 5 µm pitch area
+  // of circular holes and a 10 µm pitch area of square pillars. Pitch and step
+  // are from the datasheet; the feature widths were measured off the 27 AFM
+  // scans in TGXYZ02.zip. The step slider spans the family (01: 20 nm,
+  // 02: 100 nm, 03: 500 nm). Real dimensions, so they do not scale.
+  tgxyz02_sq:  [{id:'step',label:'Step height',min:20,max:500,step:10,val:100,unit:'nm'},
+                {id:'pitch',label:'Pitch',min:10000,max:10000,step:1,val:10000,unit:'nm'},
+                {id:'side',label:'Pillar side',min:5000,max:5000,step:1,val:5000,unit:'nm'}],
+  tgxyz02_circ:[{id:'step',label:'Step height',min:20,max:500,step:10,val:100,unit:'nm'},
+                {id:'pitch',label:'Pitch',min:5000,max:5000,step:1,val:5000,unit:'nm'},
+                {id:'dia',label:'Hole diameter',min:2540,max:2540,step:1,val:2540,unit:'nm'}],
 };
 // Scan field each surface wants (nm); the µm gratings switch the field for you.
-const SURF_SCAN = {vgrp_15m: 20000, vgrp_gs: 20000};
+const SURF_SCAN = {vgrp_15m: 20000, vgrp_gs: 20000, tgxyz02_sq: 20000, tgxyz02_circ: 20000};
 // Surface defs in true units at the current scan: lateral sizes grow with the field.
 function surfDefsFor(key) {
   return (SURF_DEFS[key] || []).map((d) =>
@@ -1183,6 +1197,27 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
                 const T = p.period || 60,
                   dep = p.depth || 22;
                 rawSurf[idx] = (x % T) / T < 0.45 ? base : base + dep;
+                break;
+              }
+              // MikroMasch TGXYZ02, 10 µm pitch area: square pillars standing
+              // on the lower surface.
+              case "tgxyz02_sq": {
+                const P = p.pitch || 10000,
+                  side = p.side || 5000,
+                  st = p.step || 100;
+                const onPillar = x % P < side && y % P < side;
+                rawSurf[idx] = base + (onPillar ? st : 0);
+                break;
+              }
+              // TGXYZ02, 5 µm pitch area: circular holes, one per pitch cell.
+              case "tgxyz02_circ": {
+                const P = p.pitch || 5000,
+                  rad = (p.dia || 2540) / 2,
+                  st = p.step || 100;
+                const ux = (x % P) - P / 2,
+                  uy = (y % P) - P / 2;
+                const inHole = ux * ux + uy * uy < rad * rad;
+                rawSurf[idx] = base + (inHole ? 0 : st);
                 break;
               }
               // Bruker VGRP calibration grating: square pits, half the pitch

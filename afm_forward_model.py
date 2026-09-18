@@ -16,6 +16,7 @@ TIP_R_NM = 28.0
 H_MAX = 95.0
 BASE = 25.0
 BLOCKED = 1e9
+SNL10_ANGLES = {"front": 15.0, "back": 25.0, "side": 22.5}
 
 
 @dataclass
@@ -40,6 +41,9 @@ class SimConfig:
     noise_nm: float = 0.0
     noise_seed: int = 42
     inverts: InvertState = field(default_factory=InvertState)
+    h_max: float = H_MAX
+    h_min: float = 0.0
+    tip_kernel_radius_nm: float = TIP_R_NM
 
 
 def _d_nm(cfg: SimConfig) -> float:
@@ -47,7 +51,7 @@ def _d_nm(cfg: SimConfig) -> float:
 
 
 def _tip_r_pixels(cfg: SimConfig) -> int:
-    return int(math.ceil(TIP_R_NM / _d_nm(cfg)))
+    return max(1, int(math.ceil(cfg.tip_kernel_radius_nm / _d_nm(cfg))))
 
 
 def seeded_rand(i: int, seed: int) -> float:
@@ -130,6 +134,15 @@ def build_raw_surface(cfg: SimConfig) -> np.ndarray:
                     )
                 case "flat":
                     surf[r, c] = BASE
+                case "vgrp_15m":
+                    pitch = p.get("pitch_nm", 10_000.0)
+                    depth = p.get("depth_nm", 180.0)
+                    fw = p.get("feature_width_nm", 6000.0)
+                    margin = (pitch - fw) / 2.0
+                    px = (x + p.get("phase_x_nm", 0.0)) % pitch
+                    py = (y + p.get("phase_y_nm", 0.0)) % pitch
+                    in_well = margin <= px <= pitch - margin and margin <= py <= pitch - margin
+                    surf[r, c] = 0.0 if in_well else depth
                 case _:
                     surf[r, c] = BASE
     return surf
@@ -159,7 +172,13 @@ def apply_transforms(raw: np.ndarray, cfg: SimConfig) -> np.ndarray:
     return surf
 
 
-def tip_height(r_nm: float, dc_nm: float, tip: str, p: dict[str, float]) -> float:
+def tip_height(
+    r_nm: float,
+    dc_nm: float,
+    tip: str,
+    p: dict[str, float],
+    dr_nm: float = 0.0,
+) -> float:
     if tip == "cone":
         alpha = math.radians(p.get("angle", 15))
         return r_nm / math.tan(alpha)
@@ -198,7 +217,28 @@ def tip_height(r_nm: float, dc_nm: float, tip: str, p: dict[str, float]) -> floa
         if r_nm <= half_w:
             return r - math.sqrt(max(0.0, r * r - r_nm * r_nm))
         return y_tang + (r_nm - half_w) * half_w / sv
+    if tip in ("faceted_pyramid", "snl10"):
+        return _faceted_pyramid_tip(r_nm, dc_nm, dr_nm, p)
     return r_nm
+
+
+def _faceted_pyramid_tip(
+    r_nm: float, dc_nm: float, dr_nm: float, p: dict[str, float]
+) -> float:
+    """Asymmetric 4-sided pyramid + rounded apex (Bruker SNL-10 / faceted_pyramid)."""
+    r_cap = p.get("R", 2.0)
+    front = p.get("front", SNL10_ANGLES["front"])
+    back = p.get("back", SNL10_ANGLES["back"])
+    side = p.get("side", SNL10_ANGLES["side"])
+    cot_f = 1.0 / math.tan(math.radians(front))
+    cot_b = 1.0 / math.tan(math.radians(back))
+    cot_s = 1.0 / math.tan(math.radians(side))
+    tx = abs(dc_nm) * cot_s
+    ty = dr_nm * cot_f if dr_nm >= 0 else (-dr_nm) * cot_b
+    tp = max(tx, ty)
+    if r_nm < r_cap:
+        tp = max(tp, r_cap - math.sqrt(max(0.0, r_cap * r_cap - r_nm * r_nm)))
+    return tp
 
 
 def build_tip_kernel(cfg: SimConfig) -> np.ndarray:
@@ -212,7 +252,7 @@ def build_tip_kernel(cfg: SimConfig) -> np.ndarray:
         for dc in range(-tip_r, tip_r + 1):
             r_nm = math.hypot(dc * d_nm, dr * d_nm)
             kernel[dr + tip_r, dc + tip_r] = tip_height(
-                r_nm, dc * d_nm, cfg.tip, p
+                r_nm, dc * d_nm, cfg.tip, p, dr_nm=dr * d_nm
             )
     return kernel
 
@@ -249,7 +289,7 @@ def compute_measured(surface: np.ndarray, kernel: np.ndarray, cfg: SimConfig) ->
                         best = min(best, v)
                     else:
                         best = max(best, v)
-            measured[r, c] = np.clip(best, 0.0, H_MAX)
+            measured[r, c] = np.clip(best, cfg.h_min, cfg.h_max)
 
     return measured
 
@@ -258,9 +298,20 @@ def simulate(cfg: SimConfig) -> tuple[np.ndarray, np.ndarray]:
     """Return (true_surface, measured_afm) height maps in nm."""
     raw = build_raw_surface(cfg)
     surf = apply_transforms(raw, cfg)
+    return surf, forward_from_surface(surf, cfg)
+
+
+def forward_from_surface(surface: np.ndarray, cfg: SimConfig) -> np.ndarray:
     kernel = build_tip_kernel(cfg)
-    meas = compute_measured(surf, kernel, cfg)
-    return surf, meas
+    return compute_measured(surface, kernel, cfg)
+
+
+def upsample_surface(surface: np.ndarray, factor: int) -> np.ndarray:
+    if factor <= 1:
+        return surface.astype(np.float64, copy=False)
+    from scipy.ndimage import zoom
+
+    return zoom(surface, factor, order=1)
 
 
 def grid_stats(true: np.ndarray, measured: np.ndarray) -> dict[str, float]:

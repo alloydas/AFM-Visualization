@@ -97,6 +97,12 @@ The 3D simulator accepts custom probe and surface meshes in Wavefront OBJ format
 
 `validate_tip_geometry.py` independently parses OBJ files, normalizes their coordinate convention, intersects vertical rays with triangles, and compares the resulting lower envelope against the analytical probe equation. It produces machine-readable JSON, sampled CSV data, profile SVGs, and an interactive Three.js comparison.
 
+Experimental forward-model validation uses `spm_io.py` (Bruker `.spm` height channels), `samples/calibration_specs.json` (VGRP-15M grating and SNL-10-B tip parameters from datasheets), and `validate_forward_experiment.py`, which builds the spec-defined true surface, runs the same morphological forward model as `afm_forward_model.py`, and compares the prediction to measured topography. Example:
+
+    python validate_forward_experiment.py --case vgrp15m_snl10
+
+Reports are written under `validation_results/` (gitignored). Install optional dependencies with `pip install -r requirements-validation.txt`.
+
 ## 4. Implemented capabilities
 
 The current platform includes the following capabilities.

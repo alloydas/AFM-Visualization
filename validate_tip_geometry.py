@@ -53,6 +53,12 @@ TIP_DEFAULTS: dict[str, dict[str, float]] = {
         "back": 25.0,
         "side": 22.5,
     },
+    "snl10": {
+        "R": 2.0,
+        "front": 15.0,
+        "back": 25.0,
+        "side": 22.5,
+    },
 }
 
 
@@ -206,7 +212,7 @@ def tip_height(tip: str, x_nm: float, z_nm: float, p: dict[str, float]) -> float
         )
         return max(0.0, face_distance / math.tan(math.radians(p["angle"])))
 
-    if tip == "faceted_pyramid":
+    if tip in ("faceted_pyramid", "snl10"):
         cot_front = 1 / math.tan(math.radians(p["front"]))
         cot_back = 1 / math.tan(math.radians(p["back"]))
         cot_side = 1 / math.tan(math.radians(p["side"]))

@@ -587,9 +587,17 @@
               <button class="btn" data-surf="vgrp_gs" title="Bruker VGRP-GS: the same grating on a glass slide. Switches the scan to 20 µm.">▦ VGRP-GS</button>
               <button class="btn" data-surf="tgxyz02_sq" title="MikroMasch TGXYZ02, 10 µm pitch area: square SiO2 pillars 5 µm on a side, 100 nm tall. Switches the scan to 20 µm.">⊡ TGXYZ02 squares</button>
               <button class="btn" data-surf="tgxyz02_circ" title="MikroMasch TGXYZ02, 5 µm pitch area: circular holes Ø2.54 µm, 100 nm deep. Switches the scan to 20 µm.">⊙ TGXYZ02 circles</button>
+              <button class="btn" data-surf="cs20ng_sq" title="BudgetSensors CS-20NG, 1×1 mm area: square SiO₂ pillars, 10 µm pitch, ~20 nm step. Switches the scan to 20 µm.">⊞ CS-20NG squares</button>
+              <button class="btn" data-surf="cs20ng_circ" title="BudgetSensors CS-20NG, 500×500 µm area: circular holes, 5 µm pitch, ~20 nm step. Switches the scan to 20 µm.">◎ CS-20NG circles</button>
+              <button class="btn" data-surf="cs20ng_nano" title="BudgetSensors CS-20NG, 100×100 µm area: circular holes on a 500 nm pitch, ~20 nm step. Switches the scan to 2 µm.">⁙ CS-20NG nanogrid</button>
+              <button class="btn" data-surf="hopg" title="Bruker HOPG-12M: atomically flat graphite terraces separated by 0.335 nm steps. Switches the scan to 2 µm.">▤ HOPG terraces</button>
+              <button class="btn" data-surf="ps_ldpe" title="Bruker PS-LDPE-12M: LDPE domains in a polystyrene matrix. Modulus contrast is the point; the relief here is approximate. Switches the scan to 20 µm.">◍ PS-LDPE domains</button>
+              <button class="btn" data-surf="fsilica" title="Bruker FSILICA: fused silica, E = 72.9 GPa. A flat modulus reference — no topography to speak of.">▭ Fused silica</button>
+              <button class="btn" data-surf="psfilm" title="Bruker PSFILM-12M: polystyrene on Si, E = 2.7 GPa. A flat modulus reference.">▭ PS film</button>
               <button class="btn" data-surf="custom" id="surfCustomBtn" disabled title="Import a .obj surface first">⬆ Custom</button>
             </div>
             <div class="slider-section" id="surfSliders"></div>
+            <div id="surfInfo" style="font-size: 9px; line-height: 1.35; color: var(--text); opacity: 0.85; margin: 2px 0 4px"></div>
             <div class="slider-row" style="margin-top: 6px">
               <div class="slider-header">
                 <span>Surface Noise</span
@@ -931,6 +939,10 @@
         dNm = X_NM / GW;
       let LS = 1; // lateral scale vs the 200 nm reference field
       let hMax = 95; // height clamp (nm); follows the sample
+      // Heights are drawn relative to this (the sample floor). Without it a
+      // surface sitting 25 nm up leaves the view once vScale reaches ~200,
+      // which it does on atomically flat samples like HOPG.
+      let zRef = 0;
       // Kernel radius in cells, so it spans 30 nm at the 200 nm scan as before
       // and grows with the field. Tip geometry itself is physical and never scales.
       const TIP_R = 12;
@@ -1054,9 +1066,47 @@ const SURF_DEFS={
   tgxyz02_circ:[{id:'step',label:'Step height',min:20,max:500,step:10,val:100,unit:'nm'},
                 {id:'pitch',label:'Pitch',min:5000,max:5000,step:1,val:5000,unit:'nm'},
                 {id:'dia',label:'Hole diameter',min:2540,max:2540,step:1,val:2540,unit:'nm'}],
+  // BudgetSensors CS-20NG: SiO2 structures on a Si chip, ~20 nm step (the exact
+  // value comes on each box label). Three areas: 10 µm pitch squares, 5 µm pitch
+  // circles, and a 500 nm pitch nanogrid. Real dimensions, so they do not scale.
+  cs20ng_sq:   [{id:'step',label:'Step height',min:5,max:40,step:1,val:20,unit:'nm'},
+                {id:'pitch',label:'Pitch',min:10000,max:10000,step:1,val:10000,unit:'nm'},
+                {id:'side',label:'Pillar side',min:5000,max:5000,step:1,val:5000,unit:'nm'}],
+  cs20ng_circ: [{id:'step',label:'Step height',min:5,max:40,step:1,val:20,unit:'nm'},
+                {id:'pitch',label:'Pitch',min:5000,max:5000,step:1,val:5000,unit:'nm'},
+                {id:'dia',label:'Hole diameter',min:2500,max:2500,step:1,val:2500,unit:'nm'}],
+  cs20ng_nano: [{id:'step',label:'Step height',min:5,max:40,step:1,val:20,unit:'nm'},
+                {id:'pitch',label:'Pitch',min:500,max:500,step:1,val:500,unit:'nm'},
+                {id:'dia',label:'Hole diameter',min:250,max:250,step:1,val:250,unit:'nm'}],
+  // HOPG: atomically flat basal planes separated by single graphene steps.
+  hopg:        [{id:'terrace',label:'Terrace size',min:100,max:2000,step:50,val:600,unit:'nm'},
+                {id:'levels',label:'Step count',min:2,max:8,step:1,val:4,unit:''}],
+  // PS-LDPE: LDPE domains in a polystyrene matrix. Bruker publishes the modulus
+  // contrast but no domain size or relief, so this topography is approximate.
+  ps_ldpe:     [{id:'domain',label:'Domain size',min:500,max:6000,step:100,val:2500,unit:'nm'},
+                {id:'relief',label:'Domain relief',min:2,max:60,step:1,val:25,unit:'nm'}],
+  // Flat modulus references: what matters on these is stiffness, not shape.
+  fsilica:     [{id:'rough',label:'RMS roughness',min:0.1,max:3,step:0.1,val:0.3,unit:'nm'}],
+  psfilm:      [{id:'rough',label:'RMS roughness',min:0.1,max:5,step:0.1,val:1.0,unit:'nm'}],
+};
+// What each reference sample is for — shown under the sliders, since the
+// modulus references have no topography to speak of.
+const SURF_INFO = {
+  vgrp_15m:'Bruker VGRP-15M · Pt-coated Si · 15 mm disc',
+  vgrp_gs:'Bruker VGRP-GS · Pt-coated Si · glass slide',
+  tgxyz02_sq:'MikroMasch TGXYZ02 · SiO₂ on Si · 10 µm pitch area',
+  tgxyz02_circ:'MikroMasch TGXYZ02 · SiO₂ on Si · 5 µm pitch area',
+  cs20ng_sq:'BudgetSensors CS-20NG · SiO₂ on Si · 1×1 mm area',
+  cs20ng_circ:'BudgetSensors CS-20NG · SiO₂ on Si · 500×500 µm area',
+  cs20ng_nano:'BudgetSensors CS-20NG · SiO₂ on Si · 100×100 µm nanogrid',
+  hopg:'Bruker HOPG-12M · ZYB grade graphite · E ≈ 18 GPa · steps are 0.335 nm',
+  ps_ldpe:'Bruker PS-LDPE-12M · PS ≈ 10× stiffer than LDPE · relief approximate',
+  fsilica:'Bruker FSILICA · fused silica · E = 72.9 GPa · flat modulus reference',
+  psfilm:'Bruker PSFILM-12M · polystyrene on Si · E = 2.7 GPa · flat modulus reference',
 };
 // Scan field each surface wants (nm); the µm gratings switch the field for you.
-const SURF_SCAN = {vgrp_15m: 20000, vgrp_gs: 20000, tgxyz02_sq: 20000, tgxyz02_circ: 20000};
+const SURF_SCAN = {vgrp_15m: 20000, vgrp_gs: 20000, tgxyz02_sq: 20000, tgxyz02_circ: 20000,
+  cs20ng_sq: 20000, cs20ng_circ: 20000, cs20ng_nano: 2000, hopg: 2000, ps_ldpe: 20000};
 // Surface defs in true units at the current scan: lateral sizes grow with the field.
 function surfDefsFor(key) {
   return (SURF_DEFS[key] || []).map((d) =>
@@ -1117,6 +1167,8 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
         );
       }
       function refreshSurfSliders() {
+        const info = document.getElementById("surfInfo");
+        if (info) info.textContent = SURF_INFO[currentSurf] || "";
         makeSliders(
           document.getElementById("surfSliders"),
           surfDefsFor(currentSurf),
@@ -1197,6 +1249,68 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
                 const T = p.period || 60,
                   dep = p.depth || 22;
                 rawSurf[idx] = (x % T) / T < 0.45 ? base : base + dep;
+                break;
+              }
+              // BudgetSensors CS-20NG: same square/circle/nanogrid geometry as
+              // the other gratings, at its own pitches and ~20 nm step.
+              case "cs20ng_sq": {
+                const P = p.pitch || 10000,
+                  side = p.side || 5000,
+                  st = p.step || 20;
+                rawSurf[idx] = base + (x % P < side && y % P < side ? st : 0);
+                break;
+              }
+              case "cs20ng_circ":
+              case "cs20ng_nano": {
+                const P = p.pitch || 5000,
+                  rad = (p.dia || 2500) / 2,
+                  st = p.step || 20;
+                const ux = (x % P) - P / 2,
+                  uy = (y % P) - P / 2;
+                rawSurf[idx] = base + (ux * ux + uy * uy < rad * rad ? 0 : st);
+                break;
+              }
+              // HOPG: atomically flat terraces. A smooth field quantised into
+              // single graphene steps, so every edge is a multiple of 0.335 nm.
+              case "hopg": {
+                const T = p.terrace || 600,
+                  levels = p.levels || 4,
+                  STEP_NM = 0.335;
+                const f =
+                  Math.sin((2 * Math.PI * x) / (T * 2.3) + 0.7) *
+                    Math.cos((2 * Math.PI * y) / (T * 1.7) + 1.9) +
+                  0.6 * Math.sin((2 * Math.PI * (x + 1.4 * y)) / (T * 3.1) + 2.6);
+                const lvl = Math.round(((f + 1.6) / 3.2) * (levels - 1));
+                rawSurf[idx] =
+                  base + Math.max(0, Math.min(levels - 1, lvl)) * STEP_NM;
+                break;
+              }
+              // PS-LDPE: softer LDPE domains sitting proud of the PS matrix.
+              case "ps_ldpe": {
+                const D = p.domain || 2500,
+                  rel = p.relief || 25;
+                const f =
+                  Math.sin((2 * Math.PI * x) / D + 0.4) *
+                    Math.cos((2 * Math.PI * y) / (D * 1.15) + 1.1) +
+                  0.7 *
+                    Math.sin((2 * Math.PI * (x * 0.8 + y)) / (D * 1.6) + 2.2);
+                const t = 1 / (1 + Math.exp(-6 * (f - 0.35)));   // soft domain edge
+                rawSurf[idx] = base + rel * t + 0.8 * seededRand(idx);
+                break;
+              }
+              // Flat modulus references: sub-nanometre roughness, nothing else.
+              case "fsilica":
+              case "psfilm": {
+                // three uniforms summed have sd 0.5, so x2 makes the slider true RMS
+                const rms = p.rough || 0.3;
+                rawSurf[idx] =
+                  base +
+                  2 *
+                    rms *
+                    (seededRand(idx) +
+                      seededRand(idx + 977) +
+                      seededRand(idx + 4231) -
+                      1.5);
                 break;
               }
               // MikroMasch TGXYZ02, 10 µm pitch area: square pillars standing
@@ -1316,9 +1430,14 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
         }
         // Clamp height for the measured image: 95 nm for the nm-scale surfaces
         // as before, more for deep µm artifacts like the 180 nm VGRP pits.
-        let mx = 0;
-        for (let i = 0; i < GW * GH; i++) if (surfGrid[i] > mx) mx = surfGrid[i];
+        let mx = 0,
+          mn = Infinity;
+        for (let i = 0; i < GW * GH; i++) {
+          if (surfGrid[i] > mx) mx = surfGrid[i];
+          if (surfGrid[i] < mn) mn = surfGrid[i];
+        }
         hMax = Math.max(95, mx * 1.3);
+        zRef = isFinite(mn) ? mn : 0;
       }
 
 // Unified concave-sphere profile (visual, placement, and measured image).
@@ -1787,7 +1906,7 @@ function buildTipKernel(){
           for (let c = 0; c < GW; c++) {
             const i = r * GW + c;
             tp[i * 3] = (c / (GW - 1) - 0.5) * X_NM;
-            tp[i * 3 + 1] = surfGrid[i] * vs;
+            tp[i * 3 + 1] = (surfGrid[i] - zRef) * vs;
             tp[i * 3 + 2] = (r / (GH - 1) - 0.5) * Y_NM;
             const [cr, cg, cb] = trueColor(surfGrid[i], mn, mx);
             tc[i * 3] = cr;
@@ -1803,7 +1922,7 @@ function buildTipKernel(){
           for (let c = 0; c < GW; c++) {
             const i = r * GW + c;
             mp[i * 3] = (c / (GW - 1) - 0.5) * X_NM;
-            mp[i * 3 + 1] = dispGrid[i] * vs + 0.6;
+            mp[i * 3 + 1] = (dispGrid[i] - zRef) * vs + 0.6;
             mp[i * 3 + 2] = (r / (GH - 1) - 0.5) * Y_NM;
             const [cr, cg, cb] = measColor(dispGrid[i], mn, mx);
             mc[i * 3] = cr;
@@ -1821,7 +1940,7 @@ function buildTipKernel(){
         for (let c = 0; c < GW; c++) {
           const i = row * GW + c;
           pos[c * 3] = (c / (GW - 1) - 0.5) * X_NM;
-          pos[c * 3 + 1] = dispGrid[i] * vScale + 3;
+          pos[c * 3 + 1] = (dispGrid[i] - zRef) * vScale + 3;
           pos[c * 3 + 2] = (row / (GH - 1) - 0.5) * Y_NM;
         }
         scanLineMesh.geometry.attributes.position.needsUpdate = true;
@@ -2061,7 +2180,7 @@ function buildTipKernel(){
 
       function placeTip(row, col) {
         if (!tipObj || row < 0 || row >= GH || col < 0 || col >= GW) return;
-        const h = getTipPlacementHeight(row, col) * vScale;
+        const h = (getTipPlacementHeight(row, col) - zRef) * vScale;
         const x = (col / (GW - 1) - 0.5) * X_NM,
           z = (row / (GH - 1) - 0.5) * Y_NM;
         tipObj.scale.set(1, vScale, 1);

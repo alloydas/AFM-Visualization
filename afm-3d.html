@@ -550,11 +550,23 @@
       <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
       <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
       <button class="btn" data-tip="faceted_pyramid">◆ Faceted Pyramid</button>
+      <button class="btn" data-tip="saa_sph_1um" title="Bruker SAA-SPH-1UM: 19 µm cylindrical tip, 1 µm hemispherical end (true scale)">∪ SAA-SPH-1UM</button>
+      <button class="btn" data-tip="saa_sph_5um" title="Bruker SAA-SPH-5UM: 23 µm cylindrical tip, 5 µm hemispherical end (true scale)">∪ SAA-SPH-5UM</button>
       <button class="btn" data-tip="custom" id="tipCustomBtn" disabled title="Import a .obj tip first">⬆ Custom</button>
     </div>
     <div class="slider-section" id="tipSliders"></div>
     <canvas id="tipPreview" width="182" height="76"></canvas>
   </div>
+
+          <!-- SCAN SIZE -->
+          <div class="panel">
+            <div class="panel-label">Scan Size</div>
+            <div class="btn-group" id="scanBtns" style="flex-direction: row">
+              <button class="btn active" data-scan="200" style="flex: 1" title="200 nm field — nanometre features">200 nm</button>
+              <button class="btn" data-scan="2000" style="flex: 1" title="2 µm field">2 µm</button>
+              <button class="btn" data-scan="20000" style="flex: 1" title="20 µm field — µm probes and calibration gratings">20 µm</button>
+            </div>
+          </div>
 
           <!-- SURFACE -->
           <div class="panel">
@@ -570,6 +582,8 @@
               <button class="btn" data-surf="dna">⊛ DNA Ridges</button>
               <button class="btn" data-surf="chirp">≋ Chirp</button>
               <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
+              <button class="btn" data-surf="vgrp_15m" title="Bruker VGRP-15M calibration grating: 180 nm deep, 10 µm pitch, Pt-coated, on a 15 mm disc. Switches the scan to 20 µm.">▦ VGRP-15M</button>
+              <button class="btn" data-surf="vgrp_gs" title="Bruker VGRP-GS: the same grating on a glass slide. Switches the scan to 20 µm.">▦ VGRP-GS</button>
               <button class="btn" data-surf="custom" id="surfCustomBtn" disabled title="Import a .obj surface first">⬆ Custom</button>
             </div>
             <div class="slider-section" id="surfSliders"></div>
@@ -904,11 +918,22 @@
       //  GRID CONSTANTS
       // ════════════════════════════════════════════
       const GW = 80,
-        GH = 80,
-        X_NM = 200,
+        GH = 80;
+      // Scan field. Switchable, because the samples people calibrate with (the
+      // Bruker VGRP gratings: 10 µm pitch, 180 nm deep) and the µm probes that
+      // scan them do not fit in a 200 nm window.
+      const SCANS = [200, 2000, 20000];
+      let X_NM = 200,
         Y_NM = 200,
         dNm = X_NM / GW;
-      const TIP_R = Math.ceil(28 / dNm);
+      let LS = 1; // lateral scale vs the 200 nm reference field
+      let hMax = 95; // height clamp (nm); follows the sample
+      // Kernel radius in cells, so it spans 30 nm at the 200 nm scan as before
+      // and grows with the field. Tip geometry itself is physical and never scales.
+      const TIP_R = 12;
+      function worldScale() {
+        return X_NM / 200;
+      }
       const surfGrid = new Float32Array(GW * GH);
       const rawSurf = new Float32Array(GW * GH);
       const measGrid = new Float32Array(GW * GH);
@@ -986,19 +1011,51 @@ const TIP_DEFS={
                     {id:'front',label:'Front half-angle',min:5,max:45,step:0.5,val:15,unit:'°'},
                     {id:'back',label:'Back half-angle',min:5,max:45,step:0.5,val:25,unit:'°'},
                     {id:'side',label:'Side half-angle',min:5,max:45,step:0.5,val:22.5,unit:'°'}],
+  // Bruker SAA-SPH bio probes: cylindrical column with a hemispherical end, true scale.
+  // Bruker lists end radius as nominal/max only (1UM 1000/1250 nm, 5UM 5000/6000 nm);
+  // starting the slider at nominal is our choice, not a datasheet minimum.
+  saa_sph_1um: [{id:'R',label:'End radius R',min:1000,max:1250,step:10,val:1000,unit:'nm'}],
+  saa_sph_5um: [{id:'R',label:'End radius R',min:5000,max:6000,step:50,val:5000,unit:'nm'}],
 };
+// Nominal end radius (nm) and tip height (µm) per Bruker datasheet.
+const SAA_SPH={saa_sph_1um:{R:1000,H_um:19}, saa_sph_5um:{R:5000,H_um:23}};
 const SURF_DEFS={
-  sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm'}],
-  hills:    [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:14,unit:'nm'},{id:'scale',label:'Scale',min:20,max:120,step:5,val:60,unit:'nm'}],
-  hemisphere:[{id:'R',label:'Radius R',min:5,max:60,step:1,val:30,unit:'nm'}],
-  pit:      [{id:'R',label:'Radius R',min:5,max:60,step:1,val:28,unit:'nm'}],
-  trench:   [{id:'period',label:'Period',min:15,max:120,step:5,val:60,unit:'nm'},{id:'depth',label:'Depth',min:5,max:70,step:1,val:30,unit:'nm'}],
+  // lat: a lateral size -- it scales with the scan field so the surface keeps
+  // its shape. Heights stay in nm. Absolute artifacts (VGRP) never scale.
+  sine:     [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'period',label:'Period',min:10,max:120,step:5,val:55,unit:'nm',lat:1}],
+  hills:    [{id:'amp',label:'Amplitude',min:2,max:40,step:1,val:14,unit:'nm'},{id:'scale',label:'Scale',min:20,max:120,step:5,val:60,unit:'nm',lat:1}],
+  hemisphere:[{id:'R',label:'Radius R',min:5,max:60,step:1,val:30,unit:'nm',lat:1}],
+  pit:      [{id:'R',label:'Radius R',min:5,max:60,step:1,val:28,unit:'nm',lat:1}],
+  trench:   [{id:'period',label:'Period',min:15,max:120,step:5,val:60,unit:'nm',lat:1},{id:'depth',label:'Depth',min:5,max:70,step:1,val:30,unit:'nm'}],
   rough:    [{id:'scale',label:'Amplitude',min:1,max:40,step:1,val:10,unit:'×0.3'}],
-  pyramid:  [{id:'h',label:'Height',min:5,max:70,step:1,val:40,unit:'nm'},{id:'w',label:'Base width',min:10,max:160,step:5,val:80,unit:'nm'}],
-  dna:      [{id:'amp',label:'Amplitude',min:5,max:50,step:1,val:22,unit:'nm'},{id:'period',label:'Period',min:20,max:100,step:5,val:50,unit:'nm'}],
+  pyramid:  [{id:'h',label:'Height',min:5,max:70,step:1,val:40,unit:'nm'},{id:'w',label:'Base width',min:10,max:160,step:5,val:80,unit:'nm',lat:1}],
+  dna:      [{id:'amp',label:'Amplitude',min:5,max:50,step:1,val:22,unit:'nm'},{id:'period',label:'Period',min:20,max:100,step:5,val:50,unit:'nm',lat:1}],
   chirp:    [{id:'amp',label:'Amplitude',min:2,max:45,step:1,val:18,unit:'nm'},{id:'rate',label:'Chirp Rate',min:1,max:20,step:1,val:8,unit:'×'}],
-  lattice:  [{id:'amp',label:'Height',min:2,max:35,step:1,val:12,unit:'nm'},{id:'spacing',label:'Spacing',min:8,max:60,step:2,val:22,unit:'nm'}],
+  lattice:  [{id:'amp',label:'Height',min:2,max:35,step:1,val:12,unit:'nm'},{id:'spacing',label:'Spacing',min:8,max:60,step:2,val:22,unit:'nm',lat:1}],
+  // Bruker VGRP calibration gratings: a 2D array of square pits, 10 µm pitch,
+  // 180 nm deep, Pt-coated. VGRP-15M is on a 15 mm disc, VGRP-GS on a glass
+  // slide -- same grating, so both entries share the geometry. Real artifact
+  // dimensions, so these do NOT scale with the scan field.
+  vgrp_15m: [{id:'pitch',label:'Pitch',min:10000,max:10000,step:1,val:10000,unit:'nm'},
+             {id:'depth',label:'Pit depth',min:180,max:180,step:1,val:180,unit:'nm'}],
+  vgrp_gs:  [{id:'pitch',label:'Pitch',min:10000,max:10000,step:1,val:10000,unit:'nm'},
+             {id:'depth',label:'Pit depth',min:180,max:180,step:1,val:180,unit:'nm'}],
 };
+// Scan field each surface wants (nm); the µm gratings switch the field for you.
+const SURF_SCAN = {vgrp_15m: 20000, vgrp_gs: 20000};
+// Surface defs in true units at the current scan: lateral sizes grow with the field.
+function surfDefsFor(key) {
+  return (SURF_DEFS[key] || []).map((d) =>
+    d.lat
+      ? {...d, min: d.min * LS, max: d.max * LS, step: d.step * LS, val: d.val * LS}
+      : d,
+  );
+}
+function rescaleSurfParams(ratio) {
+  for (const [k, defs] of Object.entries(SURF_DEFS))
+    for (const d of defs)
+      if (d.lat && surfP[k]) surfP[k][d.id] *= ratio;
+}
 const tipP={},surfP={};
 for(const[k,d]of Object.entries(TIP_DEFS))  tipP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
 for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=>[x.id,x.val]));
@@ -1006,17 +1063,26 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
       // ════════════════════════════════════════════
       //  SLIDER UI
       // ════════════════════════════════════════════
+      // Lengths read in µm once they pass 1000 nm, so µm-scale scans stay legible.
+      function fmtVal(v, unit) {
+        if (unit === "nm" && Math.abs(v) >= 1000)
+          return (v / 1000).toFixed(v % 1000 ? 2 : 0) + " µm";
+        return Math.round(v * 100) / 100 + unit;
+      }
+      function fmtLen(nm) {
+        return nm >= 1000 ? nm / 1000 + " µm" : nm + " nm";
+      }
       function makeSliders(container, defs, store, onChange) {
         container.innerHTML = "";
         (defs || []).forEach((d) => {
           const row = document.createElement("div");
           row.className = "slider-row";
-          row.innerHTML = `<div class="slider-header"><span>${d.label}</span><span class="slider-val" id="sv_${d.id}">${store[d.id]}${d.unit}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
+          row.innerHTML = `<div class="slider-header"><span>${d.label}</span><span class="slider-val" id="sv_${d.id}">${fmtVal(store[d.id], d.unit)}</span></div><input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${store[d.id]}">`;
           container.appendChild(row);
           row.querySelector("input").addEventListener("input", function () {
             store[d.id] = parseFloat(this.value);
             document.getElementById("sv_" + d.id).textContent =
-              store[d.id] + d.unit;
+              fmtVal(store[d.id], d.unit);
             onChange();
           });
         });
@@ -1039,7 +1105,7 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
       function refreshSurfSliders() {
         makeSliders(
           document.getElementById("surfSliders"),
-          SURF_DEFS[currentSurf],
+          surfDefsFor(currentSurf),
           surfP[currentSurf],
           () => {
             buildSurface();
@@ -1117,6 +1183,16 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
                 const T = p.period || 60,
                   dep = p.depth || 22;
                 rawSurf[idx] = (x % T) / T < 0.45 ? base : base + dep;
+                break;
+              }
+              // Bruker VGRP calibration grating: square pits, half the pitch
+              // wide, etched to the stated depth below the top surface.
+              case "vgrp_15m":
+              case "vgrp_gs": {
+                const P = p.pitch || 10000,
+                  dep = p.depth || 180;
+                const inPit = x % P < P * 0.5 && y % P < P * 0.5;
+                rawSurf[idx] = base + dep - (inPit ? dep : 0);
                 break;
               }
               case "rough": {
@@ -1203,6 +1279,11 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
             for (let c = 0; c < GW; c++)
               surfGrid[r * GW + c] = tmp[(GH - 1 - r) * GW + c];
         }
+        // Clamp height for the measured image: 95 nm for the nm-scale surfaces
+        // as before, more for deep µm artifacts like the 180 nm VGRP pits.
+        let mx = 0;
+        for (let i = 0; i < GW * GH; i++) if (surfGrid[i] > mx) mx = surfGrid[i];
+        hMax = Math.max(95, mx * 1.3);
       }
 
 // Unified concave-sphere profile (visual, placement, and measured image).
@@ -1232,6 +1313,85 @@ function invSphereTipT(r_nm, p) {
   // cut rim is the contact plane (T=0). Avoids bogus below-floor heights.
   const tEdge = Math.sqrt(Math.max(0, R * R - outerR * outerR));
   return Math.sqrt(Math.max(0, R * R - r_nm * r_nm)) - tEdge;
+}
+
+// Bruker SAA-SPH profile: hemispherical end of radius R on a column of radius R near
+// the apex (per Bruker SEM images; shaft taper and base pedestal are not modelled),
+// so T(r) = R − sqrt(R²−r²) for r ≤ R and nothing beyond the column wall.
+function isWideTip(t) {
+  return Object.prototype.hasOwnProperty.call(SAA_SPH, t);
+}
+function saaSphR(p) {
+  return p.R || (SAA_SPH[currentTip] || {}).R || 1000;
+}
+function saaSphTipT(r_nm, p) {
+  const R = saaSphR(p);
+  return r_nm <= R ? R - Math.sqrt(R * R - r_nm * r_nm) : null;
+}
+
+// At true scale the µm dome is wider than the whole 200 nm field, so it can touch
+// the surface anywhere in it and the 30 nm tipKernel would truncate it. Wide tips
+// convolve over the full field instead, with T looked up by |dr|·GW+|dc|.
+let wideT = null, wideKey = null;
+let wideContactCell = -1; // grid cell the dome rests on, set by getTipPlacementHeight
+function ensureWideKernel() {
+  const p = tipP[currentTip] || {};
+  const key = currentTip + ":" + saaSphR(p);
+  if (key === wideKey) return;
+  if (!wideT) wideT = new Float64Array(GH * GW);
+  for (let dr = 0; dr < GH; dr++)
+    for (let dc = 0; dc < GW; dc++) {
+      const t = saaSphTipT(Math.sqrt((dr * dNm) ** 2 + (dc * dNm) ** 2), p);
+      wideT[dr * GW + dc] = t === null ? Infinity : t;
+    }
+  wideKey = key;
+}
+function wideTAt(q, r, c) {
+  return wideT[Math.abs(((q / GW) | 0) - r) * GW + Math.abs((q % GW) - c)];
+}
+// Exact full-field convolution into measGrid: M = sign·max_q(sign·S[q] − T) with
+// sign −1 for erosion. Rows are visited nearest first; a row, or an 8-cell segment
+// of it, is skipped when its highest value minus the smallest T it can have
+// cannot beat the best so far.
+const WIDE_SEG = 8;
+const wideRowMax = new Float64Array(GH);
+const wideSegMax = new Float64Array(GH * (GW / WIDE_SEG));
+function wideConvolve(sign, hMax) {
+  const NS = GW / WIDE_SEG;
+  for (let rr = 0; rr < GH; rr++) {
+    let m = -Infinity;
+    for (let k = 0; k < NS; k++) {
+      let sm = -Infinity;
+      for (let cc = k * WIDE_SEG; cc < (k + 1) * WIDE_SEG; cc++) {
+        const v = sign * surfGrid[rr * GW + cc];
+        if (v > sm) sm = v;
+      }
+      wideSegMax[rr * NS + k] = sm;
+      if (sm > m) m = sm;
+    }
+    wideRowMax[rr] = m;
+  }
+  for (let r = 0; r < GH; r++)
+    for (let c = 0; c < GW; c++) {
+      let best = -Infinity;
+      for (let d = 0; d < GH; d++) {
+        const tRow = d * GW;
+        for (let side = 0; side < (d ? 2 : 1); side++) {
+          const rr = side ? r + d : r - d;
+          if (rr < 0 || rr >= GH || wideRowMax[rr] - wideT[tRow] <= best) continue;
+          for (let k = 0; k < NS; k++) {
+            const c0 = k * WIDE_SEG, c1 = c0 + WIDE_SEG - 1;
+            const dcMin = c < c0 ? c0 - c : c > c1 ? c - c1 : 0;
+            if (wideSegMax[rr * NS + k] - wideT[tRow + dcMin] <= best) continue;
+            for (let cc = c0; cc <= c1; cc++) {
+              const v = sign * surfGrid[rr * GW + cc] - wideT[tRow + Math.abs(cc - c)];
+              if (v > best) best = v;
+            }
+          }
+        }
+      }
+      measGrid[r * GW + c] = Math.max(0, Math.min(hMax, sign * best));
+    }
 }
 
 // ════════════════════════════════════════════
@@ -1287,6 +1447,10 @@ function buildTipKernel(){
           if(r_nm<R) Tp=Math.max(Tp, R-Math.sqrt(R*R-r_nm*r_nm));
           tipKernel[idx]=Tp;
           break;}
+        case 'saa_sph_1um':
+        case 'saa_sph_5um':{
+          // Not read by the physics (wide tips use wideT); keeps tipKernel on the current tip.
+          const t=saaSphTipT(r_nm,p);tipKernel[idx]=t===null?1e9:t;break;}
       }
       // invTip is handled in computeMeas by switching operation — don't modify kernel
     }
@@ -1301,7 +1465,13 @@ function buildTipKernel(){
         // User toggles (erosion / invTip) can still flip to erosion.
         const doErosion = INV.erosion !== INV.invTip;
         // Max height that makes sense = max surface + typical tip artifact headroom
-        const H_MAX = 95;
+        const H_MAX = hMax;
+        if (isWideTip(currentTip)) {
+          ensureWideKernel();
+          wideConvolve(doErosion ? -1 : 1, H_MAX);
+          updateGridStats();
+          return;
+        }
         if (doErosion) {
           // EROSION: M[r,c] = min_{dr,dc} { S[r+dr, c+dc] + T[dr,dc] }
           for (let r = 0; r < GH; r++)
@@ -1361,7 +1531,9 @@ function buildTipKernel(){
       // ════════════════════════════════════════════
       function randomizeAll() {
         const tips = Object.keys(TIP_DEFS),
-          surfs = Object.keys(SURF_DEFS);
+          // the calibration gratings are specific artifacts tied to a scan size,
+          // so they are picked deliberately, not at random
+          surfs = Object.keys(SURF_DEFS).filter((k) => !SURF_SCAN[k]);
         currentTip = tips[Math.floor(Math.random() * tips.length)];
         currentSurf = surfs[Math.floor(Math.random() * surfs.length)];
         for (const d of TIP_DEFS[currentTip] || []) {
@@ -1369,7 +1541,7 @@ function buildTipKernel(){
           tipP[currentTip][d.id] =
             Math.round((d.min + Math.random() * range) / d.step) * d.step;
         }
-        for (const d of SURF_DEFS[currentSurf] || []) {
+        for (const d of surfDefsFor(currentSurf) || []) {
           const range = d.max - d.min;
           surfP[currentSurf][d.id] =
             Math.round((d.min + Math.random() * range) / d.step) * d.step;
@@ -1401,6 +1573,7 @@ function buildTipKernel(){
         refreshTipSliders();
         refreshSurfSliders();
         fullRecompute();
+        maybeAutoVScale();
         buildTipObj();
         reset3D();
       }
@@ -1410,6 +1583,7 @@ function buildTipKernel(){
       // ════════════════════════════════════════════
       let scene, camera, renderer, controls;
       let trueMesh, measMesh, tipObj, scanLineMesh, tipLight;
+      let floorGrid = null, axesGroup = null;
       let tipContactVerts = [];
 
       function initThree() {
@@ -1433,9 +1607,9 @@ function buildTipKernel(){
         tipLight = new THREE.PointLight(0x00e5b0, 1.2, 90);
         scene.add(tipLight);
         // Floor grid
-        const gh = new THREE.GridHelper(300, 24, 0x162230, 0x0d1820);
-        gh.position.y = -1;
-        scene.add(gh);
+        floorGrid = new THREE.GridHelper(300, 24, 0x162230, 0x0d1820);
+        floorGrid.position.y = -1;
+        scene.add(floorGrid);
         addAxes();
         // Surface meshes — true does not write depth so measured remains visible underneath
         trueMesh = createSurfMesh(0.45);
@@ -1728,6 +1902,9 @@ function buildTipKernel(){
               Tp = Math.max(Tp, R - Math.sqrt(R * R - r_nm * r_nm));
             return Tp;
           }
+          case "saa_sph_1um":
+          case "saa_sph_5um":
+            return saaSphTipT(r_nm, p);
           default:
             return null;
         }
@@ -1809,6 +1986,21 @@ function buildTipKernel(){
       // Height of tip y=0 plane so solid(x,z) + profile >= true surface(x,z)
       // everywhere in the xz footprint (analytical grid; concave skips mesh verts).
       function getTipPlacementHeight(row, col) {
+        if (isWideTip(currentTip)) {
+          // µm dome spans the whole field: rest it on the surface exactly as the
+          // physics does. Brute force over 6400 cells is cheap per frame and never stale.
+          ensureWideKernel();
+          let best = -Infinity;
+          wideContactCell = row * GW + col;
+          for (let q = 0; q < GW * GH; q++) {
+            const v = surfGrid[q] - wideTAt(q, row, col);
+            if (v > best) {
+              best = v;
+              wideContactCell = q;
+            }
+          }
+          return Math.max(0, Math.min(hMax, best));
+        }
         const tipX = (col / (GW - 1) - 0.5) * X_NM;
         const tipZ = (row / (GH - 1) - 0.5) * Y_NM;
         const bestRef = { val: -Infinity };
@@ -1829,7 +2021,7 @@ function buildTipKernel(){
 
         const idx = row * GW + col;
         if (!isFinite(bestRef.val)) return measGrid[idx];
-        return Math.max(0, Math.min(95, bestRef.val));
+        return Math.max(0, Math.min(hMax, bestRef.val));
       }
 
       function placeTip(row, col) {
@@ -1839,6 +2031,19 @@ function buildTipKernel(){
           z = (row / (GH - 1) - 0.5) * Y_NM;
         tipObj.scale.set(1, vScale, 1);
         tipObj.position.set(x, h, z);
+        const marker = tipObj.userData.contactMarker;
+        if (marker && wideContactCell >= 0) {
+          // Contact cell in display spacing; local y = dome height there, so the
+          // marker sits on the drawn surface. Undo the tip's vertical stretch.
+          const qr = (wideContactCell / GW) | 0,
+            qc = wideContactCell % GW;
+          marker.position.set(
+            ((qc - col) * X_NM) / (GW - 1),
+            wideTAt(wideContactCell, row, col),
+            ((qr - row) * Y_NM) / (GH - 1),
+          );
+          marker.scale.set(1, 1 / vScale, 1);
+        }
         tipLight.position.set(x, h + 20, z);
       }
 
@@ -1863,7 +2068,9 @@ function buildTipKernel(){
           opacity: 0.9,
           side: THREE.DoubleSide,
         });
-        const shH = 48; // shaft height above apex
+        // Real tips are microns tall; the app draws the bottom slice of one, so
+        // the drawn slice grows with the field (angles and physical radii do not).
+        const shH = 48 * LS; // shaft height above apex
 
         // ── Helper: cone with apex exactly at y=0, base at y=shH ─────────────────
         // THREE.ConeGeometry default: apex at +y, base at -y (upside-down for us).
@@ -1886,7 +2093,7 @@ function buildTipKernel(){
           // ── SHARP / BLUNT CONE ─────────────────────────────────────────────────
           case "cone": {
             const alpha = ((p.angle || 15) * Math.PI) / 180;
-            const bR = Math.min(shH * Math.tan(alpha), 85);
+            const bR = Math.min(shH * Math.tan(alpha), 85 * LS);
             tipObj.add(new THREE.Mesh(makeCone(bR, shH), mat));
             break;
           }
@@ -1897,7 +2104,7 @@ function buildTipKernel(){
           // thetaStart=0 (north pole), thetaLen=π/2 gives top hemisphere.
           // We rotateX(π) to flip it → bottom hemisphere with apex at y=0.
           case "sphere": {
-            const R = Math.min(p.R || 20, 36);
+            const R = Math.min(p.R || 20, 36 * LS);
             // Bottom hemisphere cap
             const sg = new THREE.SphereGeometry(
               R,
@@ -1936,7 +2143,7 @@ function buildTipKernel(){
           // ── FLAT PUNCH ─────────────────────────────────────────────────────────
           // Cylinder with a flat bottom face — brightened face disk so it looks flat.
           case "flat": {
-            const R = Math.min(p.R || 18, 42);
+            const R = Math.min(p.R || 18, 42 * LS);
             const cyl = new THREE.CylinderGeometry(R, R, shH, 32);
             cyl.translate(0, shH / 2, 0);
             tipObj.add(new THREE.Mesh(cyl, mat));
@@ -2024,7 +2231,7 @@ function buildTipKernel(){
           case "asymmetric": {
             const alpha = ((p.angle || 20) * Math.PI) / 180;
             const tilt = ((p.tilt || 15) * Math.PI) / 180;
-            const bR = Math.min(shH * Math.tan(alpha), 80);
+            const bR = Math.min(shH * Math.tan(alpha), 80 * LS);
             const mesh = new THREE.Mesh(makeCone(bR, shH), mat);
             mesh.rotation.z = tilt; // tilt around Z axis
             tipObj.add(mesh);
@@ -2035,8 +2242,8 @@ function buildTipKernel(){
           // Two cones offset in X, both with apex at y=0.
           case "double_tip": {
             const alpha = ((p.angle || 15) * Math.PI) / 180;
-            const g = Math.min((p.gap || 30) / 2, 45);
-            const bR = Math.min(shH * Math.tan(alpha), 40);
+            const g = Math.min((p.gap || 30) / 2, 45 * LS);
+            const bR = Math.min(shH * Math.tan(alpha), 40 * LS);
             [-g, g].forEach((offset) => {
               tipObj.add(new THREE.Mesh(makeCone(bR, shH, offset, 0), mat));
             });
@@ -2050,7 +2257,7 @@ function buildTipKernel(){
           case "sphere_cone": {
             // U-SHAPE: arc bottom + straight slanted sides (matches SolidWorks sketch)
             // R = arc radius, halfW = tangent half-width (top = 2×halfW)
-            const R = Math.min(p.R || 30, 55);
+            const R = Math.min(p.R || 30, 55 * LS);
             const halfW = Math.min(p.angle || 15, R * 0.95);
             const topW = halfW * 2;
             const sv = Math.sqrt(Math.max(1e-6, R * R - halfW * halfW));
@@ -2097,6 +2304,28 @@ function buildTipKernel(){
       g.computeVertexNormals();
       tipObj.add(new THREE.Mesh(g, mat));
       break;}
+
+    // ── BRUKER SAA-SPH (µm hemispherical end, true scale) ─────────────────────
+    // The real probe is a 19–23 µm column, 2–12 µm across — hundreds of times the
+    // 200 nm field. Draw a cutaway of it: the dome bottom at its true curvature
+    // (almost flat at this scale, which is the point) carried up a tall shaft, cut
+    // at 100 nm so the sample stays visible around it. The dome usually touches
+    // far from its lowest point — placeTip moves the contact marker.
+    case 'saa_sph_1um':
+    case 'saa_sph_5um':{
+      // At a 200 nm field only a 100 nm slice of the dome fits; at µm fields the
+      // real dome (radius R) and its column do fit, so draw the actual probe.
+      const R=saaSphR(p), rCut=Math.min(R, 100*LS), shaftH=170*LS;
+      const sag=(r)=>R-Math.sqrt(R*R-r*r);
+      const pts=[];
+      for(let k=0;k<=64;k++){const r=rCut*k/64; pts.push(new THREE.Vector2(r, sag(r)));}
+      pts.push(new THREE.Vector2(rCut, shaftH));
+      tipObj.add(new THREE.Mesh(new THREE.LatheGeometry(pts, 96), mat));
+      const marker=new THREE.Mesh(new THREE.SphereGeometry(2.6*LS, 16, 12),
+        new THREE.MeshBasicMaterial({color:new THREE.Color(cv('--accent3')||'#ff6b35')}));
+      marker.userData.ignoreContact=true; marker.userData.noExport=true;
+      tipObj.add(marker); tipObj.userData.contactMarker=marker;
+      break;}
   }
 
         scene.add(tipObj);
@@ -2107,22 +2336,99 @@ function buildTipKernel(){
       //  AXES
       // ════════════════════════════════════════════
       function addAxes() {
+        if (axesGroup) scene.remove(axesGroup);
+        axesGroup = new THREE.Group();
+        const ws = worldScale();
         [
           [new THREE.Vector3(1, 0, 0), 0xff4444],
           [new THREE.Vector3(0, 1, 0), 0x44ff44],
           [new THREE.Vector3(0, 0, 1), 0x4444ff],
         ].forEach(([d, c]) =>
-          scene.add(
+          axesGroup.add(
             new THREE.ArrowHelper(
               d,
-              new THREE.Vector3(-98, -2, -98),
-              55,
+              new THREE.Vector3(-98 * ws, -2 * ws, -98 * ws),
+              55 * ws,
               c,
-              7,
-              5,
+              7 * ws,
+              5 * ws,
             ),
           ),
         );
+        scene.add(axesGroup);
+      }
+
+      // World units are nanometres, so when the field jumps to 20 µm the camera,
+      // floor grid, axes and tip light have to grow with it.
+      function applyWorldScale() {
+        const ws = worldScale();
+        camera.near = ws;
+        camera.far = 5000 * ws;
+        camera.updateProjectionMatrix();
+        if (floorGrid) {
+          scene.remove(floorGrid);
+          floorGrid.geometry.dispose();
+        }
+        floorGrid = new THREE.GridHelper(300 * ws, 24, 0x162230, 0x0d1820);
+        floorGrid.position.y = -ws;
+        scene.add(floorGrid);
+        addAxes();
+        tipLight.distance = 90 * ws;
+        controls.setView("iso");
+      }
+
+      // Switch the scan field. Lateral surface sizes scale with it, tips do not.
+      function setScan(nm) {
+        const ratio = nm / X_NM;
+        X_NM = Y_NM = nm;
+        dNm = X_NM / GW;
+        LS = X_NM / 200;
+        rescaleSurfParams(ratio);
+        wideKey = null; // wideT is built from dNm
+        document
+          .querySelectorAll("#scanBtns .btn")
+          .forEach((b) => b.classList.toggle("active", +b.dataset.scan === nm));
+        refreshSurfSliders();
+        fullRecompute();
+        autoVScale();
+        applyWorldScale();
+        buildTipObj();
+        reset3D();
+      }
+
+      // Only rescale when the current exaggeration would leave the sample
+      // unreadable — flat as paper or taller than the field — so a vertical
+      // scale the user picked survives an ordinary surface change.
+      function maybeAutoVScale() {
+        let mn = Infinity, mx = -Infinity;
+        for (let i = 0; i < GW * GH; i++) {
+          if (surfGrid[i] < mn) mn = surfGrid[i];
+          if (surfGrid[i] > mx) mx = surfGrid[i];
+        }
+        const shown = Math.max(1, mx - mn) * vScale;
+        if (shown < 0.12 * X_NM || shown > 1.6 * X_NM) autoVScale();
+      }
+
+      // A 180 nm-deep grating across a 20 µm field is nearly flat, so the
+      // exaggeration has to follow the sample: show its height range at about
+      // half the field width, which is what 3× does for the nm-scale surfaces.
+      function autoVScale() {
+        let mn = Infinity, mx = -Infinity;
+        for (let i = 0; i < GW * GH; i++) {
+          if (surfGrid[i] < mn) mn = surfGrid[i];
+          if (surfGrid[i] > mx) mx = surfGrid[i];
+        }
+        const range = Math.max(1, mx - mn);
+        // Show the height range at about a tenth of the field width, never less
+        // than the 3x the nm-scale surfaces have always used.
+        const v = Math.max(3, Math.min(500, Math.round((0.1 * X_NM) / range)));
+        const vs = document.getElementById("vscaleSlider");
+        vs.min = 0.5;
+        vs.max = Math.max(10, 4 * v);
+        vs.step = v <= 10 ? 0.5 : 1;
+        vScale = v;
+        vs.value = vScale;
+        document.getElementById("vscaleVal").textContent = vScale + "×";
       }
 
       // ════════════════════════════════════════════
@@ -2134,8 +2440,8 @@ function buildTipKernel(){
           this.dom = dom;
           this.theta = -40;
           this.phi = 28;
-          this.r = 430;
-          this.target = new THREE.Vector3(0, 30, 0);
+          this.r = 430 * worldScale();
+          this.target = new THREE.Vector3(0, 30 * worldScale(), 0);
           this.pointers = new Map();
           this.mode = null; // rotate | pan | pinch
           this.lx = 0;
@@ -2154,7 +2460,8 @@ function buildTipKernel(){
             "wheel",
             (e) => {
               e.preventDefault();
-              this.r = Math.max(60, Math.min(1800, this.r + e.deltaY * 0.35));
+              const ws = worldScale();
+              this.r = Math.max(60 * ws, Math.min(1800 * ws, this.r + e.deltaY * 0.35 * ws));
               this.update();
             },
             { passive: false },
@@ -2199,8 +2506,8 @@ function buildTipKernel(){
             const midX = (pts[0].x + pts[1].x) / 2;
             const midY = (pts[0].y + pts[1].y) / 2;
             this.r = Math.max(
-              60,
-              Math.min(1800, this.pinchStartR * (this.pinchStartDist / dist)),
+              60 * worldScale(),
+              Math.min(1800 * worldScale(), this.pinchStartR * (this.pinchStartDist / dist)),
             );
             const s = this.r * 0.0015;
             const right = new THREE.Vector3();
@@ -2274,34 +2581,34 @@ function buildTipKernel(){
           const aspect =
             cont.offsetWidth / Math.max(1, cont.offsetHeight);
           // Pull camera back on tall/narrow viewports so the full scan fits.
-          const base = 430;
+          const base = 430 * worldScale();
           this.r =
             aspect < 1
-              ? Math.min(1600, Math.max(base, base / Math.max(0.35, aspect) * 0.72))
+              ? Math.min(1600 * worldScale(), Math.max(base, base / Math.max(0.35, aspect) * 0.72))
               : base;
           this.theta = -40;
           this.phi = 28;
-          this.target.set(0, 28, 0);
+          this.target.set(0, 28 * worldScale(), 0);
           this.update();
         }
         setView(v) {
           if (v === "iso") {
             this.theta = -40;
             this.phi = 28;
-            this.r = 430;
-            this.target.set(0, 28, 0);
+            this.r = 430 * worldScale();
+            this.target.set(0, 28 * worldScale(), 0);
           }
           if (v === "top") {
             this.theta = -40;
             this.phi = 87;
-            this.r = 320;
+            this.r = 320 * worldScale();
             this.target.set(0, 0, 0);
           }
           if (v === "front") {
             this.theta = 0;
             this.phi = 10;
-            this.r = 400;
-            this.target.set(0, 32, 0);
+            this.r = 400 * worldScale();
+            this.target.set(0, 32 * worldScale(), 0);
           }
           const cont = this.dom.parentElement;
           if (
@@ -2601,6 +2908,30 @@ function buildTipKernel(){
         tCtx.lineTo(cx-lw, apexY-bodyH);
         tCtx.lineTo(cx+rw, apexY-bodyH);
       }); break;}
+
+    case 'saa_sph_1um':
+    case 'saa_sph_5um':{
+      // Probe end to scale (hemisphere + column). The orange legend bar is the
+      // 200 nm scan field at the same scale (at least 1 px wide).
+      const R=saaSphR(p), rPx=bodyH*0.36, pxPerNm=rPx/R;
+      solid(()=>{
+        tCtx.moveTo(cx-rPx, apexY-bodyH);
+        tCtx.lineTo(cx-rPx, apexY-rPx);
+        tCtx.arc(cx, apexY-rPx, rPx, Math.PI, 0, true);
+        tCtx.lineTo(cx+rPx, apexY-bodyH);
+      });
+      const fieldRaw=X_NM*pxPerNm, fieldPx=Math.min(56, Math.max(1, fieldRaw));
+      tCtx.save();
+      tCtx.font='8px Courier New'; tCtx.textAlign='left';
+      tCtx.fillStyle=cv('--text');
+      tCtx.fillText('R '+(R/1000).toFixed(2)+' µm', 3, 21);
+      tCtx.fillText('H '+SAA_SPH[currentTip].H_um+' µm', 3, 30);
+      tCtx.fillStyle=cv('--accent3')||'#ff6b35';
+      tCtx.fillRect(3, 36, fieldPx, 3);      // the scan field at the tip's own scale
+      tCtx.fillStyle=cv('--text');
+      tCtx.fillText(fmtLen(X_NM)+' scan'+(fieldRaw>56?' \u25b8':''), 3, 48);
+      tCtx.restore();
+      break;}
   }
 
         tCtx.beginPath();
@@ -2633,7 +2964,7 @@ function buildTipKernel(){
     tCtx.fillText('INV',3,10);
   }
   const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
-    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',custom:'CUSTOM'};
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',saa_sph_1um:'SAA-SPH-1UM',saa_sph_5um:'SAA-SPH-5UM',custom:'CUSTOM'};
   tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
   tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
 }
@@ -2707,7 +3038,7 @@ function buildTipKernel(){
           document.getElementById("scanLabel").textContent =
             `${pct}% · ${INV.erosion ? "EROSION" : "DILATION"}${INV.revScan ? " REV" : ""}${INV.invTip ? " TIP⁻¹" : ""}`;
           document.getElementById("infoBar").textContent =
-            `Tip: ${currentTip.replace(/_/g, " ")} · Surface: ${currentSurf} · Rows: ${Math.min(Math.floor(scanPx / GW), GH)}/${GH} · vScale: ${vScale}×`;
+            `Tip: ${currentTip.replace(/_/g, " ")} · Surface: ${currentSurf} · Scan: ${fmtLen(X_NM)} · Rows: ${Math.min(Math.floor(scanPx / GW), GH)}/${GH} · vScale: ${vScale}×`;
           updateStats();
         }
 
@@ -3111,10 +3442,12 @@ function buildTipKernel(){
       function exportTipOBJ() {
         // Collect all meshes from tipObj
         const allLines = ["# AFM Tip Mesh", `# Tip: ${currentTip}`, ""];
+        if (isWideTip(currentTip))
+          allLines.splice(2, 0, "# Display cutaway: dome bottom cut at 100 nm + schematic shaft");
         let vOffset = 0;
 
         tipObj.traverse((child) => {
-          if (!(child instanceof THREE.Mesh)) return;
+          if (!(child instanceof THREE.Mesh) || child.userData.noExport) return;
           const geo = child.geometry.clone();
           // Apply world transform
           child.updateWorldMatrix(true, false);
@@ -3493,7 +3826,7 @@ function buildTipKernel(){
         if (!isFinite(floorY)) floorY = 2;
         for (let i = 0; i < GW * GH; i++) {
           let h = isNaN(heights[i]) ? floorY : heights[i];
-          customSurfHeights[i] = Math.max(2, Math.min(95, h));
+          customSurfHeights[i] = Math.max(2, Math.min(Math.max(95, 0.02 * X_NM), h));
         }
         hasCustomSurf = true;
         activateCustomSurfUI();
@@ -3557,6 +3890,11 @@ function buildTipKernel(){
         buildTipObj();
         reset3D();
       });
+      document.getElementById("scanBtns").addEventListener("click", (e) => {
+        const t = e.target.closest("[data-scan]");
+        if (!t || +t.dataset.scan === X_NM) return;
+        setScan(+t.dataset.scan);
+      });
       document.getElementById("surfBtns").addEventListener("click", (e) => {
         const t = e.target.closest("[data-surf]");
         if (!t) return;
@@ -3567,10 +3905,16 @@ function buildTipKernel(){
           .forEach((b) =>
             b.classList.toggle("active", b.dataset.surf === currentSurf),
           );
+        const wantScan = SURF_SCAN[currentSurf];
+        if (wantScan && X_NM !== wantScan) {
+          setScan(wantScan);
+          return;
+        }
         refreshSurfSliders();
         buildSurface();
         applyTransforms();
         computeMeas();
+        maybeAutoVScale();
         dispGrid.set(surfGrid);
         needsMeshUpdate = true;
         reset3D();

@@ -550,11 +550,15 @@
       <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
       <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
       <button class="btn" data-tip="faceted_pyramid">◆ Faceted Pyramid</button>
+      <button class="btn" data-tip="rtespa_150" title="Bruker RTESPA-150: etched Si, 8 nm apex (max 12), front 15° back 25° side 17.5°, k 5 N/m, f₀ 150 kHz">◆ RTESPA-150</button>
+      <button class="btn" data-tip="rtespa_300" title="Bruker RTESPA-300: same tip as the 150, stiffer lever — k 40 N/m, f₀ 300 kHz">◆ RTESPA-300</button>
+      <button class="btn" data-tip="scanasyst_air" title="Bruker ScanAsyst-Air: Si₃N₄, 2 nm apex (max 12), front 15° back 25° side 17.5°, k 0.4 N/m, f₀ 70 kHz">◆ ScanAsyst-Air</button>
       <button class="btn" data-tip="saa_sph_1um" title="Bruker SAA-SPH-1UM: 19 µm cylindrical tip, 1 µm hemispherical end (true scale)">∪ SAA-SPH-1UM</button>
       <button class="btn" data-tip="saa_sph_5um" title="Bruker SAA-SPH-5UM: 23 µm cylindrical tip, 5 µm hemispherical end (true scale)">∪ SAA-SPH-5UM</button>
       <button class="btn" data-tip="custom" id="tipCustomBtn" disabled title="Import a .obj tip first">⬆ Custom</button>
     </div>
     <div class="slider-section" id="tipSliders"></div>
+    <div id="tipInfo" style="font-size: 9px; line-height: 1.35; color: var(--text); opacity: 0.85; margin: 2px 0 4px"></div>
     <canvas id="tipPreview" width="182" height="76"></canvas>
   </div>
 
@@ -1020,6 +1024,12 @@ const TIP_DEFS={
                {id:'gap',label:'Tip gap',min:5,max:80,step:1,val:30,unit:'nm'}],
   sphere_cone:[{id:'R',label:'Ball Radius',min:5,max:60,step:1,val:30,unit:'nm'},
                {id:'angle',label:'Tangent halfW',min:3,max:55,step:1,val:15,unit:'nm'}],
+  // Bruker etched-silicon probes: the same 4-sided pyramid (front 15°, back 25°,
+  // side 17.5°) at different apex radii. RTESPA-150 and -300 share a tip and
+  // differ only in cantilever stiffness, which this simulator does not model.
+  rtespa_150:   [{id:'R',label:'Apex radius R',min:8,max:12,step:1,val:8,unit:'nm'}],
+  rtespa_300:   [{id:'R',label:'Apex radius R',min:8,max:12,step:1,val:8,unit:'nm'}],
+  scanasyst_air:[{id:'R',label:'Apex radius R',min:2,max:12,step:1,val:2,unit:'nm'}],
   // 4-sided pyramid with independent face half-angles and rounded apex.
   // Defaults match Bruker SNL-10 datasheet (front 15°, back 25°, side 22.5°, R 2 nm).
   faceted_pyramid: [{id:'R',label:'Apex radius R',min:2,max:12,step:1,val:2,unit:'nm'},
@@ -1034,6 +1044,24 @@ const TIP_DEFS={
 };
 // Nominal end radius (nm) and tip height (µm) per Bruker datasheet.
 const SAA_SPH={saa_sph_1um:{R:1000,H_um:19}, saa_sph_5um:{R:5000,H_um:23}};
+// Pyramid tips: fixed datasheet face half-angles (the faceted pyramid leaves
+// them on sliders). All are 4-sided with a rounded apex.
+const PYR_TIPS={
+  faceted_pyramid:null,
+  rtespa_150:{front:15,back:25,side:17.5},
+  rtespa_300:{front:15,back:25,side:17.5},
+  scanasyst_air:{front:15,back:25,side:17.5},
+};
+function isPyrTip(t){return Object.prototype.hasOwnProperty.call(PYR_TIPS,t);}
+// What the probe is, since stiffness and frequency are not modelled here.
+const TIP_INFO={
+  rtespa_150:'Bruker RTESPA-150 · Si · k 5 N/m · f₀ 150 kHz · tip 10–15 µm',
+  rtespa_300:'Bruker RTESPA-300 · Si · k 40 N/m · f₀ 300 kHz · same tip as the 150',
+  scanasyst_air:'Bruker ScanAsyst-Air · Si₃N₄ · k 0.4 N/m · f₀ 70 kHz · tip 2.5–8 µm',
+  faceted_pyramid:'Generic 4-sided pyramid · angles on sliders · SNL-10 defaults',
+  saa_sph_1um:'Bruker SAA-SPH-1UM · nitride lever · k 0.25 N/m · f₀ 40 kHz',
+  saa_sph_5um:'Bruker SAA-SPH-5UM · nitride lever · k 0.25 N/m · f₀ 30 kHz',
+};
 const SURF_DEFS={
   // lat: a lateral size -- it scales with the scan field so the surface keeps
   // its shape. Heights stay in nm. Absolute artifacts (VGRP) never scale.
@@ -1152,6 +1180,8 @@ for(const[k,d]of Object.entries(SURF_DEFS)) surfP[k]=Object.fromEntries(d.map(x=
         });
       }
       function refreshTipSliders() {
+        const info = document.getElementById("tipInfo");
+        if (info) info.textContent = TIP_INFO[currentTip] || "";
         makeSliders(
           document.getElementById("tipSliders"),
           TIP_DEFS[currentTip],
@@ -1483,6 +1513,118 @@ function saaSphTipT(r_nm, p) {
   return r_nm <= R ? R - Math.sqrt(R * R - r_nm * r_nm) : null;
 }
 
+// ── Rounded pyramid apex (SNL-10, RTESPA, ScanAsyst-Air) ───────────────────
+// A radius-R apex is NOT max(pyramid, sphere): a sphere sitting at a sharp apex
+// never wins that max, so the apex stays perfectly sharp however large R is.
+// The real shape is the morphological OPENING of the pyramid by a ball of
+// radius R — every such ball that fits inside it, unioned — which keeps the
+// four faces exactly, rounds the apex to R and fillets the four edges:
+//   T(x,z) = min over |d| <= R of [ T'(x+dx, z+dz) - sqrt(R^2 - |d|^2) ]
+// with T' the pyramid whose faces are each pushed inward by R. It is built
+// once per parameter set into a lookup table, then sampled bilinearly.
+const PYR_HALF = 40,
+  PYR_D = 0.5; // LUT half-extent and spacing (nm)
+const PYR_N = 2 * Math.round(PYR_HALF / PYR_D) + 1;
+const pyrLUT = new Float64Array(PYR_N * PYR_N);
+let pyrKey = null,
+  pyrFar = null, // face cotangents + the shift that puts the apex at 0
+  pyrOx = 0, // the apex of an asymmetric rounded pyramid sits off axis (toward
+  pyrOz = 0; // the blunt back face), so the profile is centred on it
+function pyrParams(tip) {
+  const p = tipP[tip] || {},
+    d = PYR_TIPS[tip];
+  return {
+    front: d ? d.front : p.front || 15,
+    back: d ? d.back : p.back || 25,
+    side: d ? d.side : p.side || 22.5,
+    R: p.R || 2,
+  };
+}
+function ensurePyrLUT() {
+  const { front, back, side, R } = pyrParams(currentTip);
+  const key = front + ":" + back + ":" + side + ":" + R;
+  if (key === pyrKey) return;
+  const rad = Math.PI / 180;
+  const cotF = 1 / Math.tan(front * rad),
+    cotB = 1 / Math.tan(back * rad),
+    cotS = 1 / Math.tan(side * rad);
+  const oF = R / Math.sin(front * rad),
+    oB = R / Math.sin(back * rad),
+    oS = R / Math.sin(side * rad);
+  // allowed ball centres: every face pushed inward by R
+  const tPrime = (x, z) =>
+    Math.max(Math.abs(x) * cotS + oS, Math.max(z * cotF + oF, -z * cotB + oB));
+  const off = [];
+  const M = 6;
+  for (let i = -M; i <= M; i++)
+    for (let j = -M; j <= M; j++) {
+      const dx = (R * i) / M,
+        dz = (R * j) / M,
+        d2 = dx * dx + dz * dz;
+      if (d2 <= R * R) off.push(dx, dz, Math.sqrt(R * R - d2));
+    }
+  for (let k = 0; k < 48; k++) {
+    const a = (2 * Math.PI * k) / 48; // rim samples (lift 0) keep the faces exact
+    off.push(R * Math.cos(a), R * Math.sin(a), 0);
+  }
+  let lo = Infinity,
+    loI = 0,
+    loJ = 0;
+  for (let i = 0; i < PYR_N; i++) {
+    const x = (i - (PYR_N - 1) / 2) * PYR_D;
+    for (let j = 0; j < PYR_N; j++) {
+      const z = (j - (PYR_N - 1) / 2) * PYR_D;
+      let best = Infinity;
+      for (let k = 0; k < off.length; k += 3) {
+        const v = tPrime(x + off[k], z + off[k + 1]) - off[k + 2];
+        if (v < best) best = v;
+      }
+      pyrLUT[i * PYR_N + j] = best;
+      if (best < lo) {
+        lo = best;
+        loI = i;
+        loJ = j;
+      }
+    }
+  }
+  pyrOx = (loI - (PYR_N - 1) / 2) * PYR_D;
+  pyrOz = (loJ - (PYR_N - 1) / 2) * PYR_D;
+  for (let i = 0; i < pyrLUT.length; i++) pyrLUT[i] -= lo; // apex to y = 0
+  pyrFar = { cotF, cotB, cotS, shift: lo };
+  pyrKey = key;
+}
+// Tip height above the apex at a lateral offset. x runs across the side faces,
+// z from the blunt back (-) to the sharp front (+).
+function pyrT(dx, dz) {
+  ensurePyrLUT();
+  dx += pyrOx; // measure from the apex, not from the sharp pyramid's axis
+  dz += pyrOz;
+  const fx = dx / PYR_D + (PYR_N - 1) / 2,
+    fz = dz / PYR_D + (PYR_N - 1) / 2;
+  if (fx < 0 || fz < 0 || fx > PYR_N - 1 || fz > PYR_N - 1) {
+    // past the rounded apex the surface is the four faces, dropped by the same
+    // shift that put the apex at 0
+    const f = pyrFar;
+    const sharp = Math.max(
+      Math.abs(dx) * f.cotS,
+      dz >= 0 ? dz * f.cotF : -dz * f.cotB,
+    );
+    return Math.max(0, sharp - f.shift);
+  }
+  const i0 = Math.floor(fx),
+    j0 = Math.floor(fz);
+  const i1 = Math.min(PYR_N - 1, i0 + 1),
+    j1 = Math.min(PYR_N - 1, j0 + 1);
+  const tx = fx - i0,
+    tz = fz - j0;
+  return (
+    pyrLUT[i0 * PYR_N + j0] * (1 - tx) * (1 - tz) +
+    pyrLUT[i1 * PYR_N + j0] * tx * (1 - tz) +
+    pyrLUT[i0 * PYR_N + j1] * (1 - tx) * tz +
+    pyrLUT[i1 * PYR_N + j1] * tx * tz
+  );
+}
+
 // At true scale the µm dome is wider than the whole 200 nm field, so it can touch
 // the surface anywhere in it and the 30 nm tipKernel would truncate it. Wide tips
 // convolve over the full field instead, with T looked up by |dr|·GW+|dc|.
@@ -1589,18 +1731,11 @@ function buildTipKernel(){
             tipKernel[idx]=yTang+(r_nm-halfW)*halfW/sv;
           }
           break;}
-        case 'faceted_pyramid':{
-          const R=p.R||2;
-          const cotF=1/Math.tan((p.front||15)*Math.PI/180);
-          const cotB=1/Math.tan((p.back||25)*Math.PI/180);
-          const cotS=1/Math.tan((p.side||22.5)*Math.PI/180);
-          const dx=dc*dNm, dy=dr*dNm;
-          const tx=Math.abs(dx)*cotS;
-          const ty=dy>=0 ? dy*cotF : (-dy)*cotB;
-          let Tp=Math.max(tx,ty);
-          if(r_nm<R) Tp=Math.max(Tp, R-Math.sqrt(R*R-r_nm*r_nm));
-          tipKernel[idx]=Tp;
-          break;}
+        case 'faceted_pyramid':
+        case 'rtespa_150':
+        case 'rtespa_300':
+        case 'scanasyst_air':
+          tipKernel[idx]=pyrT(dc*dNm, dr*dNm); break;
         case 'saa_sph_1um':
         case 'saa_sph_5um':{
           // Not read by the physics (wide tips use wideT); keeps tipKernel on the current tip.
@@ -1609,6 +1744,12 @@ function buildTipKernel(){
       // invTip is handled in computeMeas by switching operation — don't modify kernel
     }
   }
+  // Reference the kernel to its own lowest sample. For tips whose apex sits on
+  // a sample this changes nothing; for a rounded pyramid, whose apex sits
+  // slightly off axis, it keeps the dilation from reading below the surface.
+  let kMin=Infinity;
+  for(let i=0;i<KW*KW;i++) if(tipKernel[i]<kMin) kMin=tipKernel[i];
+  if(kMin>0 && kMin<1e6) for(let i=0;i<KW*KW;i++) if(tipKernel[i]<1e6) tipKernel[i]-=kMin;
 }
 
       // ════════════════════════════════════════════
@@ -2043,19 +2184,11 @@ function buildTipKernel(){
             }
             return yTang + ((r_nm - halfW) * halfW) / sv;
           }
-          case "faceted_pyramid": {
-            const R = p.R || 2;
-            const cotF = 1 / Math.tan(((p.front || 15) * Math.PI) / 180);
-            const cotB = 1 / Math.tan(((p.back || 25) * Math.PI) / 180);
-            const cotS = 1 / Math.tan(((p.side || 22.5) * Math.PI) / 180);
-            const tx = Math.abs(dx_nm) * cotS;
-            const ty =
-              dz_nm >= 0 ? dz_nm * cotF : -dz_nm * cotB;
-            let Tp = Math.max(tx, ty);
-            if (r_nm < R)
-              Tp = Math.max(Tp, R - Math.sqrt(R * R - r_nm * r_nm));
-            return Tp;
-          }
+          case "faceted_pyramid":
+          case "rtespa_150":
+          case "rtespa_300":
+          case "scanasyst_air":
+            return pyrT(dx_nm, dz_nm);
           case "saa_sph_1um":
           case "saa_sph_5um":
             return saaSphTipT(r_nm, p);
@@ -2093,12 +2226,21 @@ function buildTipKernel(){
           }
           case "sphere_cone":
             return (p.angle || 15) * 2;
-          case "faceted_pyramid": {
+          case "faceted_pyramid":
+          case "rtespa_150":
+          case "rtespa_300":
+          case "scanasyst_air": {
+            const q = pyrParams(currentTip);
             const h = 48;
-            const sideW = h * Math.tan(((p.side || 22.5) * Math.PI) / 180);
-            const frontW = h * Math.tan(((p.front || 15) * Math.PI) / 180);
-            const backW = h * Math.tan(((p.back || 25) * Math.PI) / 180);
-            return Math.max(sideW, frontW, backW) + (p.R || 2);
+            return (
+              h *
+                Math.max(
+                  Math.tan((q.side * Math.PI) / 180),
+                  Math.tan((q.front * Math.PI) / 180),
+                  Math.tan((q.back * Math.PI) / 180),
+                ) +
+              q.R
+            );
           }
           default:
             return TIP_R * dNm;
@@ -2442,17 +2584,42 @@ function buildTipKernel(){
             tipObj.add(new THREE.Mesh(lathe, mat));
       break;}
 
-    case 'faceted_pyramid':{
-      const h=shH;
-      const tF=Math.tan((p.front||15)*Math.PI/180);
-      const tB=Math.tan((p.back||25)*Math.PI/180);
-      const tS=Math.tan((p.side||22.5)*Math.PI/180);
-      const xl=-h*tS, xr=h*tS, zf=h*tF, zb=-h*tB;
-      const A=[0,0,0], c1=[xl,h,zb], c2=[xr,h,zb], c3=[xr,h,zf], c4=[xl,h,zf];
+    // Drawn from the same rounded profile the physics uses, so the apex you see
+    // is the apex that measures — sharp pyramids used to be drawn to a point
+    // whatever the apex radius said.
+    case 'faceted_pyramid':
+    case 'rtespa_150':
+    case 'rtespa_300':
+    case 'scanasyst_air':{
+      const h=shH, NA=64, NR=26;
+      const rim=[];
+      for(let k=0;k<NA;k++){
+        const a=2*Math.PI*k/NA, ca=Math.cos(a), sa=Math.sin(a);
+        let lo=0, hi=h*5+40;
+        for(let it=0; it<40; it++){
+          const m=0.5*(lo+hi);
+          if(pyrT(m*ca, m*sa) < h) lo=m; else hi=m;
+        }
+        rim.push(0.5*(lo+hi));
+      }
+      const frac=[]; for(let j=0;j<NR;j++) frac.push(Math.pow(1/NR, 1-j/(NR-1)));
+      const ringPt=(j,k)=>{
+        const a=2*Math.PI*k/NA, r=rim[k]*frac[j];
+        const x=r*Math.cos(a), z=r*Math.sin(a);
+        return [x, Math.min(h, pyrT(x,z)), z];
+      };
       const v=[];
-      const tri=(a,b,c)=>v.push(a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]);
-      tri(A,c1,c2); tri(A,c2,c3); tri(A,c3,c4); tri(A,c4,c1);
-      tri(c1,c2,c3); tri(c1,c3,c4);
+      const tri=(A,B,C)=>v.push(A[0],A[1],A[2], B[0],B[1],B[2], C[0],C[1],C[2]);
+      const apex=[0,0,0];
+      for(let k=0;k<NA;k++) tri(apex, ringPt(0,(k+1)%NA), ringPt(0,k));
+      for(let j=0;j<NR-1;j++)
+        for(let k=0;k<NA;k++){
+          const k2=(k+1)%NA;
+          tri(ringPt(j,k), ringPt(j,k2), ringPt(j+1,k2));
+          tri(ringPt(j,k), ringPt(j+1,k2), ringPt(j+1,k));
+        }
+      const top=[0,h,0];
+      for(let k=0;k<NA;k++) tri(top, ringPt(NR-1,k), ringPt(NR-1,(k+1)%NA));
       const g=new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(v,3));
       g.computeVertexNormals();
@@ -3054,13 +3221,24 @@ function buildTipKernel(){
       }
       break;}
 
-    case 'faceted_pyramid':{
-      const lw=Math.max(3, bodyNm*Math.tan((p.back||25)*Math.PI/180)*wS);
-      const rw=Math.max(3, bodyNm*Math.tan((p.front||15)*Math.PI/180)*wS);
+    case 'faceted_pyramid':
+    case 'rtespa_150':
+    case 'rtespa_300':
+    case 'scanasyst_air':{
+      // back (left, blunt) to front (right, sharp), sampled from the rounded
+      // profile so the apex radius is visible
+      const q=pyrParams(currentTip);
+      const zb=-bodyNm*Math.tan(q.back*Math.PI/180), zf=bodyNm*Math.tan(q.front*Math.PI/180);
+      const pts=[];
+      for(let i=0;i<=120;i++){
+        const z=zb+(zf-zb)*i/120;
+        pts.push([z, Math.min(bodyNm, pyrT(0,z))]);
+      }
       solid(()=>{
-        tCtx.moveTo(cx, apexY);
-        tCtx.lineTo(cx-lw, apexY-bodyH);
-        tCtx.lineTo(cx+rw, apexY-bodyH);
+        tCtx.moveTo(cx+pts[0][0]*wS, apexY-pts[0][1]*hS);
+        pts.forEach(([z,t])=>tCtx.lineTo(cx+z*wS, apexY-t*hS));
+        tCtx.lineTo(cx+zf*wS, apexY-bodyH);
+        tCtx.lineTo(cx+zb*wS, apexY-bodyH);
       }); break;}
 
     case 'saa_sph_1um':
@@ -3118,7 +3296,7 @@ function buildTipKernel(){
     tCtx.fillText('INV',3,10);
   }
   const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
-    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',saa_sph_1um:'SAA-SPH-1UM',saa_sph_5um:'SAA-SPH-5UM',custom:'CUSTOM'};
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',rtespa_150:'RTESPA-150',rtespa_300:'RTESPA-300',scanasyst_air:'SCANASYST-AIR',saa_sph_1um:'SAA-SPH-1UM',saa_sph_5um:'SAA-SPH-5UM',custom:'CUSTOM'};
   tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
   tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
 }

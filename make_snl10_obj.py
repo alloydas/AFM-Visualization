@@ -54,9 +54,19 @@ N_THETA = 256                             # directions around the axis
 N_RING = 140                              # rings from apex to rim
 N_DISC = 81                               # ball sampling (odd, so offset 0 is included)
 
-cotF, cotB, cotS = (1.0 / math.tan(math.radians(a)) for a in (FRONT, BACK, SIDE))
-tanF, tanB, tanS = (math.tan(math.radians(a)) for a in (FRONT, BACK, SIDE))
-sinF, sinB, sinS = (math.sin(math.radians(a)) for a in (FRONT, BACK, SIDE))
+cotF = cotB = cotS = tanF = tanB = tanS = sinF = sinB = sinS = 0.0
+
+
+def set_angles(front, back, side):
+    """Point the builders at another probe's face half-angles."""
+    global FRONT, BACK, SIDE, cotF, cotB, cotS, tanF, tanB, tanS, sinF, sinB, sinS
+    FRONT, BACK, SIDE = front, back, side
+    cotF, cotB, cotS = (1.0 / math.tan(math.radians(a)) for a in (front, back, side))
+    tanF, tanB, tanS = (math.tan(math.radians(a)) for a in (front, back, side))
+    sinF, sinB, sinS = (math.sin(math.radians(a)) for a in (front, back, side))
+
+
+set_angles(FRONT, BACK, SIDE)
 
 
 def t_pyramid(x, z):

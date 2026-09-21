@@ -1,0 +1,151 @@
+"""Generate Wavefront .obj meshes of the Bruker SAA-SPH BioAFM probes.
+
+Both probes are a cylindrical column capped by a hemispherical end of the same
+radius (Bruker SEM images; e.g. Biophys J 2023, PMC10754712, describes the 1UM
+as a "19 um tall cylindrical probe which has hemispherical geometry at the apex
+and a well-defined 1 um end radius"):
+
+    SAA-SPH-1UM   end radius R = 1000 nm (max 1250), tip height 19 um
+    SAA-SPH-5UM   end radius R = 5000 nm (max 6000), tip height 23 um
+
+Two meshes are written per probe:
+
+  *_probe.obj     the whole tip at true scale -- hemisphere + full column.
+                  Use this for CAD, FEA, ray tracing or figures.
+
+  *_cutaway.obj   only what fits near a 200 nm AFM scan: the dome bottom out to
+                  r = 100 nm plus a 170 nm schematic shaft. This is what
+                  afm-3d.html draws, and what its "TIP .OBJ" button exports.
+                  Over that span the dome is nearly flat (5 nm of sag at 100 nm
+                  for the 1UM, 1 nm for the 5UM) -- the reason these probes
+                  cannot resolve nanometre features.
+
+Convention (matches the simulator): units are NANOMETRES, +Y is up, the apex
+sits at the origin, and T(r) = R - sqrt(R^2 - r^2) is the tip height above the
+apex at lateral offset r. Meshes are closed (apex pole, side wall, top cap) and
+wound counter-clockwise seen from outside.
+
+Run:  python3 make_saa_sph_obj.py
+"""
+import math
+
+# (name, end radius nm, tip height nm)
+PROBES = [
+    ("saa_sph_1um", 1000.0, 19_000.0),
+    ("saa_sph_5um", 5000.0, 23_000.0),
+]
+
+N_THETA = 128        # segments around the axis
+N_ARC = 96           # profile steps over the hemisphere
+N_SHAFT = 24         # profile steps up the column
+
+CUT_R = 100.0        # cutaway: dome drawn out to this radius (nm)
+CUT_SHAFT = 170.0    # cutaway: shaft height above the apex (nm)
+
+
+def sag(radius, r):
+    """Tip height above the apex at lateral offset r."""
+    return radius - math.sqrt(max(0.0, radius * radius - r * r))
+
+
+def profile_dome(radius, r_max, n):
+    """Points (r, y) along the dome from the apex out to r_max."""
+    return [((r_max * i / n), sag(radius, r_max * i / n)) for i in range(n + 1)]
+
+
+def lathe(profile, n_theta):
+    """Revolve a profile around +Y into a closed mesh.
+
+    profile[0] must be the apex (r = 0); the last point is the top rim, which
+    gets a flat cap. Returns (vertices, faces) with 1-based face indices.
+    """
+    verts = [(0.0, profile[0][1], 0.0)]           # apex pole
+    faces = []
+    ring_start = []
+    for (r, y) in profile[1:]:
+        ring_start.append(len(verts) + 1)          # 1-based index of first vert
+        for k in range(n_theta):
+            a = 2.0 * math.pi * k / n_theta
+            verts.append((r * math.cos(a), y, r * math.sin(a)))
+
+    # apex fan
+    first = ring_start[0]
+    for k in range(n_theta):
+        faces.append((1, first + (k + 1) % n_theta, first + k))
+
+    # quads between consecutive rings
+    for i in range(len(ring_start) - 1):
+        lo, hi = ring_start[i], ring_start[i + 1]
+        for k in range(n_theta):
+            k2 = (k + 1) % n_theta
+            faces.append((lo + k, lo + k2, hi + k2))
+            faces.append((lo + k, hi + k2, hi + k))
+
+    # flat top cap
+    top_y = profile[-1][1]
+    verts.append((0.0, top_y, 0.0))
+    centre = len(verts)
+    last = ring_start[-1]
+    for k in range(n_theta):
+        k2 = (k + 1) % n_theta
+        faces.append((centre, last + k, last + k2))
+    return verts, faces
+
+
+def write_obj(path, header, verts, faces):
+    with open(path, "w") as fh:
+        for line in header:
+            fh.write("# " + line + "\n")
+        fh.write("#\n# vertices: %d   triangles: %d\n\n" % (len(verts), len(faces)))
+        fh.write("o %s\n" % path.rsplit("/", 1)[-1][:-4])
+        for (x, y, z) in verts:
+            fh.write("v %.6f %.6f %.6f\n" % (x, y, z))
+        for (a, b, c) in faces:
+            fh.write("f %d %d %d\n" % (a, c, b))   # wound CCW seen from outside
+    return len(verts), len(faces)
+
+
+def main():
+    for name, radius, height in PROBES:
+        label = name.replace("saa_sph_", "SAA-SPH-").upper().replace("UM", "UM")
+
+        # ---- whole probe, true scale ----
+        prof = profile_dome(radius, radius, N_ARC)          # apex -> equator
+        for i in range(1, N_SHAFT + 1):                     # equator -> top
+            prof.append((radius, radius + (height - radius) * i / N_SHAFT))
+        v, f = lathe(prof, N_THETA)
+        n_v, n_f = write_obj(
+            "%s_probe.obj" % name,
+            [
+                "Bruker %s AFM probe tip -- full geometry, true scale." % label,
+                "Hemispherical end of radius %.0f nm on a column of the same radius." % radius,
+                "Tip height %.0f nm (%.0f um). Units: nanometres. +Y up, apex at origin." % (height, height / 1000.0),
+                "Shaft taper and base pedestal of the real probe are not modelled.",
+                "Generated by make_saa_sph_obj.py",
+            ],
+            v, f,
+        )
+        print("%s_probe.obj      %6d verts %7d tris  (R %.0f nm, H %.0f nm)"
+              % (name, n_v, n_f, radius, height))
+
+        # ---- near-field cutaway (what the simulator draws) ----
+        prof = profile_dome(radius, CUT_R, N_ARC)
+        prof.append((CUT_R, CUT_SHAFT))
+        v, f = lathe(prof, N_THETA)
+        n_v, n_f = write_obj(
+            "%s_cutaway.obj" % name,
+            [
+                "Bruker %s -- near-field cutaway as drawn in afm-3d.html." % label,
+                "Dome bottom (R = %.0f nm) out to r = %.0f nm, then a %.0f nm schematic shaft." % (radius, CUT_R, CUT_SHAFT),
+                "The real column is %.0f nm across; this shaft is NOT its true width." % (2 * radius),
+                "Sag at r = %.0f nm is only %.2f nm. Units: nanometres. +Y up, apex at origin." % (CUT_R, sag(radius, CUT_R)),
+                "Generated by make_saa_sph_obj.py",
+            ],
+            v, f,
+        )
+        print("%s_cutaway.obj    %6d verts %7d tris  (sag at %.0f nm = %.2f nm)"
+              % (name, n_v, n_f, CUT_R, sag(radius, CUT_R)))
+
+
+if __name__ == "__main__":
+    main()

@@ -550,6 +550,7 @@
       <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
       <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
       <button class="btn" data-tip="faceted_pyramid">◆ Faceted Pyramid</button>
+      <button class="btn" data-tip="snl10" title="Bruker SNL-10: sharpened silicon tip, 2 nm apex (max 12), front 15° back 25° side 22.5°, four Si₃N₄ levers, k 0.06–0.35 N/m">◆ SNL-10</button>
       <button class="btn" data-tip="rtespa_150" title="Bruker RTESPA-150: etched Si, 8 nm apex (max 12), front 15° back 25° side 17.5°, k 5 N/m, f₀ 150 kHz">◆ RTESPA-150</button>
       <button class="btn" data-tip="rtespa_300" title="Bruker RTESPA-300: same tip as the 150, stiffer lever — k 40 N/m, f₀ 300 kHz">◆ RTESPA-300</button>
       <button class="btn" data-tip="scanasyst_air" title="Bruker ScanAsyst-Air: Si₃N₄, 2 nm apex (max 12), front 15° back 25° side 17.5°, k 0.4 N/m, f₀ 70 kHz">◆ ScanAsyst-Air</button>
@@ -1027,6 +1028,7 @@ const TIP_DEFS={
   // Bruker etched-silicon probes: the same 4-sided pyramid (front 15°, back 25°,
   // side 17.5°) at different apex radii. RTESPA-150 and -300 share a tip and
   // differ only in cantilever stiffness, which this simulator does not model.
+  snl10:        [{id:'R',label:'Apex radius R',min:2,max:12,step:1,val:2,unit:'nm'}],
   rtespa_150:   [{id:'R',label:'Apex radius R',min:8,max:12,step:1,val:8,unit:'nm'}],
   rtespa_300:   [{id:'R',label:'Apex radius R',min:8,max:12,step:1,val:8,unit:'nm'}],
   scanasyst_air:[{id:'R',label:'Apex radius R',min:2,max:12,step:1,val:2,unit:'nm'}],
@@ -1048,6 +1050,7 @@ const SAA_SPH={saa_sph_1um:{R:1000,H_um:19}, saa_sph_5um:{R:5000,H_um:23}};
 // them on sliders). All are 4-sided with a rounded apex.
 const PYR_TIPS={
   faceted_pyramid:null,
+  snl10:{front:15,back:25,side:22.5},
   rtespa_150:{front:15,back:25,side:17.5},
   rtespa_300:{front:15,back:25,side:17.5},
   scanasyst_air:{front:15,back:25,side:17.5},
@@ -1055,6 +1058,7 @@ const PYR_TIPS={
 function isPyrTip(t){return Object.prototype.hasOwnProperty.call(PYR_TIPS,t);}
 // What the probe is, since stiffness and frequency are not modelled here.
 const TIP_INFO={
+  snl10:'Bruker SNL-10 · sharpened Si tip on Si₃N₄ levers A–D · k 0.06–0.35 N/m · f₀ 18–65 kHz',
   rtespa_150:'Bruker RTESPA-150 · Si · k 5 N/m · f₀ 150 kHz · tip 10–15 µm',
   rtespa_300:'Bruker RTESPA-300 · Si · k 40 N/m · f₀ 300 kHz · same tip as the 150',
   scanasyst_air:'Bruker ScanAsyst-Air · Si₃N₄ · k 0.4 N/m · f₀ 70 kHz · tip 2.5–8 µm',
@@ -1732,6 +1736,7 @@ function buildTipKernel(){
           }
           break;}
         case 'faceted_pyramid':
+        case 'snl10':
         case 'rtespa_150':
         case 'rtespa_300':
         case 'scanasyst_air':
@@ -2185,6 +2190,7 @@ function buildTipKernel(){
             return yTang + ((r_nm - halfW) * halfW) / sv;
           }
           case "faceted_pyramid":
+          case "snl10":
           case "rtespa_150":
           case "rtespa_300":
           case "scanasyst_air":
@@ -2227,6 +2233,7 @@ function buildTipKernel(){
           case "sphere_cone":
             return (p.angle || 15) * 2;
           case "faceted_pyramid":
+          case "snl10":
           case "rtespa_150":
           case "rtespa_300":
           case "scanasyst_air": {
@@ -2588,6 +2595,7 @@ function buildTipKernel(){
     // is the apex that measures — sharp pyramids used to be drawn to a point
     // whatever the apex radius said.
     case 'faceted_pyramid':
+    case 'snl10':
     case 'rtespa_150':
     case 'rtespa_300':
     case 'scanasyst_air':{
@@ -3222,6 +3230,7 @@ function buildTipKernel(){
       break;}
 
     case 'faceted_pyramid':
+    case 'snl10':
     case 'rtespa_150':
     case 'rtespa_300':
     case 'scanasyst_air':{
@@ -3296,7 +3305,7 @@ function buildTipKernel(){
     tCtx.fillText('INV',3,10);
   }
   const names={cone:'CONE',sphere:'SPHERE',hyperboloid:'HYPER.',
-    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',rtespa_150:'RTESPA-150',rtespa_300:'RTESPA-300',scanasyst_air:'SCANASYST-AIR',saa_sph_1um:'SAA-SPH-1UM',saa_sph_5um:'SAA-SPH-5UM',custom:'CUSTOM'};
+    flat:'FLAT',inv_sphere:'CONCAVE',asymmetric:'ASYM.',double_tip:'DOUBLE',sphere_cone:'CONE+SPHERE',faceted_pyramid:'FACETED',snl10:'SNL-10',rtespa_150:'RTESPA-150',rtespa_300:'RTESPA-300',scanasyst_air:'SCANASYST-AIR',saa_sph_1um:'SAA-SPH-1UM',saa_sph_5um:'SAA-SPH-5UM',custom:'CUSTOM'};
   tCtx.fillStyle=cv('--axis'); tCtx.font='7px Courier New'; tCtx.textAlign='right';
   tCtx.fillText(names[currentTip]||currentTip, W-4, 10);
 }

@@ -1,0 +1,11 @@
+# Regular triangular-pyramid AFM tip: 15 degree face half-angle, 48 nm height.
+# Coordinates are nanometres; Y is height.
+o tip_triangular_pyramid_15deg
+v 0.00000 0.00000 0.00000
+v -25.72312 48.00000 0.00000
+v 12.86156 48.00000 22.27688
+v 12.86156 48.00000 -22.27688
+f 1 2 3
+f 1 3 4
+f 1 4 2
+f 2 4 3

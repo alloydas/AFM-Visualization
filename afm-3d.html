@@ -140,7 +140,8 @@
         position: relative;
       }
       .sidebar {
-        width: 220px;
+        --sidebar-w: 240px;
+        width: var(--sidebar-w);
         flex-shrink: 0;
         display: flex;
         flex-direction: column;
@@ -149,16 +150,18 @@
         overflow-x: hidden;
         scrollbar-width: thin;
         scrollbar-color: #162230 transparent;
-        border-right: 1px solid var(--border);
+        border-right: none;
         background: var(--bg);
         transition:
           width 0.2s ease,
           transform 0.2s ease,
           border-color 0.2s ease;
       }
+      .sidebar.resizing {
+        transition: none;
+      }
       .sidebar.collapsed {
         width: 0;
-        border-right-color: transparent;
         overflow: hidden;
       }
       .sidebar::-webkit-scrollbar {
@@ -172,8 +175,62 @@
         flex-direction: column;
         gap: 7px;
         padding: 8px;
-        width: 220px;
-        min-width: 220px;
+        width: var(--sidebar-w);
+        min-width: var(--sidebar-w);
+      }
+      .sidebar-edge {
+        flex-shrink: 0;
+        width: 14px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 6;
+        cursor: col-resize;
+        touch-action: none;
+        user-select: none;
+        background: var(--bg);
+      }
+      .sidebar-edge::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        transform: translateX(-50%);
+        background: var(--border);
+      }
+      .sidebar-edge:hover::before,
+      .sidebar-edge.dragging::before {
+        background: var(--text);
+        opacity: 0.45;
+      }
+      .sidebar.collapsed + .sidebar-edge {
+        cursor: default;
+      }
+      .sidebar-edge-btn {
+        position: relative;
+        z-index: 1;
+        width: 18px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        font-family: inherit;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+      }
+      .sidebar-edge-btn:hover {
+        border-color: var(--border2);
+        color: var(--text-hi);
+        opacity: 1;
       }
       .main-col {
         flex: 1;
@@ -202,19 +259,22 @@
           top: 0;
           bottom: 0;
           z-index: 30;
-          width: min(280px, 86vw);
+          width: min(var(--sidebar-w), 86vw);
           box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
           transform: translateX(0);
+          border-right: 1px solid var(--border);
         }
         .sidebar.collapsed {
-          width: min(280px, 86vw);
+          width: min(var(--sidebar-w), 86vw);
           transform: translateX(-105%);
-          border-right-color: var(--border);
           overflow-y: auto;
         }
         .sidebar-inner {
           width: 100%;
           min-width: 0;
+        }
+        .sidebar-edge {
+          display: none;
         }
         .title-block p {
           display: none;
@@ -230,13 +290,59 @@
         padding: 8px;
       }
       .panel-label {
-        font-size: 8px;
+        font-size: 10px;
         letter-spacing: 2px;
         color: var(--accent);
         text-transform: uppercase;
         margin-bottom: 6px;
         border-bottom: 1px solid var(--border);
         padding-bottom: 3px;
+      }
+      details.panel {
+        padding: 0;
+      }
+      details.panel > summary.panel-label {
+        list-style: none;
+        cursor: pointer;
+        user-select: none;
+        margin: 0;
+        padding: 8px;
+        border-bottom: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      details.panel > summary.panel-label::-webkit-details-marker {
+        display: none;
+      }
+      details.panel > summary.panel-label::after {
+        content: "▸";
+        color: var(--text);
+        opacity: 0.55;
+        font-size: 11px;
+        letter-spacing: 0;
+        transition: transform 0.15s ease;
+      }
+      details.panel[open] > summary.panel-label {
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+      }
+      details.panel[open] > summary.panel-label::after {
+        transform: rotate(90deg);
+      }
+      details.panel > summary.panel-label:hover {
+        color: var(--text-hi);
+      }
+      details.panel > summary.panel-label:hover::after {
+        opacity: 0.9;
+        color: var(--accent);
+      }
+      .panel-body {
+        padding: 8px;
+      }
+      .panel-body .panel-label {
+        margin-top: 8px;
       }
       .btn-group {
         display: flex;
@@ -247,9 +353,9 @@
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 4px 8px;
+        padding: 5px 8px;
         font-family: inherit;
-        font-size: 10px;
+        font-size: 11px;
         cursor: pointer;
         text-align: left;
         transition: all 0.1s;
@@ -272,6 +378,41 @@
         border-color: var(--border);
         color: var(--text);
       }
+      .geom-select {
+        width: 100%;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        color: var(--text-hi);
+        font-family: inherit;
+        font-size: 11px;
+        padding: 6px 8px;
+        margin-bottom: 4px;
+        cursor: pointer;
+        outline: none;
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, var(--accent) 50%),
+          linear-gradient(135deg, var(--accent) 50%, transparent 50%);
+        background-position:
+          calc(100% - 12px) 55%,
+          calc(100% - 7px) 55%;
+        background-size:
+          5px 5px,
+          5px 5px;
+        background-repeat: no-repeat;
+      }
+      .geom-select:hover,
+      .geom-select:focus {
+        border-color: var(--accent);
+      }
+      .geom-select option,
+      .geom-select optgroup {
+        background: var(--bg);
+        color: var(--text-hi);
+      }
+      .geom-select option:disabled {
+        color: var(--text);
+        opacity: 0.5;
+      }
       .toggle-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -282,9 +423,9 @@
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 4px 2px;
+        padding: 5px 2px;
         font-family: inherit;
-        font-size: 8px;
+        font-size: 10px;
         cursor: pointer;
         text-align: center;
         transition: all 0.12s;
@@ -317,21 +458,23 @@
       .slider-header {
         display: flex;
         justify-content: space-between;
-        font-size: 8px;
+        font-size: 10px;
         letter-spacing: 1px;
       }
       .slider-header span:first-child {
         color: var(--text);
-        opacity: 0.65;
+        opacity: 0.75;
         text-transform: uppercase;
       }
       .slider-val {
         color: var(--accent);
+        font-size: 11px;
+        font-weight: bold;
       }
       input[type="range"] {
         accent-color: var(--accent);
         width: 100%;
-        height: 12px;
+        height: 14px;
       }
       #tipPreview {
         display: block;
@@ -361,14 +504,101 @@
       .play-btn:hover {
         background: rgba(0, 229, 176, 0.18);
       }
+      .transport-bar {
+        position: absolute;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 260px;
+        padding: 6px 8px 7px;
+        background: rgba(10, 15, 21, 0.82);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(6px);
+        z-index: 5;
+        pointer-events: auto;
+      }
+      [data-theme="light"] .transport-bar {
+        background: rgba(255, 255, 255, 0.88);
+      }
+      .transport-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .transport-bar .play-btn {
+        flex: 0 0 auto;
+        min-width: 88px;
+        padding: 6px 14px;
+        font-size: 10px;
+      }
+      .transport-bar .icon-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+      .transport-bar .speed-btn {
+        min-width: 36px;
+        letter-spacing: 0;
+        color: var(--text-hi);
+      }
+      .transport-bar .speed-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .transport-speed {
+        min-width: 28px;
+        text-align: center;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
+      .transport-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .transport-progress-track {
+        flex: 1;
+        height: 4px;
+        background: rgba(106, 143, 160, 0.22);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+      [data-theme="light"] .transport-progress-track {
+        background: rgba(74, 96, 112, 0.15);
+      }
+      .transport-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        transition: width 0.08s linear;
+      }
+      .transport-progress-fill.complete {
+        background: var(--accent2);
+      }
+      .transport-progress-label {
+        min-width: 3.2em;
+        text-align: right;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+      }
       .icon-btn {
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 4px 7px;
+        padding: 5px 7px;
         font-family: inherit;
-        font-size: 9px;
+        font-size: 10px;
         cursor: pointer;
+      }
+      .export-hm-btn {
+        font-size: 10px !important;
       }
       .icon-btn:hover {
         border-color: var(--accent2);
@@ -392,9 +622,15 @@
       .speed-row {
         display: flex;
         align-items: center;
-        gap: 4px;
-        font-size: 9px;
-        margin-bottom: 4px;
+        gap: 6px;
+        font-size: 11px;
+        margin-bottom: 6px;
+        color: var(--text-hi);
+      }
+      .speed-row #speedVal {
+        color: var(--accent);
+        font-weight: bold;
+        min-width: 1.5em;
       }
       .mode-row {
         display: flex;
@@ -406,9 +642,9 @@
         background: transparent;
         border: 1px solid var(--border);
         color: var(--text);
-        padding: 3px 2px;
+        padding: 5px 2px;
         font-family: inherit;
-        font-size: 9px;
+        font-size: 10px;
         cursor: pointer;
         text-align: center;
       }
@@ -432,15 +668,15 @@
         padding: 4px 5px;
       }
       .stat-label {
-        font-size: 7px;
+        font-size: 9px;
         letter-spacing: 1px;
         color: var(--text);
         text-transform: uppercase;
-        margin-bottom: 1px;
-        opacity: 0.7;
+        margin-bottom: 2px;
+        opacity: 0.75;
       }
       .stat-val {
-        font-size: 11px;
+        font-size: 12px;
         font-weight: bold;
         color: var(--accent);
       }
@@ -451,26 +687,15 @@
         color: #f0c040;
       }
       .stat-section-label {
-        font-size: 7px;
+        font-size: 9px;
         letter-spacing: 2px;
         color: var(--text);
         text-transform: uppercase;
-        opacity: 0.45;
-        margin: 5px 0 3px;
+        opacity: 0.55;
+        margin: 6px 0 3px;
       }
       .stat-section-label:first-of-type {
         margin-top: 0;
-      }
-      .note-box {
-        background: rgba(46, 168, 255, 0.04);
-        border: 1px solid rgba(46, 168, 255, 0.12);
-        padding: 7px 8px;
-        font-size: 8px;
-        line-height: 1.75;
-        color: var(--text);
-      }
-      .note-box strong {
-        color: var(--accent2);
       }
       #canvasContainer {
         flex: 1;
@@ -500,6 +725,54 @@
         text-transform: uppercase;
         pointer-events: none;
       }
+      .hud-stats {
+        position: absolute;
+        top: 24px;
+        left: 10px;
+        z-index: 4;
+        pointer-events: none;
+        padding: 6px 8px;
+        background: rgba(10, 15, 21, 0.72);
+        border: 1px solid var(--border);
+        backdrop-filter: blur(6px);
+        min-width: 118px;
+      }
+      [data-theme="light"] .hud-stats {
+        background: rgba(255, 255, 255, 0.88);
+      }
+      .hud-stats-source {
+        font-size: 8px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--text);
+        opacity: 0.55;
+        margin-bottom: 4px;
+      }
+      .hud-stats-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+        font-size: 10px;
+        letter-spacing: 1px;
+        line-height: 1.45;
+      }
+      .hud-stats-row .hud-k {
+        color: var(--text);
+        opacity: 0.75;
+        text-transform: uppercase;
+      }
+      .hud-stats-row .hud-v {
+        font-weight: bold;
+        font-variant-numeric: tabular-nums;
+        color: var(--accent);
+      }
+      .hud-stats-row .hud-v.err {
+        color: var(--accent3);
+      }
+      .hud-stats-row .hud-v.warn {
+        color: #f0c040;
+      }
       .info-bar {
         font-size: 9px;
         letter-spacing: 1px;
@@ -508,6 +781,36 @@
         background: var(--panel);
         border-top: 1px solid var(--border);
         flex-shrink: 0;
+      }
+      /* After base chrome rules so these win on narrow viewports */
+      @media (max-width: 820px) {
+        .transport-bar {
+          left: 8px;
+          right: 8px;
+          bottom: 8px;
+          transform: none;
+          min-width: 0;
+          width: auto;
+          max-width: none;
+        }
+        .transport-bar .play-btn {
+          min-width: 72px;
+          flex: 1;
+        }
+        .transport-bar .speed-btn {
+          min-width: 40px;
+          min-height: 36px;
+        }
+        .hud-stats {
+          top: 22px;
+          left: 8px;
+          padding: 5px 7px;
+          min-width: 0;
+        }
+        .info-bar {
+          font-size: 8px;
+          padding: 3px 6px;
+        }
       }
     </style>
   </head>
@@ -540,26 +843,32 @@
   <!-- TIP -->
   <div class="panel">
     <div class="panel-label">Tip Geometry</div>
-    <div class="btn-group" id="tipBtns">
-      <button class="btn active" data-tip="cone">▼ Cone</button>
-      <button class="btn" data-tip="sphere">● Spherical</button>
-      <button class="btn" data-tip="hyperboloid">⌓ Hyperboloid</button>
-      <button class="btn" data-tip="flat">▬ Flat Punch</button>
-      <button class="btn" data-tip="inv_sphere">⌣ Concave Sphere</button>
-      <button class="btn" data-tip="asymmetric">↗ Asymmetric</button>
-      <button class="btn" data-tip="double_tip">⌤ Double Tip</button>
-      <button class="btn" data-tip="sphere_cone">◓ Cone + Sphere Apex</button>
-      <button class="btn" data-tip="faceted_pyramid">◆ Faceted Pyramid</button>
-      <button class="btn" data-tip="snl10" title="Bruker SNL-10: sharpened silicon tip, 2 nm apex (max 12), front 15° back 25° side 22.5°, four Si₃N₄ levers, k 0.06–0.35 N/m">◆ SNL-10</button>
-      <button class="btn" data-tip="rtespa_150" title="Bruker RTESPA-150: etched Si, 8 nm apex (max 12), front 15° back 25° side 17.5°, k 5 N/m, f₀ 150 kHz">◆ RTESPA-150</button>
-      <button class="btn" data-tip="rtespa_300" title="Bruker RTESPA-300: same tip as the 150, stiffer lever — k 40 N/m, f₀ 300 kHz">◆ RTESPA-300</button>
-      <button class="btn" data-tip="scanasyst_air" title="Bruker ScanAsyst-Air: Si₃N₄, 2 nm apex (max 12), front 15° back 25° side 17.5°, k 0.4 N/m, f₀ 70 kHz">◆ ScanAsyst-Air</button>
-      <button class="btn" data-tip="saa_sph_1um" title="Bruker SAA-SPH-1UM: 19 µm cylindrical tip, 1 µm hemispherical end (true scale)">∪ SAA-SPH-1UM</button>
-      <button class="btn" data-tip="saa_sph_5um" title="Bruker SAA-SPH-5UM: 23 µm cylindrical tip, 5 µm hemispherical end (true scale)">∪ SAA-SPH-5UM</button>
-      <button class="btn" data-tip="custom" id="tipCustomBtn" disabled title="Import a .obj tip first">⬆ Custom</button>
-    </div>
+    <select class="geom-select" id="tipSelect" aria-label="Tip geometry">
+      <optgroup label="Bruker probes">
+        <option value="snl10" title="Bruker SNL-10: sharpened silicon tip, 2 nm apex (max 12), front 15° back 25° side 22.5°">◆ SNL-10</option>
+        <option value="rtespa_150" title="Bruker RTESPA-150: etched Si, 8 nm apex, front 15° back 25° side 17.5°">◆ RTESPA-150</option>
+        <option value="rtespa_300" title="Bruker RTESPA-300: same tip as the 150, stiffer lever">◆ RTESPA-300</option>
+        <option value="scanasyst_air" title="Bruker ScanAsyst-Air: Si₃N₄, 2 nm apex, front 15° back 25° side 17.5°">◆ ScanAsyst-Air</option>
+        <option value="saa_sph_1um" title="Bruker SAA-SPH-1UM: 19 µm cylindrical tip, 1 µm hemispherical end">∪ SAA-SPH-1UM</option>
+        <option value="saa_sph_5um" title="Bruker SAA-SPH-5UM: 23 µm cylindrical tip, 5 µm hemispherical end">∪ SAA-SPH-5UM</option>
+      </optgroup>
+      <optgroup label="Idealized">
+        <option value="cone" selected>▼ Cone</option>
+        <option value="sphere">● Spherical</option>
+        <option value="hyperboloid">⌓ Hyperboloid</option>
+        <option value="flat">▬ Flat Punch</option>
+        <option value="inv_sphere">⌣ Concave Sphere</option>
+        <option value="asymmetric" title="Asymmetric: tilt-induced imaging errors">↗ Asymmetric</option>
+        <option value="double_tip" title="Double Tip: ghost / double-imaging artifacts">⌤ Double Tip</option>
+        <option value="sphere_cone">◓ Cone + Sphere Apex</option>
+        <option value="faceted_pyramid">◆ Faceted Pyramid</option>
+      </optgroup>
+      <optgroup label="Imported">
+        <option value="custom" id="tipCustomOpt" disabled title="Import a .obj tip first">⬆ Custom</option>
+      </optgroup>
+    </select>
     <div class="slider-section" id="tipSliders"></div>
-    <div id="tipInfo" style="font-size: 9px; line-height: 1.35; color: var(--text); opacity: 0.85; margin: 2px 0 4px"></div>
+    <div id="tipInfo" style="font-size: 10px; line-height: 1.4; color: var(--text); opacity: 0.9; margin: 2px 0 4px"></div>
     <canvas id="tipPreview" width="182" height="76"></canvas>
   </div>
 
@@ -577,32 +886,40 @@
           <!-- SURFACE -->
           <div class="panel">
             <div class="panel-label">Sample Surface</div>
-            <div class="btn-group" id="surfBtns">
-              <button class="btn active" data-surf="sine">~ Sinusoidal</button>
-              <button class="btn" data-surf="hills">⌒ Rolling Hills</button>
-              <button class="btn" data-surf="hemisphere">● Nanoparticle</button>
-              <button class="btn" data-surf="pit">◑ Nano-pit</button>
-              <button class="btn" data-surf="trench">⊓ Trenches</button>
-              <button class="btn" data-surf="rough">≈ Rough</button>
-              <button class="btn" data-surf="pyramid">△ Pyramid</button>
-              <button class="btn" data-surf="dna">⊛ DNA Ridges</button>
-              <button class="btn" data-surf="chirp">≋ Chirp</button>
-              <button class="btn" data-surf="lattice">⊞ 2D Lattice</button>
-              <button class="btn" data-surf="vgrp_15m" title="Bruker VGRP-15M calibration grating: 180 nm deep, 10 µm pitch, Pt-coated, on a 15 mm disc. Switches the scan to 20 µm.">▦ VGRP-15M</button>
-              <button class="btn" data-surf="vgrp_gs" title="Bruker VGRP-GS: the same grating on a glass slide. Switches the scan to 20 µm.">▦ VGRP-GS</button>
-              <button class="btn" data-surf="tgxyz02_sq" title="MikroMasch TGXYZ02, 10 µm pitch area: square SiO2 pillars 5 µm on a side, 100 nm tall. Switches the scan to 20 µm.">⊡ TGXYZ02 squares</button>
-              <button class="btn" data-surf="tgxyz02_circ" title="MikroMasch TGXYZ02, 5 µm pitch area: circular holes Ø2.54 µm, 100 nm deep. Switches the scan to 20 µm.">⊙ TGXYZ02 circles</button>
-              <button class="btn" data-surf="cs20ng_sq" title="BudgetSensors CS-20NG, 1×1 mm area: square SiO₂ pillars, 10 µm pitch, ~20 nm step. Switches the scan to 20 µm.">⊞ CS-20NG squares</button>
-              <button class="btn" data-surf="cs20ng_circ" title="BudgetSensors CS-20NG, 500×500 µm area: circular holes, 5 µm pitch, ~20 nm step. Switches the scan to 20 µm.">◎ CS-20NG circles</button>
-              <button class="btn" data-surf="cs20ng_nano" title="BudgetSensors CS-20NG, 100×100 µm area: circular holes on a 500 nm pitch, ~20 nm step. Switches the scan to 2 µm.">⁙ CS-20NG nanogrid</button>
-              <button class="btn" data-surf="hopg" title="Bruker HOPG-12M: atomically flat graphite terraces separated by 0.335 nm steps. Switches the scan to 2 µm.">▤ HOPG terraces</button>
-              <button class="btn" data-surf="ps_ldpe" title="Bruker PS-LDPE-12M: LDPE domains in a polystyrene matrix. Modulus contrast is the point; the relief here is approximate. Switches the scan to 20 µm.">◍ PS-LDPE domains</button>
-              <button class="btn" data-surf="fsilica" title="Bruker FSILICA: fused silica, E = 72.9 GPa. A flat modulus reference — no topography to speak of.">▭ Fused silica</button>
-              <button class="btn" data-surf="psfilm" title="Bruker PSFILM-12M: polystyrene on Si, E = 2.7 GPa. A flat modulus reference.">▭ PS film</button>
-              <button class="btn" data-surf="custom" id="surfCustomBtn" disabled title="Import a .obj surface first">⬆ Custom</button>
-            </div>
+            <select class="geom-select" id="surfSelect" aria-label="Sample surface">
+              <optgroup label="Calibration standards">
+                <option value="vgrp_15m" title="Bruker VGRP-15M: 180 nm deep, 10 µm pitch. Switches scan to 20 µm.">▦ VGRP-15M</option>
+                <option value="vgrp_gs" title="Bruker VGRP-GS: same grating on glass. Switches scan to 20 µm.">▦ VGRP-GS</option>
+                <option value="tgxyz02_sq" title="MikroMasch TGXYZ02 squares: 10 µm pitch, 100 nm step. Switches scan to 20 µm.">⊡ TGXYZ02 squares</option>
+                <option value="tgxyz02_circ" title="MikroMasch TGXYZ02 circles: 5 µm pitch, 100 nm step. Switches scan to 20 µm.">⊙ TGXYZ02 circles</option>
+                <option value="cs20ng_sq" title="BudgetSensors CS-20NG squares: 10 µm pitch, ~20 nm step. Switches scan to 20 µm.">⊞ CS-20NG squares</option>
+                <option value="cs20ng_circ" title="BudgetSensors CS-20NG circles: 5 µm pitch, ~20 nm step. Switches scan to 20 µm.">◎ CS-20NG circles</option>
+                <option value="cs20ng_nano" title="BudgetSensors CS-20NG nanogrid: 500 nm pitch. Switches scan to 2 µm.">⁙ CS-20NG nanogrid</option>
+              </optgroup>
+              <optgroup label="Synthetic">
+                <option value="sine" selected>~ Sinusoidal</option>
+                <option value="hills">⌒ Rolling Hills</option>
+                <option value="hemisphere">● Nanoparticle</option>
+                <option value="pit">◑ Nano-pit</option>
+                <option value="trench">⊓ Trenches</option>
+                <option value="rough">≈ Rough</option>
+                <option value="pyramid">△ Pyramid</option>
+                <option value="dna">⊛ DNA Ridges</option>
+                <option value="chirp">≋ Chirp</option>
+                <option value="lattice">⊞ 2D Lattice</option>
+              </optgroup>
+              <optgroup label="Reference samples">
+                <option value="hopg" title="Bruker HOPG-12M terraces. Switches scan to 2 µm.">▤ HOPG terraces</option>
+                <option value="ps_ldpe" title="Bruker PS-LDPE-12M domains. Switches scan to 20 µm.">◍ PS-LDPE domains</option>
+                <option value="fsilica" title="Bruker FSILICA fused silica modulus reference.">▭ Fused silica</option>
+                <option value="psfilm" title="Bruker PSFILM-12M polystyrene modulus reference.">▭ PS film</option>
+              </optgroup>
+              <optgroup label="Imported">
+                <option value="custom" id="surfCustomOpt" disabled title="Import a .obj surface first">⬆ Custom</option>
+              </optgroup>
+            </select>
             <div class="slider-section" id="surfSliders"></div>
-            <div id="surfInfo" style="font-size: 9px; line-height: 1.35; color: var(--text); opacity: 0.85; margin: 2px 0 4px"></div>
+            <div id="surfInfo" style="font-size: 10px; line-height: 1.4; color: var(--text); opacity: 0.9; margin: 2px 0 4px"></div>
             <div class="slider-row" style="margin-top: 6px">
               <div class="slider-header">
                 <span>Surface Noise</span
@@ -619,60 +936,67 @@
             </div>
           </div>
 
-          <!-- INVERT -->
-          <div class="panel">
-            <div class="panel-label">Invert &amp; Transform</div>
-            <div class="toggle-grid">
-              <button class="tgl" id="tgl_invZ" onclick="toggleInvert('invZ')">
-                ↕ Inv. Z
-              </button>
-              <button
-                class="tgl"
-                id="tgl_mirrorX"
-                onclick="toggleInvert('mirrorX')"
-              >
-                ↔ Mirror X
-              </button>
-              <button
-                class="tgl"
-                id="tgl_mirrorY"
-                onclick="toggleInvert('mirrorY')"
-              >
-                ↕ Mirror Y
-              </button>
-              <button
-                class="tgl"
-                id="tgl_invTip"
-                onclick="toggleInvert('invTip')"
-              >
-                ⊙ Inv. Tip
-              </button>
-              <button
-                class="tgl"
-                id="tgl_revScan"
-                onclick="toggleInvert('revScan')"
-              >
-                ↩ Rev. Scan
-              </button>
-              <button
-                class="tgl"
-                id="tgl_erosion"
-                onclick="toggleInvert('erosion')"
-              >
-                ⊖ Erosion
+          <!-- INVERT (advanced, collapsed) -->
+          <details class="panel" data-adv-panel="invert">
+            <summary class="panel-label">Invert &amp; Transform</summary>
+            <div class="panel-body">
+              <div class="toggle-grid">
+                <button class="tgl" id="tgl_invZ" onclick="toggleInvert('invZ')" title="Inv Z: flip surface heights">
+                  ↕ Inv. Z
+                </button>
+                <button
+                  class="tgl"
+                  id="tgl_mirrorX"
+                  onclick="toggleInvert('mirrorX')"
+                  title="Mirror X: spatial flip left ↔ right"
+                >
+                  ↔ Mirror X
+                </button>
+                <button
+                  class="tgl"
+                  id="tgl_mirrorY"
+                  onclick="toggleInvert('mirrorY')"
+                  title="Mirror Y: spatial flip front ↔ back"
+                >
+                  ↕ Mirror Y
+                </button>
+                <button
+                  class="tgl"
+                  id="tgl_invTip"
+                  onclick="toggleInvert('invTip')"
+                  title="Inv Tip: negate tip profile"
+                >
+                  ⊙ Inv. Tip
+                </button>
+                <button
+                  class="tgl"
+                  id="tgl_revScan"
+                  onclick="toggleInvert('revScan')"
+                  title="Rev Scan: scan back → front"
+                >
+                  ↩ Rev. Scan
+                </button>
+                <button
+                  class="tgl"
+                  id="tgl_erosion"
+                  onclick="toggleInvert('erosion')"
+                  title="Erosion: dilation → erosion morphological mode"
+                >
+                  ⊖ Erosion
+                </button>
+              </div>
+              <button class="rand-btn" onclick="randomizeAll()">
+                🎲 RANDOMIZE ALL
               </button>
             </div>
-            <button class="rand-btn" onclick="randomizeAll()">
-              🎲 RANDOMIZE ALL
-            </button>
-          </div>
+          </details>
 
           <!-- SCAN CONTROL -->
           <div class="panel">
             <div class="panel-label">Scan + View</div>
             <div class="play-row">
-              <button class="play-btn" id="playBtn">▶ PLAY</button>
-              <button class="icon-btn" id="resetBtn">↺</button>
+              <button class="play-btn" id="playBtn" data-play-btn type="button">▶ PLAY</button>
+              <button class="icon-btn" id="resetBtn" data-reset-btn type="button" title="Reset scan">↺</button>
             </div>
             <div class="mode-row">
               <button
@@ -693,6 +1017,7 @@
                 class="mode-btn"
                 id="modeBounce"
                 onclick="setMode('bounce')"
+                title="Bounce: reveal measured surface, then unreveal"
               >
                 BOUNCE
               </button>
@@ -720,171 +1045,173 @@
               <button
                 class="icon-btn"
                 id="viewIso"
-                style="flex: 1; font-size: 9px"
+                style="flex: 1"
               >
                 ISO
               </button>
               <button
                 class="icon-btn"
                 id="viewTop"
-                style="flex: 1; font-size: 9px"
+                style="flex: 1"
               >
                 TOP
               </button>
               <button
                 class="icon-btn"
                 id="viewFront"
-                style="flex: 1; font-size: 9px"
+                style="flex: 1"
               >
                 FRONT
               </button>
             </div>
-            <div class="view-btns" style="margin-top: 4px">
-              <button
-                class="icon-btn"
-                id="exportTipBtn"
-                style="
-                  flex: 1;
-                  font-size: 9px;
-                  background: rgba(201, 122, 255, 0.15);
-                  border-color: #c97aff;
-                  color: #c97aff;
-                "
-              >
-                ⬇ TIP .OBJ
-              </button>
-              <button
-                class="icon-btn"
-                id="exportSurfBtn"
-                style="
-                  flex: 1;
-                  font-size: 9px;
-                  background: rgba(0, 229, 176, 0.12);
-                  border-color: #00e5b0;
-                  color: #00e5b0;
-                "
-              >
-                ⬇ SURF .OBJ
-              </button>
-            </div>
-            <div class="view-btns" style="margin-top: 3px">
-              <button
-                class="icon-btn"
-                id="importTipBtn"
-                style="
-                  flex: 1;
-                  font-size: 9px;
-                  background: rgba(201, 122, 255, 0.08);
-                  border-color: #c97aff;
-                  color: #c97aff;
-                "
-              >
-                ⬆ TIP .OBJ
-              </button>
-              <button
-                class="icon-btn"
-                id="importSurfBtn"
-                style="
-                  flex: 1;
-                  font-size: 9px;
-                  background: rgba(0, 229, 176, 0.08);
-                  border-color: #00e5b0;
-                  color: #00e5b0;
-                "
-              >
-                ⬆ SURF .OBJ
-              </button>
-            </div>
-            <input type="file" id="importTipFile" accept=".obj,model/obj,text/plain" style="display: none" />
-            <input type="file" id="importSurfFile" accept=".obj,model/obj,text/plain" style="display: none" />
-            <div class="panel-label" style="margin-top: 8px; margin-bottom: 4px">
-              Height Map Export
-            </div>
-            <div class="view-btns">
-              <button class="icon-btn export-hm-btn" id="exportTrueCsvBtn" style="flex: 1; font-size: 8px">
-                ⬇ TRUE CSV
-              </button>
-              <button class="icon-btn export-hm-btn" id="exportMeasCsvBtn" style="flex: 1; font-size: 8px">
-                ⬇ MEAS CSV
-              </button>
-            </div>
-            <div class="view-btns" style="margin-top: 3px">
-              <button class="icon-btn export-hm-btn" id="exportTruePngBtn" style="flex: 1; font-size: 8px">
-                ⬇ TRUE PNG
-              </button>
-              <button class="icon-btn export-hm-btn" id="exportMeasPngBtn" style="flex: 1; font-size: 8px">
-                ⬇ MEAS PNG
-              </button>
-            </div>
-            <div class="view-btns" style="margin-top: 3px">
-              <button
-                class="icon-btn export-hm-btn"
-                id="exportParamsBtn"
-                style="flex: 1; font-size: 8px; color: #2ea8ff; border-color: rgba(46, 168, 255, 0.4)"
-              >
-                ⬇ PARAMS JSON
-              </button>
-              <button
-                class="icon-btn export-hm-btn"
-                id="exportAllBtn"
-                style="flex: 1; font-size: 8px; color: #f0c040; border-color: rgba(240, 192, 64, 0.4)"
-              >
-                ⬇ EXPORT ALL
-              </button>
-            </div>
           </div>
 
-          <!-- STATS -->
-          <div class="panel">
-            <div class="panel-label">Live Statistics</div>
-            <div class="stat-section-label">Full grid preview</div>
-            <div class="stat-grid">
-              <div class="stat-box">
-                <div class="stat-label">Max Artifact</div>
-                <div class="stat-val err" id="statGridArt">—</div>
+          <!-- IMPORT / EXPORT (advanced, collapsed) -->
+          <details class="panel" data-adv-panel="io">
+            <summary class="panel-label">Import / Export</summary>
+            <div class="panel-body">
+              <div class="view-btns">
+                <button
+                  class="icon-btn"
+                  id="exportTipBtn"
+                  style="
+                    flex: 1;
+                    background: rgba(201, 122, 255, 0.15);
+                    border-color: #c97aff;
+                    color: #c97aff;
+                  "
+                >
+                  ⬇ TIP .OBJ
+                </button>
+                <button
+                  class="icon-btn"
+                  id="exportSurfBtn"
+                  style="
+                    flex: 1;
+                    background: rgba(0, 229, 176, 0.12);
+                    border-color: #00e5b0;
+                    color: #00e5b0;
+                  "
+                >
+                  ⬇ SURF .OBJ
+                </button>
               </div>
-              <div class="stat-box">
-                <div class="stat-label">RMS Error</div>
-                <div class="stat-val warn" id="statGridRms">—</div>
+              <div class="view-btns" style="margin-top: 3px">
+                <button
+                  class="icon-btn"
+                  id="importTipBtn"
+                  style="
+                    flex: 1;
+                    background: rgba(201, 122, 255, 0.08);
+                    border-color: #c97aff;
+                    color: #c97aff;
+                  "
+                >
+                  ⬆ TIP .OBJ
+                </button>
+                <button
+                  class="icon-btn"
+                  id="importSurfBtn"
+                  style="
+                    flex: 1;
+                    background: rgba(0, 229, 176, 0.08);
+                    border-color: #00e5b0;
+                    color: #00e5b0;
+                  "
+                >
+                  ⬆ SURF .OBJ
+                </button>
+              </div>
+              <input type="file" id="importTipFile" accept=".obj,model/obj,text/plain" style="display: none" />
+              <input type="file" id="importSurfFile" accept=".obj,model/obj,text/plain" style="display: none" />
+              <div class="panel-label">Height Map Export</div>
+              <div class="view-btns">
+                <button class="icon-btn export-hm-btn" id="exportTrueCsvBtn" style="flex: 1">
+                  ⬇ TRUE CSV
+                </button>
+                <button class="icon-btn export-hm-btn" id="exportMeasCsvBtn" style="flex: 1">
+                  ⬇ MEAS CSV
+                </button>
+              </div>
+              <div class="view-btns" style="margin-top: 3px">
+                <button class="icon-btn export-hm-btn" id="exportTruePngBtn" style="flex: 1">
+                  ⬇ TRUE PNG
+                </button>
+                <button class="icon-btn export-hm-btn" id="exportMeasPngBtn" style="flex: 1">
+                  ⬇ MEAS PNG
+                </button>
+              </div>
+              <div class="view-btns" style="margin-top: 3px">
+                <button
+                  class="icon-btn export-hm-btn"
+                  id="exportParamsBtn"
+                  style="flex: 1; color: #2ea8ff; border-color: rgba(46, 168, 255, 0.4)"
+                >
+                  ⬇ PARAMS JSON
+                </button>
+                <button
+                  class="icon-btn export-hm-btn"
+                  id="exportAllBtn"
+                  style="flex: 1; color: #f0c040; border-color: rgba(240, 192, 64, 0.4)"
+                >
+                  ⬇ EXPORT ALL
+                </button>
               </div>
             </div>
-            <div class="stat-section-label">During scan</div>
-            <div class="stat-grid">
-              <div class="stat-box">
-                <div class="stat-label">Max Artifact</div>
-                <div class="stat-val err" id="statArt">—</div>
+          </details>
+
+          <!-- STATS (advanced, collapsed) -->
+          <details class="panel" data-adv-panel="stats">
+            <summary class="panel-label">Live Statistics</summary>
+            <div class="panel-body">
+              <div class="stat-section-label">Full grid preview</div>
+              <div class="stat-grid">
+                <div class="stat-box">
+                  <div class="stat-label">Max Artifact</div>
+                  <div class="stat-val err" id="statGridArt">—</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">RMS Error</div>
+                  <div class="stat-val warn" id="statGridRms">—</div>
+                </div>
               </div>
-              <div class="stat-box">
-                <div class="stat-label">RMS Error</div>
-                <div class="stat-val warn" id="statRms">—</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-label">Rows Done</div>
-                <div class="stat-val" id="statRows">0/0</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-label">Mode</div>
-                <div class="stat-val" id="statMode" style="font-size: 10px">
-                  —
+              <div class="stat-section-label">During scan</div>
+              <div class="stat-grid">
+                <div class="stat-box">
+                  <div class="stat-label">Max Artifact</div>
+                  <div class="stat-val err" id="statArt">—</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">RMS Error</div>
+                  <div class="stat-val warn" id="statRms">—</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">Rows Done</div>
+                  <div class="stat-val" id="statRows">0/0</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-label">Mode</div>
+                  <div class="stat-val" id="statMode">
+                    —
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="note-box">
-            <strong>INVERT GUIDE</strong><br />
-            <b>Inv Z</b>: flip surface heights<br />
-            <b>Mirror X/Y</b>: spatial flip<br />
-            <b>Inv Tip</b>: negate profile<br />
-            <b>Rev Scan</b>: scan back→front<br />
-            <b>Erosion</b>: dilation→erosion<br />
-            <b>Bounce</b>: reveal then unreveal<br />
-            <b>Double Tip</b>: ghost artifacts<br />
-            <b>Asymmetric</b>: tilt errors
-          </div>
+          </details>
         </div>
       </div>
       <!-- sidebar -->
+      <div class="sidebar-edge" id="sidebarEdge" title="Drag to resize">
+        <button
+          class="sidebar-edge-btn"
+          id="sidebarEdgeToggle"
+          type="button"
+          title="Collapse controls"
+          aria-label="Collapse controls"
+        >
+          ‹
+        </button>
+      </div>
 
       <!-- 3D VIEW -->
       <div class="main-col">
@@ -892,14 +1219,40 @@
           <div class="overlay-label" style="top: 7px; left: 10px">
             AFM 3D SCAN
           </div>
+          <div class="hud-stats" id="hudStats" aria-live="polite">
+            <div class="hud-stats-source" id="hudStatsSource">grid</div>
+            <div class="hud-stats-row">
+              <span class="hud-k">Art</span>
+              <span class="hud-v err" id="hudArt">—</span>
+            </div>
+            <div class="hud-stats-row">
+              <span class="hud-k">RMS</span>
+              <span class="hud-v warn" id="hudRms">—</span>
+            </div>
+          </div>
           <div
             class="overlay-label"
             style="top: 7px; right: 10px; text-align: right"
             id="scanLabel"
           ></div>
+          <div class="transport-bar" role="group" aria-label="Scan transport">
+            <div class="transport-controls">
+              <button class="icon-btn speed-btn" id="slowBtnMain" type="button" title="Slower" aria-label="Slower">◀◀</button>
+              <button class="play-btn" id="playBtnMain" data-play-btn type="button">▶ PLAY</button>
+              <button class="icon-btn speed-btn" id="fastBtnMain" type="button" title="Faster" aria-label="Faster">▶▶</button>
+              <span class="transport-speed" id="transportSpeedVal" title="Scan speed">3</span>
+              <button class="icon-btn" id="resetBtnMain" data-reset-btn type="button" title="Reset scan">↺</button>
+            </div>
+            <div class="transport-progress" title="Scan progress">
+              <div class="transport-progress-track" aria-hidden="true">
+                <div class="transport-progress-fill" id="scanProgressFill"></div>
+              </div>
+              <span class="transport-progress-label" id="scanProgressLabel">0%</span>
+            </div>
+          </div>
         </div>
         <div class="info-bar" id="infoBar">
-          Ready — press PLAY · drag/pinch to orbit · ☰ to toggle controls
+          Ready — press PLAY · drag/pinch to orbit · ☰ for tip &amp; surface
         </div>
       </div>
     </div>
@@ -1860,16 +2213,8 @@ function buildTipKernel(){
         document.getElementById("vscaleSlider").value = vScale.toFixed(1);
         document.getElementById("vscaleVal").textContent =
           vScale.toFixed(1) + "×";
-        document
-          .querySelectorAll("#tipBtns .btn")
-          .forEach((b) =>
-            b.classList.toggle("active", b.dataset.tip === currentTip),
-          );
-        document
-          .querySelectorAll("#surfBtns .btn")
-          .forEach((b) =>
-            b.classList.toggle("active", b.dataset.surf === currentSurf),
-          );
+        document.getElementById("tipSelect").value = currentTip;
+        document.getElementById("surfSelect").value = currentSurf;
         refreshTipSliders();
         refreshSurfSliders();
         fullRecompute();
@@ -1945,22 +2290,56 @@ function buildTipKernel(){
       }
 
       // ════════════════════════════════════════════
-      //  SIDEBAR (collapsible / mobile drawer)
+      //  SIDEBAR (collapsible / resizable / mobile drawer)
       // ════════════════════════════════════════════
       (function initSidebar() {
         const sidebar = document.getElementById("sidebar");
         const toggle = document.getElementById("sidebarToggle");
         const backdrop = document.getElementById("sidebarBackdrop");
+        const edge = document.getElementById("sidebarEdge");
+        const edgeBtn = document.getElementById("sidebarEdgeToggle");
         if (!sidebar || !toggle) return;
         const MQ = window.matchMedia("(max-width: 820px)");
+        const WIDTH_KEY = "afm-sidebar-w";
+        const MIN_W = 200;
+        const MAX_W = 420;
+        const DEFAULT_W = 240;
 
         function isMobile() {
           return MQ.matches;
+        }
+        function clampWidth(w) {
+          return Math.max(MIN_W, Math.min(MAX_W, Math.round(w)));
+        }
+        function applyWidth(w) {
+          const px = clampWidth(w) + "px";
+          sidebar.style.setProperty("--sidebar-w", px);
+        }
+        function loadWidth() {
+          const saved = parseInt(localStorage.getItem(WIDTH_KEY) || "", 10);
+          applyWidth(Number.isFinite(saved) ? saved : DEFAULT_W);
+        }
+        function saveWidth() {
+          const w = parseInt(
+            getComputedStyle(sidebar).getPropertyValue("--sidebar-w"),
+            10,
+          );
+          if (Number.isFinite(w)) localStorage.setItem(WIDTH_KEY, String(w));
+        }
+        function syncEdgeBtn(open) {
+          if (!edgeBtn) return;
+          edgeBtn.textContent = open ? "‹" : "›";
+          edgeBtn.title = open ? "Collapse controls" : "Expand controls";
+          edgeBtn.setAttribute(
+            "aria-label",
+            open ? "Collapse controls" : "Expand controls",
+          );
         }
         function setOpen(open) {
           sidebar.classList.toggle("collapsed", !open);
           toggle.setAttribute("aria-expanded", open ? "true" : "false");
           toggle.textContent = open ? "✕ CONTROLS" : "☰ CONTROLS";
+          syncEdgeBtn(open);
           if (backdrop) backdrop.classList.toggle("show", open && isMobile());
           // Let layout settle, then refit the 3D view.
           requestAnimationFrame(() => {
@@ -1974,9 +2353,56 @@ function buildTipKernel(){
         toggle.addEventListener("click", () => {
           setOpen(sidebar.classList.contains("collapsed"));
         });
+        if (edgeBtn) {
+          edgeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setOpen(sidebar.classList.contains("collapsed"));
+          });
+        }
         if (backdrop) {
           backdrop.addEventListener("click", () => setOpen(false));
         }
+
+        // Drag edge to resize (desktop)
+        if (edge) {
+          let dragging = false;
+          let startX = 0;
+          let startW = DEFAULT_W;
+          edge.addEventListener("pointerdown", (e) => {
+            if (isMobile() || sidebar.classList.contains("collapsed")) return;
+            if (e.target === edgeBtn || edgeBtn.contains(e.target)) return;
+            dragging = true;
+            startX = e.clientX;
+            startW = parseInt(
+              getComputedStyle(sidebar).getPropertyValue("--sidebar-w"),
+              10,
+            ) || DEFAULT_W;
+            sidebar.classList.add("resizing");
+            edge.classList.add("dragging");
+            edge.setPointerCapture(e.pointerId);
+            e.preventDefault();
+          });
+          edge.addEventListener("pointermove", (e) => {
+            if (!dragging) return;
+            applyWidth(startW + (e.clientX - startX));
+            resizeRenderer();
+          });
+          function endDrag(e) {
+            if (!dragging) return;
+            dragging = false;
+            sidebar.classList.remove("resizing");
+            edge.classList.remove("dragging");
+            try {
+              edge.releasePointerCapture(e.pointerId);
+            } catch (_) {}
+            saveWidth();
+            resizeRenderer();
+          }
+          edge.addEventListener("pointerup", endDrag);
+          edge.addEventListener("pointercancel", endDrag);
+        }
+
+        loadWidth();
         MQ.addEventListener("change", syncDefault);
         syncDefault();
       })();
@@ -2966,10 +3392,23 @@ function buildTipKernel(){
         return { mx, rms: Math.sqrt(rms / nPixels) };
       }
 
+      function setHudStats(source, artText, rmsText) {
+        const src = document.getElementById("hudStatsSource");
+        const art = document.getElementById("hudArt");
+        const rms = document.getElementById("hudRms");
+        if (src) src.textContent = source;
+        if (art) art.textContent = artText;
+        if (rms) rms.textContent = rmsText;
+      }
+
       function updateGridStats() {
         const { mx, rms } = scanArtifactStats(GW * GH);
-        document.getElementById("statGridArt").textContent = mx.toFixed(2) + " nm";
-        document.getElementById("statGridRms").textContent = rms.toFixed(2) + " nm";
+        const artText = mx.toFixed(2) + " nm";
+        const rmsText = rms.toFixed(2) + " nm";
+        document.getElementById("statGridArt").textContent = artText;
+        document.getElementById("statGridRms").textContent = rmsText;
+        const doneRows = Math.min(Math.floor(scanPx / GW), GH);
+        if (doneRows < 1) setHudStats("grid", artText, rmsText);
       }
 
       function updateStats() {
@@ -2980,11 +3419,17 @@ function buildTipKernel(){
         if (doneRows < 1) {
           document.getElementById("statArt").textContent = "—";
           document.getElementById("statRms").textContent = "—";
+          const gridArt = document.getElementById("statGridArt").textContent;
+          const gridRms = document.getElementById("statGridRms").textContent;
+          setHudStats("grid", gridArt || "—", gridRms || "—");
           return;
         }
         const { mx, rms } = scanArtifactStats(doneRows * GW);
-        document.getElementById("statArt").textContent = mx.toFixed(2) + " nm";
-        document.getElementById("statRms").textContent = rms.toFixed(2) + " nm";
+        const artText = mx.toFixed(2) + " nm";
+        const rmsText = rms.toFixed(2) + " nm";
+        document.getElementById("statArt").textContent = artText;
+        document.getElementById("statRms").textContent = rmsText;
+        setHudStats("scan", artText, rmsText);
       }
 
       // ════════════════════════════════════════════
@@ -3368,14 +3813,14 @@ function buildTipKernel(){
                 scanPx = 0;
                 dispGrid.set(surfGrid);
               } else {
-                playing = false;
-                document.getElementById("playBtn").textContent = "▶ PLAY";
+                setPlaying(false);
                 document.getElementById("scanLabel").textContent = "COMPLETE";
               }
             }
           }
 
           const pct = Math.round((scanPx / (GW * GH)) * 100);
+          updateScanProgress(pct);
           document.getElementById("scanLabel").textContent =
             `${pct}% · ${INV.erosion ? "EROSION" : "DILATION"}${INV.revScan ? " REV" : ""}${INV.invTip ? " TIP⁻¹" : ""}`;
           document.getElementById("infoBar").textContent =
@@ -3391,13 +3836,36 @@ function buildTipKernel(){
       }
 
       // ════════════════════════════════════════════
-      //  RESET
+      //  RESET / PLAY (sidebar + canvas transport stay in sync)
       // ════════════════════════════════════════════
+      function updateScanProgress(pct) {
+        const p = Math.max(0, Math.min(100, pct | 0));
+        const fill = document.getElementById("scanProgressFill");
+        const label = document.getElementById("scanProgressLabel");
+        if (fill) {
+          fill.style.width = p + "%";
+          fill.classList.toggle("complete", p >= 100);
+        }
+        if (label) label.textContent = p + "%";
+      }
+      function syncPlayButtons() {
+        const label = playing ? "⏸ PAUSE" : "▶ PLAY";
+        document.querySelectorAll("[data-play-btn]").forEach((btn) => {
+          btn.textContent = label;
+        });
+      }
+      function setPlaying(on) {
+        playing = !!on;
+        syncPlayButtons();
+      }
+      function togglePlaying() {
+        setPlaying(!playing);
+      }
       function reset3D() {
         scanPx = 0;
-        playing = false;
         bounceDir = 1;
-        document.getElementById("playBtn").textContent = "▶ PLAY";
+        setPlaying(false);
+        updateScanProgress(0);
         document.getElementById("scanLabel").textContent = "";
         document.getElementById("infoBar").textContent =
           "Ready — press PLAY to begin raster scan";
@@ -3412,18 +3880,65 @@ function buildTipKernel(){
       // ════════════════════════════════════════════
       //  CONTROLS
       // ════════════════════════════════════════════
-      document.getElementById("playBtn").addEventListener("click", () => {
-        playing = !playing;
-        document.getElementById("playBtn").textContent = playing
-          ? "⏸ PAUSE"
-          : "▶ PLAY";
+      document.querySelectorAll("[data-play-btn]").forEach((btn) => {
+        btn.addEventListener("click", togglePlaying);
       });
-      document.getElementById("resetBtn").addEventListener("click", reset3D);
+      document.querySelectorAll("[data-reset-btn]").forEach((btn) => {
+        btn.addEventListener("click", reset3D);
+      });
+      function syncSpeedUI() {
+        const slider = document.getElementById("speedSlider");
+        if (!slider) return;
+        const v = slider.value;
+        const speedVal = document.getElementById("speedVal");
+        const transportVal = document.getElementById("transportSpeedVal");
+        if (speedVal) speedVal.textContent = v;
+        if (transportVal) transportVal.textContent = v;
+        const min = parseFloat(slider.min) || 1;
+        const max = parseFloat(slider.max) || 12;
+        const n = parseFloat(v);
+        const slowBtn = document.getElementById("slowBtnMain");
+        const fastBtn = document.getElementById("fastBtnMain");
+        if (slowBtn) slowBtn.disabled = n <= min;
+        if (fastBtn) fastBtn.disabled = n >= max;
+      }
+      function nudgeSpeed(delta) {
+        const slider = document.getElementById("speedSlider");
+        if (!slider) return;
+        const min = parseFloat(slider.min) || 1;
+        const max = parseFloat(slider.max) || 12;
+        const step = parseFloat(slider.step) || 1;
+        const next = Math.min(max, Math.max(min, parseFloat(slider.value) + delta * step));
+        slider.value = next;
+        syncSpeedUI();
+      }
       document
         .getElementById("speedSlider")
-        .addEventListener("input", function () {
-          document.getElementById("speedVal").textContent = this.value;
+        .addEventListener("input", syncSpeedUI);
+      document.getElementById("slowBtnMain").addEventListener("click", () => nudgeSpeed(-1));
+      document.getElementById("fastBtnMain").addEventListener("click", () => nudgeSpeed(1));
+      syncSpeedUI();
+
+      // Remember which advanced panels are open
+      (function initAdvancedPanels() {
+        const KEY = "afm-adv-panels";
+        let saved = {};
+        try {
+          saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {};
+        } catch (_) {
+          saved = {};
+        }
+        document.querySelectorAll("details[data-adv-panel]").forEach((el) => {
+          const id = el.getAttribute("data-adv-panel");
+          if (saved[id]) el.open = true;
+          el.addEventListener("toggle", () => {
+            saved[id] = el.open;
+            try {
+              localStorage.setItem(KEY, JSON.stringify(saved));
+            } catch (_) {}
+          });
         });
+      })();
       document
         .getElementById("vscaleSlider")
         .addEventListener("input", function () {
@@ -4088,25 +4603,17 @@ function buildTipKernel(){
 
       function activateCustomTipUI() {
         currentTip = "custom";
-        const btn = document.getElementById("tipCustomBtn");
-        btn.disabled = false;
-        document
-          .querySelectorAll("#tipBtns .btn")
-          .forEach((b) =>
-            b.classList.toggle("active", b.dataset.tip === "custom"),
-          );
+        const opt = document.getElementById("tipCustomOpt");
+        opt.disabled = false;
+        document.getElementById("tipSelect").value = "custom";
         refreshTipSliders();
       }
 
       function activateCustomSurfUI() {
         currentSurf = "custom";
-        const btn = document.getElementById("surfCustomBtn");
-        btn.disabled = false;
-        document
-          .querySelectorAll("#surfBtns .btn")
-          .forEach((b) =>
-            b.classList.toggle("active", b.dataset.surf === "custom"),
-          );
+        const opt = document.getElementById("surfCustomOpt");
+        opt.disabled = false;
+        document.getElementById("surfSelect").value = "custom";
         refreshSurfSliders();
       }
 
@@ -4214,16 +4721,13 @@ function buildTipKernel(){
           readOBJFile(f, importSurfFromOBJ);
         });
 
-      document.getElementById("tipBtns").addEventListener("click", (e) => {
-        const t = e.target.closest("[data-tip]");
-        if (!t) return;
-        if (t.dataset.tip === "custom" && !hasCustomTip) return;
-        currentTip = t.dataset.tip;
-        document
-          .querySelectorAll("#tipBtns .btn")
-          .forEach((b) =>
-            b.classList.toggle("active", b.dataset.tip === currentTip),
-          );
+      document.getElementById("tipSelect").addEventListener("change", (e) => {
+        const tip = e.target.value;
+        if (tip === "custom" && !hasCustomTip) {
+          e.target.value = currentTip;
+          return;
+        }
+        currentTip = tip;
         refreshTipSliders();
         buildTipKernel();
         computeMeas();
@@ -4236,16 +4740,13 @@ function buildTipKernel(){
         if (!t || +t.dataset.scan === X_NM) return;
         setScan(+t.dataset.scan);
       });
-      document.getElementById("surfBtns").addEventListener("click", (e) => {
-        const t = e.target.closest("[data-surf]");
-        if (!t) return;
-        if (t.dataset.surf === "custom" && !hasCustomSurf) return;
-        currentSurf = t.dataset.surf;
-        document
-          .querySelectorAll("#surfBtns .btn")
-          .forEach((b) =>
-            b.classList.toggle("active", b.dataset.surf === currentSurf),
-          );
+      document.getElementById("surfSelect").addEventListener("change", (e) => {
+        const surf = e.target.value;
+        if (surf === "custom" && !hasCustomSurf) {
+          e.target.value = currentSurf;
+          return;
+        }
+        currentSurf = surf;
         const wantScan = SURF_SCAN[currentSurf];
         if (wantScan && X_NM !== wantScan) {
           setScan(wantScan);

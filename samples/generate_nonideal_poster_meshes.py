@@ -118,6 +118,35 @@ def make_worn_asymmetric_tip() -> None:
     )
 
 
+def make_triangular_pyramid_tip() -> None:
+    """Make a regular three-sided pyramid baseline with a triangular base."""
+    height_nm = 48.0
+    face_half_angle_deg = 15.0
+    inradius_nm = height_nm * math.tan(math.radians(face_half_angle_deg))
+
+    # The base is an equilateral triangle centered on the Y axis. Its
+    # circumradius is twice its inradius.
+    vertices = [
+        (0.0, 0.0, 0.0),
+        (-2 * inradius_nm, height_nm, 0.0),
+        (inradius_nm, height_nm, math.sqrt(3) * inradius_nm),
+        (inradius_nm, height_nm, -math.sqrt(3) * inradius_nm),
+    ]
+    faces = [
+        (1, 2, 3),
+        (1, 3, 4),
+        (1, 4, 2),
+        (2, 4, 3),
+    ]
+    write_obj(
+        OUT / "tip_triangular_pyramid_15deg.obj",
+        "tip_triangular_pyramid_15deg",
+        vertices,
+        faces,
+        "Regular triangular-pyramid AFM tip: 15 degree face half-angle, 48 nm height.",
+    )
+
+
 def make_rough_nanocluster_surface() -> None:
     """Make a high-relief synthetic surface with obvious non-ideal features."""
     n = 61
@@ -186,8 +215,10 @@ def make_rough_nanocluster_surface() -> None:
 if __name__ == "__main__":
     make_subtle_worn_tip()
     make_worn_asymmetric_tip()
+    make_triangular_pyramid_tip()
     make_rough_nanocluster_surface()
     print(
         "Generated tip_subtle_worn_tilted.obj, "
-        "tip_worn_tilted_asymmetric.obj, and surface_rough_nanoclusters.obj"
+        "tip_worn_tilted_asymmetric.obj, tip_triangular_pyramid_15deg.obj, "
+        "and surface_rough_nanoclusters.obj"
     )

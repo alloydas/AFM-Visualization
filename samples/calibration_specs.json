@@ -1,0 +1,40 @@
+{
+  "vgrp_15m": {
+    "source": "samples/Bruker AFM Grating - VGRP-15M.pdf",
+    "pitch_nm": 10000,
+    "depth_nm": 180,
+    "feature_width_nm": 6000,
+    "notes": "Square wells etched 180 nm; 10 µm pitch. Feature width 6 µm is the commonly cited layout (Caltech KNI guide); PDF lists pitch and depth only.",
+    "surface_model": "recessed_square_wells",
+    "mesa_height_nm": 0,
+    "well_depth_nm": 180
+  },
+  "snl10_b": {
+    "source": "samples/Bruker AFM Probes - Sharp Nitride Lever 10B.pdf",
+    "variant": "B",
+    "geometry": "triangular_pyramid",
+    "apex_radius_nm_nom": 2,
+    "apex_radius_nm_max": 12,
+    "front_angle_deg": 15,
+    "front_angle_tolerance_deg": 2.5,
+    "back_angle_deg": 25,
+    "back_angle_tolerance_deg": 2.5,
+    "side_angle_deg": 22.5,
+    "side_angle_tolerance_deg": 2.5,
+    "tip_height_um_range": [2.5, 8.0],
+    "forward_model_defaults": {
+      "R": 2,
+      "front": 15,
+      "back": 25,
+      "side": 22.5
+    }
+  },
+  "cases": {
+    "vgrp15m_snl10": {
+      "spm_glob": "samples/072126-VGRP-15M-GD_SNL10 B/CaptureFile.0_00000.spm",
+      "channel_substring": "Height Sensor",
+      "tip": "snl10",
+      "surface": "vgrp_15m"
+    }
+  }
+}

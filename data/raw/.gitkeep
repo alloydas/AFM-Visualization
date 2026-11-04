@@ -1,1 +1,1 @@
-﻿# keep
+# Keep directory structure in git; raw SPM lives under data/raw/ (gitignored).

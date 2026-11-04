@@ -18,6 +18,10 @@ Interactive AFM tip–sample simulators (2D / 3D), mesh generators, and forward-
 | `data/raw/` | Large raw SPM archives (e.g. TGXYZ02); gitignored |
 | `docs/` | Notes and drafts |
 
+## Quick start (web)
+
+Open `index.html` locally, or deploy with Vercel (static HTML).
+
 ## Validation (reproducibility)
 
 Paths in `samples/calibration_specs.json` and the validators are rooted at the **repository root**:
@@ -35,6 +39,7 @@ Do not move `samples/` or `validation_results/`. Keep the validators next to `af
 ```bash
 python tools/make_snl10_obj.py
 python tools/make_vgrp_obj.py
+python tools/make_cs20ng_obj.py
 python tools/make_spm_obj.py   # reads data/raw/TGXYZ02/
 ```
 

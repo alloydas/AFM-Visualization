@@ -1,12 +1,30 @@
-# Local notes and presentation (not part of the simulator repo)
+# Local notes and presentation (not part of the simulator deploy)
+docs/PROJECT_CONTEXT_AND_PROGRESS.md
+docs/meeting-slides.html
+docs/afm_presentation.pptx
+docs/presentation_assets/
 PROJECT_CONTEXT_AND_PROGRESS.md
 meeting-slides.html
 afm_presentation.pptx
 presentation_assets/
 
-# SPM scan data
+# Raw SPM under data/raw (keep data/raw/.gitkeep)
+data/raw/**
+!data/raw/.gitkeep
+
+# Legacy path if anyone still has it at repo root
 TGXYZ02/
+
+# Validation suite outputs (keep validation_results/.gitkeep)
+validation_results/**
+!validation_results/.gitkeep
+
+# Editor / agent / Office junk
+.cursor/
+~$*
+*.tmp
 
 # Python bytecode
 __pycache__/
 *.py[cod]
+tools/__pycache__/

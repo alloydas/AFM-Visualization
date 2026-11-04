@@ -19,22 +19,25 @@ a flat bottom, so it has volume for CAD or printing. Units are NANOMETRES, +Y
 up, with the lowest measured point at y = 0.
 
 Usage:
-    python3 make_spm_obj.py                        # the two default scans below
-    python3 make_spm_obj.py path/to/scan.spm       # any scan
-    python3 make_spm_obj.py scan.spm --step 2      # downsample by 2 (fewer triangles)
+    python3 tools/make_spm_obj.py                        # the two default scans below
+    python3 tools/make_spm_obj.py path/to/scan.spm       # any scan
+    python3 tools/make_spm_obj.py scan.spm --step 2      # downsample by 2 (fewer triangles)
 """
 import os
 import re
 import sys
+from pathlib import Path
 
 import numpy as np
+
+from _repo import RAW, SCANS, mesh_path
 
 BASE = 1_000.0  # nm of solid below the lowest measured point
 
 DEFAULTS = [
     # (file, downsample) -- one from each pitch area of the TGXYZ02
-    ("TGXYZ02/06241807.0_00001.spm", 1),
-    ("TGXYZ02/06241746.0_00001.spm", 1),
+    (str(RAW / "TGXYZ02" / "06241807.0_00001.spm"), 1),
+    (str(RAW / "TGXYZ02" / "06241746.0_00001.spm"), 1),
 ]
 
 
@@ -149,8 +152,9 @@ def convert(path, down=1, out=None):
     verts, faces = mesh(z, size)
     faces = [(a, c, b) for (a, b, c) in faces]      # wind CCW seen from outside
     tag = "" if down == 1 else "_%dpx" % n     # keep downsampled output separate
-    out = out or ("scan_%s_%.0fum%s.obj" % (os.path.basename(path).split(".")[0], size / 1000, tag))
-    with open(out, "w") as fh:
+    name = out or ("scan_%s_%.0fum%s.obj" % (os.path.basename(path).split(".")[0], size / 1000, tag))
+    out_path = name if os.path.isabs(name) or os.path.dirname(name) else mesh_path(SCANS, name)
+    with open(out_path, "w") as fh:
         for line in [
             "AFM scan converted from %s" % os.path.basename(path),
             "MEASURED surface: includes the tip-convolution artifact, noise and drift.",
@@ -162,13 +166,14 @@ def convert(path, down=1, out=None):
         ]:
             fh.write("# " + line + "\n")
         fh.write("#\n# vertices: %d   triangles: %d\n\n" % (len(verts), len(faces)))
-        fh.write("o %s\n" % out[:-4])
+        fh.write("o %s\n" % Path(out_path).stem)
         for (x, y, zc) in verts:
             fh.write("v %.3f %.3f %.3f\n" % (x, y, zc))
         for (a, b, c) in faces:
             fh.write("f %d %d %d\n" % (a, b, c))
     print("%-34s %6d verts %7d tris   %.0f µm scan, %dx%d, step %.1f nm"
-          % (out, len(verts), len(faces), size / 1000, n, n, step_height(z)))
+          % (Path(out_path).name, len(verts), len(faces), size / 1000, n, n, step_height(z)))
+
 
 
 def main():
@@ -187,7 +192,7 @@ def main():
             if os.path.exists(path):
                 convert(path, d)
             else:
-                print("missing %s (unzip TGXYZ02.zip first)" % path)
+                print("missing %s (place TGXYZ02 scans under data/raw/TGXYZ02/)" % path)
 
 
 if __name__ == "__main__":

@@ -25,8 +25,11 @@ sits at the origin, and T(r) = R - sqrt(R^2 - r^2) is the tip height above the
 apex at lateral offset r. Meshes are closed (apex pole, side wall, top cap) and
 wound counter-clockwise seen from outside.
 
-Run:  python3 make_saa_sph_obj.py
+Run:  python3 tools/make_saa_sph_obj.py
 """
+from pathlib import Path
+
+from _repo import TIPS, mesh_path
 import math
 
 # (name, end radius nm, tip height nm)
@@ -97,7 +100,7 @@ def write_obj(path, header, verts, faces):
         for line in header:
             fh.write("# " + line + "\n")
         fh.write("#\n# vertices: %d   triangles: %d\n\n" % (len(verts), len(faces)))
-        fh.write("o %s\n" % path.rsplit("/", 1)[-1][:-4])
+        fh.write("o %s\n" % Path(path).stem)
         for (x, y, z) in verts:
             fh.write("v %.6f %.6f %.6f\n" % (x, y, z))
         for (a, b, c) in faces:
@@ -115,7 +118,7 @@ def main():
             prof.append((radius, radius + (height - radius) * i / N_SHAFT))
         v, f = lathe(prof, N_THETA)
         n_v, n_f = write_obj(
-            "%s_probe.obj" % name,
+            mesh_path(TIPS, "%s_probe.obj" % name),
             [
                 "Bruker %s AFM probe tip -- full geometry, true scale." % label,
                 "Hemispherical end of radius %.0f nm on a column of the same radius." % radius,
@@ -133,7 +136,7 @@ def main():
         prof.append((CUT_R, CUT_SHAFT))
         v, f = lathe(prof, N_THETA)
         n_v, n_f = write_obj(
-            "%s_cutaway.obj" % name,
+            mesh_path(TIPS, "%s_cutaway.obj" % name),
             [
                 "Bruker %s -- near-field cutaway as drawn in afm-3d.html." % label,
                 "Dome bottom (R = %.0f nm) out to r = %.0f nm, then a %.0f nm schematic shaft." % (radius, CUT_R, CUT_SHAFT),

@@ -39,8 +39,11 @@ Two meshes are written:
 Convention (matching afm-3d.html): units are NANOMETRES, +Y up, apex at the
 origin, +Z the sharp front face.  Meshes are closed and manifold.
 
-Run:  python3 make_snl10_obj.py
+Run:  python3 tools/make_snl10_obj.py
 """
+from pathlib import Path
+
+from _repo import TIPS, mesh_path
 import math
 import numpy as np
 
@@ -188,7 +191,7 @@ def write_obj(path, header, verts, faces):
         for line in header:
             fh.write("# " + line + "\n")
         fh.write("#\n# vertices: %d   triangles: %d\n\n" % (len(verts), len(faces)))
-        fh.write("o %s\n" % path[:-4])
+        fh.write("o %s\n" % Path(path).stem)
         for (x, y, z) in verts:
             fh.write("v %.6f %.6f %.6f\n" % (x, y, z))
         for (a, b, c) in faces:
@@ -215,7 +218,8 @@ def main():
         verts, faces, rim, apex_xz = build(height, R_APEX)
         hdr = [common[0], note] + common[1:]
         hdr = [h % R_APEX if "%.1f nm (datasheet" in h else h for h in hdr]
-        write_obj(name, hdr, verts, faces)
+        out = mesh_path(TIPS, name)
+        write_obj(out, hdr, verts, faces)
         print("%-16s %6d verts %7d tris   height %7.0f nm   rim radius %.1f-%.1f nm"
               % (name, len(verts), len(faces), height, rim.min(), rim.max()))
         print("                 apex offset from the pyramid axis: x %+.3f nm, z %+.3f nm (toward the blunt back face)" % apex_xz)

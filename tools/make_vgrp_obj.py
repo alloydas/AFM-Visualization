@@ -20,8 +20,11 @@ Both are closed solids: pit floor at y = 0, plateau at y = 180 nm, and a 1 µm
 support slab below, so they have volume for CAD, FEA or ray tracing rather than
 being an open surface. Units are NANOMETRES, +Y up, matching the simulator.
 
-Run:  python3 make_vgrp_obj.py
+Run:  python3 tools/make_vgrp_obj.py
 """
+from pathlib import Path
+
+from _repo import SURFACES, mesh_path
 
 PITCH = 10_000.0      # nm
 DEPTH = 180.0         # nm
@@ -108,7 +111,7 @@ def write_obj(path, header, verts, faces):
         for line in header:
             fh.write("# " + line + "\n")
         fh.write("#\n# vertices: %d   triangles: %d\n\n" % (len(verts), len(faces)))
-        fh.write("o %s\n" % path[:-4])
+        fh.write("o %s\n" % Path(path).stem)
         for (x, y, z) in verts:
             fh.write("v %.4f %.4f %.4f\n" % (x, y, z))
         for (a, b, c) in faces:
@@ -133,7 +136,7 @@ def main():
          "One 10 µm unit cell (1 pit), tileable."),
     ]:
         verts, faces = build(cells)
-        write_obj(name, [common[0], common[1], note] + common[2:], verts, faces)
+        write_obj(mesh_path(SURFACES, name), [common[0], common[1], note] + common[2:], verts, faces)
         span = cells * CELL / 1000
         print("%-24s %5d verts %5d tris   %.0f x %.0f µm" % (name, len(verts), len(faces), span, span))
 

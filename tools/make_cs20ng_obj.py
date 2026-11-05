@@ -15,16 +15,17 @@ BudgetSensors publishes pitch and step but not feature width.
 Units are NANOMETRES, +Y up, lower surface at y = 0, closed solids on a 1 µm
 support slab — the same conventions as the other meshes here.
 
-Run:  python3 make_cs20ng_obj.py
+Run:  python3 tools/make_cs20ng_obj.py
 """
 import make_tgxyz02_obj as tg
+from _repo import SURFACES, mesh_path
 
 STEP = 20.0          # nm, datasheet ("~20 nm")
 
 
 def emit(name, builder, note):
     m, cells, cell = builder()
-    m.write(name, [
+    m.write(mesh_path(SURFACES, name), [
         "BudgetSensors CS-20NG XYZ calibration nanogrid (SiO2 on Si).",
         note,
         "Step height %.0f nm (datasheet: ~20 nm, exact value on the box label)." % STEP,
